@@ -1,0 +1,769 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"CMD_commands.c"
+  23              	.Ltext0:
+  24              		.file 1 "../CMD/CMD_commands.c"
+ 22493              		.align	2
+ 22494              		.global	funkcja_setTempRate
+ 22495              		.thumb
+ 22496              		.thumb_func
+ 22498              	funkcja_setTempRate:
+ 22499              	.LFB36:
+   1:../CMD/CMD_commands.c **** #include "min_printf.h"
+   2:../CMD/CMD_commands.c **** #include "CMD_commands.h"
+   3:../CMD/CMD_commands.c **** #include "delay.h"
+   4:../CMD/CMD_commands.c **** #include <init_func.h>
+   5:../CMD/CMD_commands.c **** #include <server_config.h>
+   6:../CMD/CMD_commands.c **** #include <stm32f10x_rtc.h>
+   7:../CMD/CMD_commands.c **** #include <stdlib.h>
+   8:../CMD/CMD_commands.c **** #include <string.h>
+   9:../CMD/CMD_commands.c **** #include "../SERVER/serverWWW.h"
+  10:../CMD/CMD_commands.c **** #include "../RTC/rtc.h"
+  11:../CMD/CMD_commands.c **** #include "../sd_card/fatfs/ff_diskio.h"
+  12:../CMD/CMD_commands.c **** #include "../sd_card/fatfs/ff.h"
+  13:../CMD/CMD_commands.c **** #include <stdio.h>
+  14:../CMD/CMD_commands.c **** extern char * ENDLINE; 	// z pliku cmd.c
+  15:../CMD/CMD_commands.c **** 
+  16:../CMD/CMD_commands.c **** void funkcja_time(char * argument, char arg) {
+  17:../CMD/CMD_commands.c **** 
+  18:../CMD/CMD_commands.c **** 	min_printf("Aktualny czas: %d:%d", RTC_GetCounter()/3600, (RTC_GetCounter() % 3600) / 60);
+  19:../CMD/CMD_commands.c **** 	min_printf(ENDLINE);
+  20:../CMD/CMD_commands.c **** }
+  21:../CMD/CMD_commands.c **** 
+  22:../CMD/CMD_commands.c **** void funkcja_ls(char * argument, char arg) {
+  23:../CMD/CMD_commands.c **** 
+  24:../CMD/CMD_commands.c **** 	uint8_t i = 0;
+  25:../CMD/CMD_commands.c **** 	const uint8_t liczba_plikow = 10;
+  26:../CMD/CMD_commands.c **** 	min_printf("Zawartosc biezacego katalogu:\r\n");
+  27:../CMD/CMD_commands.c **** 	DIR dir;
+  28:../CMD/CMD_commands.c ****     FRESULT res;
+  29:../CMD/CMD_commands.c ****     FILINFO fno;
+  30:../CMD/CMD_commands.c **** 
+  31:../CMD/CMD_commands.c **** 	for(;i<10;i++) {
+  32:../CMD/CMD_commands.c **** 		SendChar('-');
+  33:../CMD/CMD_commands.c **** 	}
+  34:../CMD/CMD_commands.c **** 
+  35:../CMD/CMD_commands.c **** 	for(i=0; i < liczba_plikow; i++) {
+  36:../CMD/CMD_commands.c **** 		min_printf("PLIK%d   ", i);
+  37:../CMD/CMD_commands.c **** 
+  38:../CMD/CMD_commands.c **** 		if ( (i%4) == 0 ) {
+  39:../CMD/CMD_commands.c **** 			min_printf(ENDLINE);
+  40:../CMD/CMD_commands.c **** 		}
+  41:../CMD/CMD_commands.c **** 
+  42:../CMD/CMD_commands.c **** 	}
+  43:../CMD/CMD_commands.c **** 
+  44:../CMD/CMD_commands.c **** 	for (;;) {
+  45:../CMD/CMD_commands.c **** 		res = f_readdir(&dir, &fno);                   	// Read a directory item
+  46:../CMD/CMD_commands.c **** 
+  47:../CMD/CMD_commands.c **** 		if (res != FR_OK || fno.fname[0] == 0)
+  48:../CMD/CMD_commands.c **** 			break;  									// Break on error or end of dir
+  49:../CMD/CMD_commands.c **** 
+  50:../CMD/CMD_commands.c **** 		if (fno.fname[0] == '.')
+  51:../CMD/CMD_commands.c **** 			continue;             						//Ignore dot entry
+  52:../CMD/CMD_commands.c **** /*
+  53:../CMD/CMD_commands.c **** 	    if (fno.fattrib & AM_DIR) {                    	// It is a directory
+  54:../CMD/CMD_commands.c **** 
+  55:../CMD/CMD_commands.c **** 	    	//sprintf(&path[i], "/%s", fn);
+  56:../CMD/CMD_commands.c **** 	    	res = scan_files(path);
+  57:../CMD/CMD_commands.c **** 	    	if (res != FR_OK) break;
+  58:../CMD/CMD_commands.c **** 	        	path[i] = 0;
+  59:../CMD/CMD_commands.c **** 	        }
+  60:../CMD/CMD_commands.c **** 	    	else {                                       // It is a file.
+  61:../CMD/CMD_commands.c **** 	        	//min_printf("%s/%s\n", path, fn);
+  62:../CMD/CMD_commands.c **** 	        }
+  63:../CMD/CMD_commands.c **** */
+  64:../CMD/CMD_commands.c **** 	}
+  65:../CMD/CMD_commands.c **** 
+  66:../CMD/CMD_commands.c **** 	min_printf("\r\n");
+  67:../CMD/CMD_commands.c **** 
+  68:../CMD/CMD_commands.c **** }
+  69:../CMD/CMD_commands.c **** 
+  70:../CMD/CMD_commands.c **** void funkcja_info(char * argument, char arg) {
+  71:../CMD/CMD_commands.c **** 
+  72:../CMD/CMD_commands.c **** 	uint8_t i = 0;
+  73:../CMD/CMD_commands.c **** 	RTCDate data;
+  74:../CMD/CMD_commands.c **** 
+  75:../CMD/CMD_commands.c **** 	RTCgetTime(&data);
+  76:../CMD/CMD_commands.c **** 
+  77:../CMD/CMD_commands.c **** 	for(i=0;i<20;i++) {
+  78:../CMD/CMD_commands.c **** 		SendChar('-');
+  79:../CMD/CMD_commands.c **** 	}
+  80:../CMD/CMD_commands.c **** 
+  81:../CMD/CMD_commands.c **** 	min_printf(ENDLINE);
+  82:../CMD/CMD_commands.c **** 
+  83:../CMD/CMD_commands.c **** 	min_printf("Informacje o systemie:\r\n");
+  84:../CMD/CMD_commands.c **** 
+  85:../CMD/CMD_commands.c **** 	for(i=0;i<20;i++) {
+  86:../CMD/CMD_commands.c **** 		SendChar('-');
+  87:../CMD/CMD_commands.c **** 	}
+  88:../CMD/CMD_commands.c **** 
+  89:../CMD/CMD_commands.c **** 	min_printf(ENDLINE);
+  90:../CMD/CMD_commands.c **** 	min_printf("Aktualny czas: %d:%d\r\n", data.hour, data.minute);
+  91:../CMD/CMD_commands.c **** 	min_printf("Stan wyjsc I/O:\r\n");
+  92:../CMD/CMD_commands.c **** 	min_printf("\tGPIOA: %x\r\n", GPIOA->ODR);
+  93:../CMD/CMD_commands.c **** 	min_printf("\tGPIOB: %x\r\n", GPIOB->ODR);
+  94:../CMD/CMD_commands.c **** 	min_printf("\tGPIOC: %x\r\n", GPIOC->ODR);
+  95:../CMD/CMD_commands.c **** 	min_printf("Stan karty SD: ");
+  96:../CMD/CMD_commands.c **** 
+  97:../CMD/CMD_commands.c **** 	if (  !socket_is_empty() )
+  98:../CMD/CMD_commands.c **** 		min_printf("obecna");
+  99:../CMD/CMD_commands.c **** 	else
+ 100:../CMD/CMD_commands.c **** 		min_printf("brak");
+ 101:../CMD/CMD_commands.c **** 
+ 102:../CMD/CMD_commands.c **** 	min_printf(ENDLINE);
+ 103:../CMD/CMD_commands.c **** 
+ 104:../CMD/CMD_commands.c **** 	for(i=0;i<20;i++) {
+ 105:../CMD/CMD_commands.c **** 		SendChar('-');
+ 106:../CMD/CMD_commands.c **** 	}
+ 107:../CMD/CMD_commands.c **** 
+ 108:../CMD/CMD_commands.c **** 	min_printf(ENDLINE);
+ 109:../CMD/CMD_commands.c **** 
+ 110:../CMD/CMD_commands.c **** 
+ 111:../CMD/CMD_commands.c **** 
+ 112:../CMD/CMD_commands.c **** }
+ 113:../CMD/CMD_commands.c **** 
+ 114:../CMD/CMD_commands.c **** //funkcja wymusza wys³anie requestu NTP
+ 115:../CMD/CMD_commands.c **** void funkcja_NTPrequest(char * argument, char arg) {
+ 116:../CMD/CMD_commands.c **** 
+ 117:../CMD/CMD_commands.c **** 	resetNTPClient();
+ 118:../CMD/CMD_commands.c **** 
+ 119:../CMD/CMD_commands.c **** }
+ 120:../CMD/CMD_commands.c **** 
+ 121:../CMD/CMD_commands.c **** void funkcja_updateIP(char * argument, char arg) {
+ 122:../CMD/CMD_commands.c **** 
+ 123:../CMD/CMD_commands.c **** 	updateIP();
+ 124:../CMD/CMD_commands.c **** 
+ 125:../CMD/CMD_commands.c **** }
+ 126:../CMD/CMD_commands.c **** 
+ 127:../CMD/CMD_commands.c **** void funkcja_configWWW(char * argument, char arg) {
+ 128:../CMD/CMD_commands.c **** 
+ 129:../CMD/CMD_commands.c **** 
+ 130:../CMD/CMD_commands.c **** 	if ( !strcmp(argument, "enable")) {
+ 131:../CMD/CMD_commands.c **** 
+ 132:../CMD/CMD_commands.c **** 
+ 133:../CMD/CMD_commands.c **** 		enableWWWConfig();
+ 134:../CMD/CMD_commands.c **** 
+ 135:../CMD/CMD_commands.c **** 	}
+ 136:../CMD/CMD_commands.c **** 	else if ( !strcmp(argument, "disable")) {
+ 137:../CMD/CMD_commands.c **** 
+ 138:../CMD/CMD_commands.c **** 		disableWWWConfig();
+ 139:../CMD/CMD_commands.c **** 
+ 140:../CMD/CMD_commands.c **** 	}
+ 141:../CMD/CMD_commands.c **** 	else {
+ 142:../CMD/CMD_commands.c **** 
+ 143:../CMD/CMD_commands.c **** 		min_printf("Niepoprawny parametr!\r\n");
+ 144:../CMD/CMD_commands.c **** 		min_printf(ENDLINE);
+ 145:../CMD/CMD_commands.c **** 
+ 146:../CMD/CMD_commands.c **** 
+ 147:../CMD/CMD_commands.c **** 	}
+ 148:../CMD/CMD_commands.c **** 
+ 149:../CMD/CMD_commands.c **** }
+ 150:../CMD/CMD_commands.c **** 
+ 151:../CMD/CMD_commands.c **** void funkcja_setIP(char * argument, char arg) {
+ 152:../CMD/CMD_commands.c **** 
+ 153:../CMD/CMD_commands.c **** 	uint8_t newIP[] = { 192, 168, 1, 5 };
+ 154:../CMD/CMD_commands.c **** 	changeIP(newIP);
+ 155:../CMD/CMD_commands.c **** 
+ 156:../CMD/CMD_commands.c **** }
+ 157:../CMD/CMD_commands.c **** 
+ 158:../CMD/CMD_commands.c **** void funkcja_setTempRate(char * argument, char arg) {
+ 22500              		.loc 1 158 0
+ 22501              		.cfi_startproc
+ 22502              		@ args = 0, pretend = 0, frame = 0
+ 22503              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22504              		@ link register save eliminated.
+ 22505              	.LVL0:
+ 159:../CMD/CMD_commands.c **** 
+ 160:../CMD/CMD_commands.c **** 
+ 161:../CMD/CMD_commands.c **** }
+ 22506              		.loc 1 161 0
+ 22507 0000 7047     		bx	lr
+ 22508              		.cfi_endproc
+ 22509              	.LFE36:
+ 22511 0002 00BF     		.section	.text.funkcja_setTime,"ax",%progbits
+ 22512              		.align	2
+ 22513              		.global	funkcja_setTime
+ 22514              		.thumb
+ 22515              		.thumb_func
+ 22517              	funkcja_setTime:
+ 22518              	.LFB37:
+ 162:../CMD/CMD_commands.c **** 
+ 163:../CMD/CMD_commands.c **** void funkcja_setTime(char * argument, char arg) {
+ 22519              		.loc 1 163 0
+ 22520              		.cfi_startproc
+ 22521              		@ args = 0, pretend = 0, frame = 0
+ 22522              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22523              		@ link register save eliminated.
+ 22524              	.LVL1:
+ 164:../CMD/CMD_commands.c **** 
+ 165:../CMD/CMD_commands.c **** 	asm("nop");
+ 22525              		.loc 1 165 0
+ 22526              	@ 165 "../CMD/CMD_commands.c" 1
+ 22527 0000 00BF     		nop
+ 22528              	@ 0 "" 2
+ 166:../CMD/CMD_commands.c **** 	return;
+ 167:../CMD/CMD_commands.c **** }
+ 22529              		.loc 1 167 0
+ 22530              		.thumb
+ 22531 0002 7047     		bx	lr
+ 22532              		.cfi_endproc
+ 22533              	.LFE37:
+ 22535              		.section	.text.funkcja_setIP,"ax",%progbits
+ 22536              		.align	2
+ 22537              		.global	funkcja_setIP
+ 22538              		.thumb
+ 22539              		.thumb_func
+ 22541              	funkcja_setIP:
+ 22542              	.LFB35:
+ 22543              		.loc 1 151 0
+ 22544              		.cfi_startproc
+ 22545              		@ args = 0, pretend = 0, frame = 8
+ 22546              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22547              	.LVL2:
+ 22548 0000 00B5     		push	{lr}
+ 22549              	.LCFI0:
+ 22550              		.cfi_def_cfa_offset 4
+ 22551 0002 83B0     		sub	sp, sp, #12
+ 22552              	.LCFI1:
+ 22553              		.cfi_def_cfa_offset 16
+ 22554              		.loc 1 153 0
+ 22555 0004 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 22556 0008 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 22557 000c 1B68     		ldr	r3, [r3, #0]
+ 22558 000e 02A8     		add	r0, sp, #8
+ 22559              	.LVL3:
+ 22560 0010 40F8043D 		str	r3, [r0, #-4]!
+ 22561              		.loc 1 154 0
+ 22562              		.cfi_offset 14, -4
+ 22563 0014 FFF7FEFF 		bl	changeIP
+ 22564              	.LVL4:
+ 22565              		.loc 1 156 0
+ 22566 0018 03B0     		add	sp, sp, #12
+ 22567 001a 00BD     		pop	{pc}
+ 22568              		.cfi_endproc
+ 22569              	.LFE35:
+ 22571              		.section	.text.funkcja_configWWW,"ax",%progbits
+ 22572              		.align	2
+ 22573              		.global	funkcja_configWWW
+ 22574              		.thumb
+ 22575              		.thumb_func
+ 22577              	funkcja_configWWW:
+ 22578              	.LFB34:
+ 22579              		.loc 1 127 0
+ 22580              		.cfi_startproc
+ 22581              		@ args = 0, pretend = 0, frame = 0
+ 22582              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22583              	.LVL5:
+ 22584 0000 10B5     		push	{r4, lr}
+ 22585              	.LCFI2:
+ 22586              		.cfi_def_cfa_offset 8
+ 22587 0002 0446     		mov	r4, r0
+ 22588              		.cfi_offset 14, -4
+ 22589              		.cfi_offset 4, -8
+ 22590              		.loc 1 130 0
+ 22591 0004 40F20001 		movw	r1, #:lower16:.LC0
+ 22592              	.LVL6:
+ 22593 0008 C0F20001 		movt	r1, #:upper16:.LC0
+ 22594 000c FFF7FEFF 		bl	strcmp
+ 22595              	.LVL7:
+ 22596 0010 10B9     		cbnz	r0, .L8
+ 22597              		.loc 1 133 0
+ 22598 0012 FFF7FEFF 		bl	enableWWWConfig
+ 22599 0016 10BD     		pop	{r4, pc}
+ 22600              	.L8:
+ 22601              		.loc 1 136 0
+ 22602 0018 2046     		mov	r0, r4
+ 22603 001a 40F20001 		movw	r1, #:lower16:.LC1
+ 22604 001e C0F20001 		movt	r1, #:upper16:.LC1
+ 22605 0022 FFF7FEFF 		bl	strcmp
+ 22606 0026 10B9     		cbnz	r0, .L10
+ 22607              		.loc 1 138 0
+ 22608 0028 FFF7FEFF 		bl	disableWWWConfig
+ 22609 002c 10BD     		pop	{r4, pc}
+ 22610              	.L10:
+ 22611              		.loc 1 143 0
+ 22612 002e 40F20000 		movw	r0, #:lower16:.LC2
+ 22613 0032 C0F20000 		movt	r0, #:upper16:.LC2
+ 22614 0036 FFF7FEFF 		bl	min_printf
+ 22615              		.loc 1 144 0
+ 22616 003a 40F20003 		movw	r3, #:lower16:ENDLINE
+ 22617 003e C0F20003 		movt	r3, #:upper16:ENDLINE
+ 22618 0042 1868     		ldr	r0, [r3, #0]
+ 22619 0044 FFF7FEFF 		bl	min_printf
+ 22620 0048 10BD     		pop	{r4, pc}
+ 22621              		.cfi_endproc
+ 22622              	.LFE34:
+ 22624 004a 00BF     		.section	.text.funkcja_updateIP,"ax",%progbits
+ 22625              		.align	2
+ 22626              		.global	funkcja_updateIP
+ 22627              		.thumb
+ 22628              		.thumb_func
+ 22630              	funkcja_updateIP:
+ 22631              	.LFB33:
+ 22632              		.loc 1 121 0
+ 22633              		.cfi_startproc
+ 22634              		@ args = 0, pretend = 0, frame = 0
+ 22635              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22636              	.LVL8:
+ 22637 0000 08B5     		push	{r3, lr}
+ 22638              	.LCFI3:
+ 22639              		.cfi_def_cfa_offset 8
+ 22640              		.loc 1 123 0
+ 22641              		.cfi_offset 14, -4
+ 22642              		.cfi_offset 3, -8
+ 22643 0002 FFF7FEFF 		bl	updateIP
+ 22644              	.LVL9:
+ 22645              		.loc 1 125 0
+ 22646 0006 08BD     		pop	{r3, pc}
+ 22647              		.cfi_endproc
+ 22648              	.LFE33:
+ 22650              		.section	.text.funkcja_NTPrequest,"ax",%progbits
+ 22651              		.align	2
+ 22652              		.global	funkcja_NTPrequest
+ 22653              		.thumb
+ 22654              		.thumb_func
+ 22656              	funkcja_NTPrequest:
+ 22657              	.LFB32:
+ 22658              		.loc 1 115 0
+ 22659              		.cfi_startproc
+ 22660              		@ args = 0, pretend = 0, frame = 0
+ 22661              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22662              	.LVL10:
+ 22663 0000 08B5     		push	{r3, lr}
+ 22664              	.LCFI4:
+ 22665              		.cfi_def_cfa_offset 8
+ 22666              		.loc 1 117 0
+ 22667              		.cfi_offset 14, -4
+ 22668              		.cfi_offset 3, -8
+ 22669 0002 FFF7FEFF 		bl	resetNTPClient
+ 22670              	.LVL11:
+ 22671              		.loc 1 119 0
+ 22672 0006 08BD     		pop	{r3, pc}
+ 22673              		.cfi_endproc
+ 22674              	.LFE32:
+ 22676              		.section	.text.funkcja_info,"ax",%progbits
+ 22677              		.align	2
+ 22678              		.global	funkcja_info
+ 22679              		.thumb
+ 22680              		.thumb_func
+ 22682              	funkcja_info:
+ 22683              	.LFB31:
+ 22684              		.loc 1 70 0
+ 22685              		.cfi_startproc
+ 22686              		@ args = 0, pretend = 0, frame = 8
+ 22687              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22688              	.LVL12:
+ 22689 0000 30B5     		push	{r4, r5, lr}
+ 22690              	.LCFI5:
+ 22691              		.cfi_def_cfa_offset 12
+ 22692 0002 83B0     		sub	sp, sp, #12
+ 22693              	.LCFI6:
+ 22694              		.cfi_def_cfa_offset 24
+ 22695              		.loc 1 75 0
+ 22696 0004 6846     		mov	r0, sp
+ 22697              	.LVL13:
+ 22698              		.cfi_offset 14, -4
+ 22699              		.cfi_offset 5, -8
+ 22700              		.cfi_offset 4, -12
+ 22701 0006 FFF7FEFF 		bl	RTCgetTime
+ 22702              	.LVL14:
+ 22703 000a 4FF00004 		mov	r4, #0
+ 22704              		.loc 1 78 0
+ 22705 000e 4FF02D05 		mov	r5, #45
+ 22706              	.L17:
+ 22707 0012 2846     		mov	r0, r5
+ 22708 0014 FFF7FEFF 		bl	SendChar
+ 22709 0018 04F10104 		add	r4, r4, #1
+ 22710              		.loc 1 77 0
+ 22711 001c 142C     		cmp	r4, #20
+ 22712 001e F8D1     		bne	.L17
+ 22713              		.loc 1 81 0
+ 22714 0020 40F20003 		movw	r3, #:lower16:ENDLINE
+ 22715 0024 C0F20003 		movt	r3, #:upper16:ENDLINE
+ 22716 0028 1868     		ldr	r0, [r3, #0]
+ 22717 002a FFF7FEFF 		bl	min_printf
+ 22718              		.loc 1 83 0
+ 22719 002e 40F20000 		movw	r0, #:lower16:.LC3
+ 22720 0032 C0F20000 		movt	r0, #:upper16:.LC3
+ 22721 0036 FFF7FEFF 		bl	min_printf
+ 22722 003a 4FF00004 		mov	r4, #0
+ 22723              		.loc 1 86 0
+ 22724 003e 4FF02D05 		mov	r5, #45
+ 22725              	.L18:
+ 22726 0042 2846     		mov	r0, r5
+ 22727 0044 FFF7FEFF 		bl	SendChar
+ 22728 0048 04F10104 		add	r4, r4, #1
+ 22729              		.loc 1 85 0
+ 22730 004c 142C     		cmp	r4, #20
+ 22731 004e F8D1     		bne	.L18
+ 22732              		.loc 1 89 0
+ 22733 0050 40F20003 		movw	r3, #:lower16:ENDLINE
+ 22734 0054 C0F20003 		movt	r3, #:upper16:ENDLINE
+ 22735 0058 1868     		ldr	r0, [r3, #0]
+ 22736 005a FFF7FEFF 		bl	min_printf
+ 22737              		.loc 1 90 0
+ 22738 005e 40F20000 		movw	r0, #:lower16:.LC4
+ 22739 0062 C0F20000 		movt	r0, #:upper16:.LC4
+ 22740 0066 9DF80410 		ldrb	r1, [sp, #4]	@ zero_extendqisi2
+ 22741 006a 9DF80520 		ldrb	r2, [sp, #5]	@ zero_extendqisi2
+ 22742 006e FFF7FEFF 		bl	min_printf
+ 22743              		.loc 1 91 0
+ 22744 0072 40F20000 		movw	r0, #:lower16:.LC5
+ 22745 0076 C0F20000 		movt	r0, #:upper16:.LC5
+ 22746 007a FFF7FEFF 		bl	min_printf
+ 22747              		.loc 1 92 0
+ 22748 007e 40F60003 		movw	r3, #:lower16:1073809408
+ 22749 0082 C4F20103 		movt	r3, #:upper16:1073809408
+ 22750 0086 D968     		ldr	r1, [r3, #12]
+ 22751 0088 40F20000 		movw	r0, #:lower16:.LC6
+ 22752 008c C0F20000 		movt	r0, #:upper16:.LC6
+ 22753 0090 FFF7FEFF 		bl	min_printf
+ 22754              		.loc 1 93 0
+ 22755 0094 40F60043 		movw	r3, #:lower16:1073810432
+ 22756 0098 C4F20103 		movt	r3, #:upper16:1073810432
+ 22757 009c D968     		ldr	r1, [r3, #12]
+ 22758 009e 40F20000 		movw	r0, #:lower16:.LC7
+ 22759 00a2 C0F20000 		movt	r0, #:upper16:.LC7
+ 22760 00a6 FFF7FEFF 		bl	min_printf
+ 22761              		.loc 1 94 0
+ 22762 00aa 41F20003 		movw	r3, #:lower16:1073811456
+ 22763 00ae C4F20103 		movt	r3, #:upper16:1073811456
+ 22764 00b2 D968     		ldr	r1, [r3, #12]
+ 22765 00b4 40F20000 		movw	r0, #:lower16:.LC8
+ 22766 00b8 C0F20000 		movt	r0, #:upper16:.LC8
+ 22767 00bc FFF7FEFF 		bl	min_printf
+ 22768              		.loc 1 95 0
+ 22769 00c0 40F20000 		movw	r0, #:lower16:.LC9
+ 22770 00c4 C0F20000 		movt	r0, #:upper16:.LC9
+ 22771 00c8 FFF7FEFF 		bl	min_printf
+ 22772              		.loc 1 97 0
+ 22773 00cc FFF7FEFF 		bl	socket_is_empty
+ 22774 00d0 30B9     		cbnz	r0, .L19
+ 22775              		.loc 1 98 0
+ 22776 00d2 40F20000 		movw	r0, #:lower16:.LC10
+ 22777 00d6 C0F20000 		movt	r0, #:upper16:.LC10
+ 22778 00da FFF7FEFF 		bl	min_printf
+ 22779 00de 05E0     		b	.L20
+ 22780              	.L19:
+ 22781              		.loc 1 100 0
+ 22782 00e0 40F20000 		movw	r0, #:lower16:.LC11
+ 22783 00e4 C0F20000 		movt	r0, #:upper16:.LC11
+ 22784 00e8 FFF7FEFF 		bl	min_printf
+ 22785              	.L20:
+ 22786              		.loc 1 102 0
+ 22787 00ec 40F20003 		movw	r3, #:lower16:ENDLINE
+ 22788 00f0 C0F20003 		movt	r3, #:upper16:ENDLINE
+ 22789 00f4 1868     		ldr	r0, [r3, #0]
+ 22790 00f6 FFF7FEFF 		bl	min_printf
+ 22791 00fa 4FF00004 		mov	r4, #0
+ 22792              		.loc 1 105 0
+ 22793 00fe 4FF02D05 		mov	r5, #45
+ 22794              	.L21:
+ 22795 0102 2846     		mov	r0, r5
+ 22796 0104 FFF7FEFF 		bl	SendChar
+ 22797 0108 04F10104 		add	r4, r4, #1
+ 22798              		.loc 1 104 0
+ 22799 010c 142C     		cmp	r4, #20
+ 22800 010e F8D1     		bne	.L21
+ 22801              		.loc 1 108 0
+ 22802 0110 40F20003 		movw	r3, #:lower16:ENDLINE
+ 22803 0114 C0F20003 		movt	r3, #:upper16:ENDLINE
+ 22804 0118 1868     		ldr	r0, [r3, #0]
+ 22805 011a FFF7FEFF 		bl	min_printf
+ 22806              		.loc 1 112 0
+ 22807 011e 03B0     		add	sp, sp, #12
+ 22808 0120 30BD     		pop	{r4, r5, pc}
+ 22809              		.cfi_endproc
+ 22810              	.LFE31:
+ 22812 0122 00BF     		.section	.text.funkcja_ls,"ax",%progbits
+ 22813              		.align	2
+ 22814              		.global	funkcja_ls
+ 22815              		.thumb
+ 22816              		.thumb_func
+ 22818              	funkcja_ls:
+ 22819              	.LFB30:
+ 22820              		.loc 1 22 0
+ 22821              		.cfi_startproc
+ 22822              		@ args = 0, pretend = 0, frame = 56
+ 22823              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22824              	.LVL15:
+ 22825 0000 70B5     		push	{r4, r5, r6, lr}
+ 22826              	.LCFI7:
+ 22827              		.cfi_def_cfa_offset 16
+ 22828 0002 8EB0     		sub	sp, sp, #56
+ 22829              	.LCFI8:
+ 22830              		.cfi_def_cfa_offset 72
+ 22831              		.loc 1 26 0
+ 22832 0004 40F20000 		movw	r0, #:lower16:.LC12
+ 22833              	.LVL16:
+ 22834 0008 C0F20000 		movt	r0, #:upper16:.LC12
+ 22835              		.cfi_offset 14, -4
+ 22836              		.cfi_offset 6, -8
+ 22837              		.cfi_offset 5, -12
+ 22838              		.cfi_offset 4, -16
+ 22839 000c FFF7FEFF 		bl	min_printf
+ 22840              	.LVL17:
+ 22841 0010 4FF00004 		mov	r4, #0
+ 22842              		.loc 1 32 0
+ 22843 0014 4FF02D05 		mov	r5, #45
+ 22844              	.L27:
+ 22845 0018 2846     		mov	r0, r5
+ 22846 001a FFF7FEFF 		bl	SendChar
+ 22847 001e 04F10104 		add	r4, r4, #1
+ 22848              		.loc 1 31 0
+ 22849 0022 0A2C     		cmp	r4, #10
+ 22850 0024 F8D1     		bne	.L27
+ 22851 0026 4FF00004 		mov	r4, #0
+ 22852              		.loc 1 36 0
+ 22853 002a 40F20006 		movw	r6, #:lower16:.LC13
+ 22854 002e C0F20006 		movt	r6, #:upper16:.LC13
+ 22855              		.loc 1 39 0
+ 22856 0032 40F20005 		movw	r5, #:lower16:ENDLINE
+ 22857 0036 C0F20005 		movt	r5, #:upper16:ENDLINE
+ 22858              	.L29:
+ 22859              		.loc 1 36 0
+ 22860 003a 3046     		mov	r0, r6
+ 22861 003c 2146     		mov	r1, r4
+ 22862 003e FFF7FEFF 		bl	min_printf
+ 22863              		.loc 1 38 0
+ 22864 0042 14F0030F 		tst	r4, #3
+ 22865 0046 02D1     		bne	.L28
+ 22866              		.loc 1 39 0
+ 22867 0048 2868     		ldr	r0, [r5, #0]
+ 22868 004a FFF7FEFF 		bl	min_printf
+ 22869              	.L28:
+ 22870 004e 04F10104 		add	r4, r4, #1
+ 22871              		.loc 1 35 0
+ 22872 0052 0A2C     		cmp	r4, #10
+ 22873 0054 F1D1     		bne	.L29
+ 22874              		.loc 1 45 0
+ 22875 0056 07AD     		add	r5, sp, #28
+ 22876 0058 01AC     		add	r4, sp, #4
+ 22877              	.L33:
+ 22878 005a 2846     		mov	r0, r5
+ 22879 005c 2146     		mov	r1, r4
+ 22880 005e FFF7FEFF 		bl	f_readdir
+ 22881              		.loc 1 47 0
+ 22882 0062 18B9     		cbnz	r0, .L30
+ 22883 0064 9DF80D30 		ldrb	r3, [sp, #13]	@ zero_extendqisi2
+ 22884 0068 002B     		cmp	r3, #0
+ 22885 006a F6D1     		bne	.L33
+ 22886              	.L30:
+ 22887              		.loc 1 66 0
+ 22888 006c 40F20000 		movw	r0, #:lower16:.LC14
+ 22889 0070 C0F20000 		movt	r0, #:upper16:.LC14
+ 22890 0074 FFF7FEFF 		bl	min_printf
+ 22891              		.loc 1 68 0
+ 22892 0078 0EB0     		add	sp, sp, #56
+ 22893 007a 70BD     		pop	{r4, r5, r6, pc}
+ 22894              		.cfi_endproc
+ 22895              	.LFE30:
+ 22897              		.section	.text.funkcja_time,"ax",%progbits
+ 22898              		.align	2
+ 22899              		.global	funkcja_time
+ 22900              		.thumb
+ 22901              		.thumb_func
+ 22903              	funkcja_time:
+ 22904              	.LFB29:
+ 22905              		.loc 1 16 0
+ 22906              		.cfi_startproc
+ 22907              		@ args = 0, pretend = 0, frame = 0
+ 22908              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22909              	.LVL18:
+ 22910 0000 10B5     		push	{r4, lr}
+ 22911              	.LCFI9:
+ 22912              		.cfi_def_cfa_offset 8
+ 22913              		.loc 1 18 0
+ 22914              		.cfi_offset 14, -4
+ 22915              		.cfi_offset 4, -8
+ 22916 0002 FFF7FEFF 		bl	RTC_GetCounter
+ 22917              	.LVL19:
+ 22918 0006 0446     		mov	r4, r0
+ 22919 0008 FFF7FEFF 		bl	RTC_GetCounter
+ 22920 000c 4BF2C533 		movw	r3, #:lower16:-1851608123
+ 22921 0010 C9F2A213 		movt	r3, #:upper16:-1851608123
+ 22922 0014 A3FB0421 		umull	r2, r1, r3, r4
+ 22923 0018 A3FB0023 		umull	r2, r3, r3, r0
+ 22924 001c 4FEAD323 		lsr	r3, r3, #11
+ 22925 0020 4FF46162 		mov	r2, #3600
+ 22926 0024 02FB1302 		mls	r2, r2, r3, r0
+ 22927 0028 48F6890C 		movw	ip, #:lower16:-2004318071
+ 22928 002c C8F6880C 		movt	ip, #:upper16:-2004318071
+ 22929 0030 ACFB0232 		umull	r3, r2, ip, r2
+ 22930 0034 40F20000 		movw	r0, #:lower16:.LC15
+ 22931 0038 C0F20000 		movt	r0, #:upper16:.LC15
+ 22932 003c 4FEAD121 		lsr	r1, r1, #11
+ 22933 0040 4FEA5212 		lsr	r2, r2, #5
+ 22934 0044 FFF7FEFF 		bl	min_printf
+ 22935              		.loc 1 19 0
+ 22936 0048 40F20003 		movw	r3, #:lower16:ENDLINE
+ 22937 004c C0F20003 		movt	r3, #:upper16:ENDLINE
+ 22938 0050 1868     		ldr	r0, [r3, #0]
+ 22939 0052 FFF7FEFF 		bl	min_printf
+ 22940              		.loc 1 20 0
+ 22941 0056 10BD     		pop	{r4, pc}
+ 22942              		.cfi_endproc
+ 22943              	.LFE29:
+ 22945              		.section	.rodata.C.21.5197,"a",%progbits
+ 22946              		.align	2
+ 22947              		.set	.LANCHOR0,. + 0
+ 22950              	C.21.5197:
+ 22951 0000 C0       		.byte	-64
+ 22952 0001 A8       		.byte	-88
+ 22953 0002 01       		.byte	1
+ 22954 0003 05       		.byte	5
+ 22955              		.section	.rodata.str1.4,"aMS",%progbits,1
+ 22956              		.align	2
+ 22957              	.LC0:
+ 22958 0000 656E6162 		.ascii	"enable\000"
+ 22958      6C6500
+ 22959 0007 00       		.space	1
+ 22960              	.LC1:
+ 22961 0008 64697361 		.ascii	"disable\000"
+ 22961      626C6500 
+ 22962              	.LC2:
+ 22963 0010 4E696570 		.ascii	"Niepoprawny parametr!\015\012\000"
+ 22963      6F707261 
+ 22963      776E7920 
+ 22963      70617261 
+ 22963      6D657472 
+ 22964              	.LC3:
+ 22965 0028 496E666F 		.ascii	"Informacje o systemie:\015\012\000"
+ 22965      726D6163 
+ 22965      6A65206F 
+ 22965      20737973 
+ 22965      74656D69 
+ 22966 0041 000000   		.space	3
+ 22967              	.LC4:
+ 22968 0044 416B7475 		.ascii	"Aktualny czas: %d:%d\015\012\000"
+ 22968      616C6E79 
+ 22968      20637A61 
+ 22968      733A2025 
+ 22968      643A2564 
+ 22969 005b 00       		.space	1
+ 22970              	.LC5:
+ 22971 005c 5374616E 		.ascii	"Stan wyjsc I/O:\015\012\000"
+ 22971      2077796A 
+ 22971      73632049 
+ 22971      2F4F3A0D 
+ 22971      0A00
+ 22972 006e 0000     		.space	2
+ 22973              	.LC6:
+ 22974 0070 09475049 		.ascii	"\011GPIOA: %x\015\012\000"
+ 22974      4F413A20 
+ 22974      25780D0A 
+ 22974      00
+ 22975 007d 000000   		.space	3
+ 22976              	.LC7:
+ 22977 0080 09475049 		.ascii	"\011GPIOB: %x\015\012\000"
+ 22977      4F423A20 
+ 22977      25780D0A 
+ 22977      00
+ 22978 008d 000000   		.space	3
+ 22979              	.LC8:
+ 22980 0090 09475049 		.ascii	"\011GPIOC: %x\015\012\000"
+ 22980      4F433A20 
+ 22980      25780D0A 
+ 22980      00
+ 22981 009d 000000   		.space	3
+ 22982              	.LC9:
+ 22983 00a0 5374616E 		.ascii	"Stan karty SD: \000"
+ 22983      206B6172 
+ 22983      74792053 
+ 22983      443A2000 
+ 22984              	.LC10:
+ 22985 00b0 6F626563 		.ascii	"obecna\000"
+ 22985      6E6100
+ 22986 00b7 00       		.space	1
+ 22987              	.LC11:
+ 22988 00b8 6272616B 		.ascii	"brak\000"
+ 22988      00
+ 22989 00bd 000000   		.space	3
+ 22990              	.LC12:
+ 22991 00c0 5A617761 		.ascii	"Zawartosc biezacego katalogu:\015\012\000"
+ 22991      72746F73 
+ 22991      63206269 
+ 22991      657A6163 
+ 22991      65676F20 
+ 22992              	.LC13:
+ 22993 00e0 504C494B 		.ascii	"PLIK%d   \000"
+ 22993      25642020 
+ 22993      2000
+ 22994 00ea 0000     		.space	2
+ 22995              	.LC14:
+ 22996 00ec 0D0A00   		.ascii	"\015\012\000"
+ 22997 00ef 00       		.space	1
+ 22998              	.LC15:
+ 22999 00f0 416B7475 		.ascii	"Aktualny czas: %d:%d\000"
+ 22999      616C6E79 
+ 22999      20637A61 
+ 22999      733A2025 
+ 22999      643A2564 
+ 23000 0105 000000   		.text
+ 23001              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 CMD_commands.c
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22493  .text.funkcja_setTempRate:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22498  .text.funkcja_setTempRate:00000000 funkcja_setTempRate
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22512  .text.funkcja_setTime:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22517  .text.funkcja_setTime:00000000 funkcja_setTime
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22536  .text.funkcja_setIP:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22541  .text.funkcja_setIP:00000000 funkcja_setIP
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22947  .rodata.C.21.5197:00000000 .LANCHOR0
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22572  .text.funkcja_configWWW:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22577  .text.funkcja_configWWW:00000000 funkcja_configWWW
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22957  .rodata.str1.4:00000000 .LC0
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22960  .rodata.str1.4:00000008 .LC1
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22962  .rodata.str1.4:00000010 .LC2
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22625  .text.funkcja_updateIP:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22630  .text.funkcja_updateIP:00000000 funkcja_updateIP
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22651  .text.funkcja_NTPrequest:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22656  .text.funkcja_NTPrequest:00000000 funkcja_NTPrequest
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22677  .text.funkcja_info:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22682  .text.funkcja_info:00000000 funkcja_info
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22964  .rodata.str1.4:00000028 .LC3
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22967  .rodata.str1.4:00000044 .LC4
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22970  .rodata.str1.4:0000005c .LC5
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22973  .rodata.str1.4:00000070 .LC6
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22976  .rodata.str1.4:00000080 .LC7
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22979  .rodata.str1.4:00000090 .LC8
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22982  .rodata.str1.4:000000a0 .LC9
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22984  .rodata.str1.4:000000b0 .LC10
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22987  .rodata.str1.4:000000b8 .LC11
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22813  .text.funkcja_ls:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22818  .text.funkcja_ls:00000000 funkcja_ls
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22990  .rodata.str1.4:000000c0 .LC12
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22992  .rodata.str1.4:000000e0 .LC13
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22995  .rodata.str1.4:000000ec .LC14
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22898  .text.funkcja_time:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22903  .text.funkcja_time:00000000 funkcja_time
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22998  .rodata.str1.4:000000f0 .LC15
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22946  .rodata.C.21.5197:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22950  .rodata.C.21.5197:00000000 C.21.5197
+C:\Users\user\AppData\Local\Temp\ccvqha9B.s:22956  .rodata.str1.4:00000000 $d
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+changeIP
+strcmp
+enableWWWConfig
+disableWWWConfig
+min_printf
+ENDLINE
+updateIP
+resetNTPClient
+RTCgetTime
+SendChar
+socket_is_empty
+f_readdir
+RTC_GetCounter

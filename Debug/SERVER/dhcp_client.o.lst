@@ -1,0 +1,1841 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"dhcp_client.c"
+  23              	.Ltext0:
+  24              		.file 1 "../SERVER/dhcp_client.c"
+ 19824              		.align	2
+ 19825              		.global	dhcp_6sec_tick
+ 19826              		.thumb
+ 19827              		.thumb_func
+ 19829              	dhcp_6sec_tick:
+ 19830              	.LFB29:
+   1:../SERVER/dhcp_client.c **** /*********************************************
+   2:../SERVER/dhcp_client.c ****  * vim:sw=8:ts=8:si:et
+   3:../SERVER/dhcp_client.c ****  * To use the above modeline in vim you must have "set modeline" in your .vimrc
+   4:../SERVER/dhcp_client.c ****  * Author: Guido Socher
+   5:../SERVER/dhcp_client.c ****  * Copyright:LGPL V2
+   6:../SERVER/dhcp_client.c ****  * See http://www.gnu.org/licenses/old-licenses/lgpl-2.0.html
+   7:../SERVER/dhcp_client.c ****  *
+   8:../SERVER/dhcp_client.c ****  * A DHCP client.
+   9:../SERVER/dhcp_client.c ****  * This code uses the UDP_client framework. You need to enable UDP_client in ip_config.h to use thi
+  10:../SERVER/dhcp_client.c ****  *
+  11:../SERVER/dhcp_client.c ****  * DHCP requires the periodic renewal of addresses. For this 
+  12:../SERVER/dhcp_client.c ****  * purpose you must call the function dhcp_6sec_tick() every 6 sec.
+  13:../SERVER/dhcp_client.c ****  * If you do not call it then you can still get an initial IP
+  14:../SERVER/dhcp_client.c ****  * (without retry in case of failure) but there will be no
+  15:../SERVER/dhcp_client.c ****  * lease renewal.
+  16:../SERVER/dhcp_client.c ****  *********************************************/
+  17:../SERVER/dhcp_client.c **** 
+  18:../SERVER/dhcp_client.c **** #include <string.h>
+  19:../SERVER/dhcp_client.c **** #include <stdlib.h>
+  20:../SERVER/dhcp_client.c **** #include "tcpip/net.h"
+  21:../SERVER/dhcp_client.c **** #include "../enc28j60/enc28j60.h"
+  22:../SERVER/dhcp_client.c **** #include "tcpip/ip_arp_udp_tcp.h"
+  23:../SERVER/dhcp_client.c **** #include "ip_config.h"
+  24:../SERVER/dhcp_client.c **** 
+  25:../SERVER/dhcp_client.c **** #ifndef UDP_client
+  26:../SERVER/dhcp_client.c **** #error "ERROR: you need to enable UDP_client support in ip_config.h to use the DHCP client"
+  27:../SERVER/dhcp_client.c **** #endif
+  28:../SERVER/dhcp_client.c **** 
+  29:../SERVER/dhcp_client.c **** static volatile uint8_t dhcp_6sec_cnt=0; // counts multiple of 6 sec
+  30:../SERVER/dhcp_client.c **** static uint8_t dhcp_yiaddr[4]={0,0,0,0}; // your (client) IP
+  31:../SERVER/dhcp_client.c **** static uint8_t dhcp_opt_defaultgw[4]={0,0,0,0}; // default gw
+  32:../SERVER/dhcp_client.c **** static uint8_t dhcp_opt_mask[4]={0,0,0,0}; // netmask
+  33:../SERVER/dhcp_client.c **** static uint8_t dhcp_opt_server_id[4]={0,0,0,0}; // server ip
+  34:../SERVER/dhcp_client.c **** static uint8_t dhcp_opt_message_type=0;
+  35:../SERVER/dhcp_client.c **** static uint8_t dhcp_tid=0;
+  36:../SERVER/dhcp_client.c **** static uint16_t dhcp_opt_leasetime_minutes=0;
+  37:../SERVER/dhcp_client.c **** 
+  38:../SERVER/dhcp_client.c **** // 
+  39:../SERVER/dhcp_client.c **** // The relevant RFCs are 
+  40:../SERVER/dhcp_client.c **** // DHCP protocol: http://tools.ietf.org/html/rfc1541
+  41:../SERVER/dhcp_client.c **** // newer version:
+  42:../SERVER/dhcp_client.c **** // DHCP protocol: http://tools.ietf.org/html/rfc2131
+  43:../SERVER/dhcp_client.c **** // message encoding: http://tools.ietf.org/html/rfc1533
+  44:../SERVER/dhcp_client.c **** //
+  45:../SERVER/dhcp_client.c **** // The normal message flow to get an IP address is:
+  46:../SERVER/dhcp_client.c **** // Client -> Server DHCPDISCOVER
+  47:../SERVER/dhcp_client.c **** // Server -> Client DHCPOFFER
+  48:../SERVER/dhcp_client.c **** // Client -> Server DHCPREQUEST
+  49:../SERVER/dhcp_client.c **** // Server -> Client DHCPACK
+  50:../SERVER/dhcp_client.c **** // There might be serveral seconds delay between the DHCPDISCOVER and
+  51:../SERVER/dhcp_client.c **** // the DHCPOFFER as the server does some test (e.g ping or arp) to see
+  52:../SERVER/dhcp_client.c **** // if the IP which is offered is really free.
+  53:../SERVER/dhcp_client.c **** //
+  54:../SERVER/dhcp_client.c **** // At lease renewal the message flow is:
+  55:../SERVER/dhcp_client.c **** // Client -> Server DHCPREQUEST
+  56:../SERVER/dhcp_client.c **** // Server -> Client DHCPACK
+  57:../SERVER/dhcp_client.c **** // The DHCPREQUEST for renewal is different from the one at inital assignment.
+  58:../SERVER/dhcp_client.c **** //
+  59:../SERVER/dhcp_client.c **** //
+  60:../SERVER/dhcp_client.c **** // DHCP_OPTION_OFFSET is a relative to UDP_DATA_P
+  61:../SERVER/dhcp_client.c **** #define DHCP_OPTION_OFFSET 240
+  62:../SERVER/dhcp_client.c **** #define MAGIC_COOKIE_P 236
+  63:../SERVER/dhcp_client.c **** #define DHCP_SRV_SRC_PORT 67
+  64:../SERVER/dhcp_client.c **** #define DHCP_SRV_DST_PORT 68
+  65:../SERVER/dhcp_client.c **** // message type values
+  66:../SERVER/dhcp_client.c **** #define DHCP_DISCOVER_V 0x01
+  67:../SERVER/dhcp_client.c **** #define DHCP_REQUEST_V 0x03
+  68:../SERVER/dhcp_client.c **** 
+  69:../SERVER/dhcp_client.c **** // Lease time renewal and time keeping.
+  70:../SERVER/dhcp_client.c **** // you must call this function every 6 seconds. It is save
+  71:../SERVER/dhcp_client.c **** // to do this from interrupt
+  72:../SERVER/dhcp_client.c **** void dhcp_6sec_tick(void){
+ 19831              		.loc 1 72 0
+ 19832              		.cfi_startproc
+ 19833              		@ args = 0, pretend = 0, frame = 0
+ 19834              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19835              		@ link register save eliminated.
+  73:../SERVER/dhcp_client.c ****         dhcp_6sec_cnt++;
+ 19836              		.loc 1 73 0
+ 19837 0000 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 19838 0004 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 19839 0008 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 19840 000a 02F10102 		add	r2, r2, #1
+ 19841 000e D2B2     		uxtb	r2, r2
+ 19842 0010 1A70     		strb	r2, [r3, #0]
+  74:../SERVER/dhcp_client.c **** }
+ 19843              		.loc 1 74 0
+ 19844 0012 7047     		bx	lr
+ 19845              		.cfi_endproc
+ 19846              	.LFE29:
+ 19848              		.section	.text.dhcp_get_message_type,"ax",%progbits
+ 19849              		.align	2
+ 19850              		.global	dhcp_get_message_type
+ 19851              		.thumb
+ 19852              		.thumb_func
+ 19854              	dhcp_get_message_type:
+ 19855              	.LFB32:
+  75:../SERVER/dhcp_client.c **** 
+  76:../SERVER/dhcp_client.c **** // This function writes a basic message template into buf
+  77:../SERVER/dhcp_client.c **** // It processes all fields excluding the options section.
+  78:../SERVER/dhcp_client.c **** // Most fields are initialized with zero.
+  79:../SERVER/dhcp_client.c **** void make_dhcp_message_template(uint8_t *buf,const uint8_t transactionID)
+  80:../SERVER/dhcp_client.c **** {
+  81:../SERVER/dhcp_client.c ****         uint8_t i=0;
+  82:../SERVER/dhcp_client.c ****         uint8_t allxff[6]={0xff,0xff,0xff,0xff,0xff,0xff}; // all of it can be used as mac, the fir
+  83:../SERVER/dhcp_client.c **** 
+  84:../SERVER/dhcp_client.c ****         send_udp_prepare(buf,DHCP_SRV_DST_PORT,allxff,DHCP_SRV_SRC_PORT,allxff);
+  85:../SERVER/dhcp_client.c ****         // source IP is 0.0.0.0, a while loop produces smaller code than memset
+  86:../SERVER/dhcp_client.c ****         i=0;
+  87:../SERVER/dhcp_client.c ****         while(i<4){
+  88:../SERVER/dhcp_client.c ****                 buf[IP_SRC_P +i]=0;
+  89:../SERVER/dhcp_client.c ****                 i++;
+  90:../SERVER/dhcp_client.c ****         }
+  91:../SERVER/dhcp_client.c ****         // now fill the bootstrap protocol layer starting at UDP_DATA_P
+  92:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P]=1;// message type = boot request
+  93:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+1]=1;// hw type
+  94:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+2]=6;// mac len
+  95:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+i+3]=0;// hops
+  96:../SERVER/dhcp_client.c ****         // we use only one byte TIDs, we fill the first byte with 1 and
+  97:../SERVER/dhcp_client.c ****         // the rest with transactionID. The first byte is used to
+  98:../SERVER/dhcp_client.c ****         // distinguish inital requests from renew requests.
+  99:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+4]=1;
+ 100:../SERVER/dhcp_client.c ****         i=0;
+ 101:../SERVER/dhcp_client.c ****         while(i<3){
+ 102:../SERVER/dhcp_client.c ****                 buf[UDP_DATA_P+i+5]=transactionID;
+ 103:../SERVER/dhcp_client.c ****                 i++;
+ 104:../SERVER/dhcp_client.c ****         }
+ 105:../SERVER/dhcp_client.c ****         // we set seconds always to zero
+ 106:../SERVER/dhcp_client.c ****         //
+ 107:../SERVER/dhcp_client.c ****         // set my own MAC the rest is empty:
+ 108:../SERVER/dhcp_client.c ****         // a while loop produces smaller code than memset
+ 109:../SERVER/dhcp_client.c ****         i=8; // start at 8
+ 110:../SERVER/dhcp_client.c ****         while(i<28){
+ 111:../SERVER/dhcp_client.c ****                 buf[UDP_DATA_P +i]=0;
+ 112:../SERVER/dhcp_client.c ****                 i++;
+ 113:../SERVER/dhcp_client.c ****         }
+ 114:../SERVER/dhcp_client.c ****         // own mac (send_udp_prepare did fill it at eth level):
+ 115:../SERVER/dhcp_client.c ****         i=0;
+ 116:../SERVER/dhcp_client.c ****         while(i<6){
+ 117:../SERVER/dhcp_client.c ****                 buf[UDP_DATA_P+i+28]=buf[ETH_SRC_MAC +i];
+ 118:../SERVER/dhcp_client.c ****                 i++;
+ 119:../SERVER/dhcp_client.c ****         }
+ 120:../SERVER/dhcp_client.c ****         // now we need to write 202 bytes of zero
+ 121:../SERVER/dhcp_client.c ****         // a while loop produces smaller code than memset, don't use memset
+ 122:../SERVER/dhcp_client.c ****         i=34; // start at 8
+ 123:../SERVER/dhcp_client.c ****         while(i<236){
+ 124:../SERVER/dhcp_client.c ****                 buf[UDP_DATA_P +i]=0;
+ 125:../SERVER/dhcp_client.c ****                 i++;
+ 126:../SERVER/dhcp_client.c ****         }
+ 127:../SERVER/dhcp_client.c ****         // the magic cookie has to be:
+ 128:../SERVER/dhcp_client.c ****         // 99, 130, 83, 99
+ 129:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+MAGIC_COOKIE_P]=0x63;
+ 130:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+MAGIC_COOKIE_P+1]=0x82;
+ 131:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+MAGIC_COOKIE_P+2]=0x53;
+ 132:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+MAGIC_COOKIE_P+3]=0x63;
+ 133:../SERVER/dhcp_client.c **** }
+ 134:../SERVER/dhcp_client.c **** 
+ 135:../SERVER/dhcp_client.c **** // the answer to this message will come as a broadcast
+ 136:../SERVER/dhcp_client.c **** uint8_t send_dhcp_discover(uint8_t *buf,const uint8_t transactionID)
+ 137:../SERVER/dhcp_client.c **** {
+ 138:../SERVER/dhcp_client.c ****         make_dhcp_message_template(buf,transactionID);
+ 139:../SERVER/dhcp_client.c ****         // option dhcp message type:
+ 140:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET]=0x35; // 53
+ 141:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+1]=1; //len
+ 142:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+2]=DHCP_DISCOVER_V;
+ 143:../SERVER/dhcp_client.c ****         // option paramter request list:
+ 144:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+3]=0x37; // 55
+ 145:../SERVER/dhcp_client.c ****         // we want: subnet mask, router
+ 146:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+4]=2; // len
+ 147:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+5]=1; // subnet mask
+ 148:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+6]=3; // router=default GW
+ 149:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+7]=0xff; // end of options
+ 150:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+8]=0; 
+ 151:../SERVER/dhcp_client.c ****         // no padding
+ 152:../SERVER/dhcp_client.c ****         // the length of the udp message part is now DHCP_OPTION_OFFSET+8
+ 153:../SERVER/dhcp_client.c ****         send_udp_transmit(buf,DHCP_OPTION_OFFSET+8);
+ 154:../SERVER/dhcp_client.c ****         return(0);
+ 155:../SERVER/dhcp_client.c **** }
+ 156:../SERVER/dhcp_client.c **** 
+ 157:../SERVER/dhcp_client.c **** // scan the options field for the message type field
+ 158:../SERVER/dhcp_client.c **** // and return its value.
+ 159:../SERVER/dhcp_client.c **** //
+ 160:../SERVER/dhcp_client.c **** // Value   Message Type
+ 161:../SERVER/dhcp_client.c **** // -----   ------------
+ 162:../SERVER/dhcp_client.c **** //   1     DHCPDISCOVER
+ 163:../SERVER/dhcp_client.c **** //   2     DHCPOFFER  (server to client)
+ 164:../SERVER/dhcp_client.c **** //   3     DHCPREQUEST
+ 165:../SERVER/dhcp_client.c **** //   4     DHCPDECLINE
+ 166:../SERVER/dhcp_client.c **** //   5     DHCPACK  (server to client)
+ 167:../SERVER/dhcp_client.c **** //   6     DHCPNAK  (server to client)
+ 168:../SERVER/dhcp_client.c **** //   7     DHCPRELEASE
+ 169:../SERVER/dhcp_client.c **** // return 0 on message type not found otherwise the numeric
+ 170:../SERVER/dhcp_client.c **** // value for the message type as shown in the table above.
+ 171:../SERVER/dhcp_client.c **** uint8_t dhcp_get_message_type(uint8_t *buf,uint16_t plen)
+ 172:../SERVER/dhcp_client.c **** {
+ 19856              		.loc 1 172 0
+ 19857              		.cfi_startproc
+ 19858              		@ args = 0, pretend = 0, frame = 0
+ 19859              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19860              		@ link register save eliminated.
+ 19861              	.LVL0:
+ 19862 0000 10B4     		push	{r4}
+ 19863              	.LCFI0:
+ 19864              		.cfi_def_cfa_offset 4
+ 173:../SERVER/dhcp_client.c ****         uint16_t option_idx;
+ 174:../SERVER/dhcp_client.c ****         uint8_t option_len;
+ 175:../SERVER/dhcp_client.c ****         // the smallest option is 3 bytes
+ 176:../SERVER/dhcp_client.c ****         if (plen<(UDP_DATA_P+DHCP_OPTION_OFFSET+3)) return(0);
+ 19865              		.loc 1 176 0
+ 19866 0002 B1F58E7F 		cmp	r1, #284
+ 19867 0006 2ED9     		bls	.L4
+ 19868              		.cfi_offset 4, -4
+ 177:../SERVER/dhcp_client.c ****         // options are coded in the form: option_type,option_len,option_val
+ 178:../SERVER/dhcp_client.c ****         option_idx=UDP_DATA_P+DHCP_OPTION_OFFSET;
+ 179:../SERVER/dhcp_client.c ****         while(option_idx+2 <plen ){
+ 19869              		.loc 1 179 0
+ 19870 0008 2DDD     		ble	.L4
+ 180:../SERVER/dhcp_client.c ****                 option_len=buf[option_idx+1];
+ 19871              		.loc 1 180 0
+ 19872 000a 90F81B21 		ldrb	r2, [r0, #283]	@ zero_extendqisi2
+ 19873              	.LVL1:
+ 181:../SERVER/dhcp_client.c ****                 if ((option_len<1) || ((option_idx + option_len + 1)> plen)) break;
+ 19874              		.loc 1 181 0
+ 19875 000e 52B3     		cbz	r2, .L4
+ 19876 0010 02F58C73 		add	r3, r2, #280
+ 19877 0014 03F10303 		add	r3, r3, #3
+ 19878 0018 9942     		cmp	r1, r3
+ 19879              	.LVL2:
+ 19880 001a 24DB     		blt	.L4
+ 182:../SERVER/dhcp_client.c ****                 if (buf[option_idx]==53){
+ 19881              		.loc 1 182 0
+ 19882 001c 90F81A31 		ldrb	r3, [r0, #282]	@ zero_extendqisi2
+ 19883 0020 352B     		cmp	r3, #53
+ 19884 0022 08BF     		it	eq
+ 19885 0024 4FF48D74 		moveq	r4, #282
+ 19886 0028 12D1     		bne	.L12
+ 19887 002a 0EE0     		b	.L6
+ 19888              	.LVL3:
+ 19889              	.L9:
+ 19890              		.loc 1 180 0
+ 19891 002c 1C46     		mov	r4, r3
+ 19892 002e 03EB0002 		add	r2, r3, r0
+ 19893 0032 5278     		ldrb	r2, [r2, #1]	@ zero_extendqisi2
+ 19894              	.LVL4:
+ 19895              		.loc 1 181 0
+ 19896 0034 BAB1     		cbz	r2, .L4
+ 19897 0036 0CF1010C 		add	ip, ip, #1
+ 19898 003a 9444     		add	ip, ip, r2
+ 19899 003c 8C45     		cmp	ip, r1
+ 19900 003e 12DC     		bgt	.L4
+ 19901              		.loc 1 182 0
+ 19902 0040 10F803C0 		ldrb	ip, [r0, r3]	@ zero_extendqisi2
+ 19903              	.LVL5:
+ 19904 0044 BCF1350F 		cmp	ip, #53
+ 19905 0048 04D1     		bne	.L7
+ 19906              	.L6:
+ 183:../SERVER/dhcp_client.c ****                         // found message type, return it:
+ 184:../SERVER/dhcp_client.c ****                         return(buf[option_idx+2]);
+ 19907              		.loc 1 184 0
+ 19908 004a 2044     		add	r0, r4, r0
+ 19909              	.LVL6:
+ 19910 004c 8078     		ldrb	r0, [r0, #2]	@ zero_extendqisi2
+ 19911 004e 0CE0     		b	.L8
+ 19912              	.LVL7:
+ 19913              	.L12:
+ 19914 0050 4FF48D73 		mov	r3, #282
+ 19915              	.LVL8:
+ 19916              	.L7:
+ 185:../SERVER/dhcp_client.c ****                 }
+ 186:../SERVER/dhcp_client.c ****                 option_idx+=2+option_len;
+ 19917              		.loc 1 186 0
+ 19918 0054 02F10202 		add	r2, r2, #2
+ 19919              	.LVL9:
+ 19920 0058 1344     		add	r3, r3, r2
+ 19921              	.LVL10:
+ 19922 005a 9BB2     		uxth	r3, r3
+ 19923              	.LVL11:
+ 19924              		.loc 1 179 0
+ 19925 005c 9C46     		mov	ip, r3
+ 19926 005e 03F10202 		add	r2, r3, #2
+ 19927 0062 8A42     		cmp	r2, r1
+ 19928 0064 E2DB     		blt	.L9
+ 19929              	.LVL12:
+ 19930              	.L4:
+ 19931 0066 4FF00000 		mov	r0, #0
+ 19932              	.LVL13:
+ 19933              	.L8:
+ 187:../SERVER/dhcp_client.c ****         }
+ 188:../SERVER/dhcp_client.c ****         return(0);
+ 189:../SERVER/dhcp_client.c **** }
+ 19934              		.loc 1 189 0
+ 19935 006a 10BC     		pop	{r4}
+ 19936 006c 7047     		bx	lr
+ 19937              		.cfi_endproc
+ 19938              	.LFE32:
+ 19940 006e 00BF     		.section	.text.is_dhcp_msg_for_me,"ax",%progbits
+ 19941              		.align	2
+ 19942              		.global	is_dhcp_msg_for_me
+ 19943              		.thumb
+ 19944              		.thumb_func
+ 19946              	is_dhcp_msg_for_me:
+ 19947              	.LFB34:
+ 190:../SERVER/dhcp_client.c **** 
+ 191:../SERVER/dhcp_client.c **** // use this on DHCPACK or DHCPOFFER messages to read "your ip address"
+ 192:../SERVER/dhcp_client.c **** uint8_t dhcp_get_yiaddr(uint8_t *buf,uint16_t plen)
+ 193:../SERVER/dhcp_client.c **** {
+ 194:../SERVER/dhcp_client.c ****         // DHCP offer up to options section is at least 0x100 bytes
+ 195:../SERVER/dhcp_client.c ****         if (plen<0x100) return(0);
+ 196:../SERVER/dhcp_client.c ****         if (buf[UDP_DATA_P+16]!=0){
+ 197:../SERVER/dhcp_client.c ****                 // we have a yiaddr
+ 198:../SERVER/dhcp_client.c ****                 memcpy(dhcp_yiaddr, buf+UDP_DATA_P+16, 4);
+ 199:../SERVER/dhcp_client.c ****                 return(1);
+ 200:../SERVER/dhcp_client.c ****         }
+ 201:../SERVER/dhcp_client.c ****         return(0);
+ 202:../SERVER/dhcp_client.c **** }
+ 203:../SERVER/dhcp_client.c **** 
+ 204:../SERVER/dhcp_client.c **** // this will as well update dhcp_yiaddr
+ 205:../SERVER/dhcp_client.c **** uint8_t is_dhcp_msg_for_me(uint8_t *buf,uint16_t plen,const uint8_t transactionID)
+ 206:../SERVER/dhcp_client.c **** {
+ 19948              		.loc 1 206 0
+ 19949              		.cfi_startproc
+ 19950              		@ args = 0, pretend = 0, frame = 0
+ 19951              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19952              		@ link register save eliminated.
+ 19953              	.LVL14:
+ 207:../SERVER/dhcp_client.c ****         // DHCP offer up to options section is at least 0x100 bytes
+ 208:../SERVER/dhcp_client.c ****         if (plen<0x100) return(0);
+ 19954              		.loc 1 208 0
+ 19955 0000 FF29     		cmp	r1, #255
+ 19956 0002 12D9     		bls	.L14
+ 209:../SERVER/dhcp_client.c ****         if (buf[UDP_SRC_PORT_L_P] != DHCP_SRV_SRC_PORT) return(0);
+ 19957              		.loc 1 209 0
+ 19958 0004 90F82330 		ldrb	r3, [r0, #35]	@ zero_extendqisi2
+ 19959 0008 432B     		cmp	r3, #67
+ 19960 000a 0ED1     		bne	.L14
+ 210:../SERVER/dhcp_client.c ****         if (buf[UDP_DATA_P]!=2) return(0); // message type DHCP boot reply =2
+ 19961              		.loc 1 210 0
+ 19962 000c 90F82A30 		ldrb	r3, [r0, #42]	@ zero_extendqisi2
+ 19963 0010 022B     		cmp	r3, #2
+ 19964 0012 0AD1     		bne	.L14
+ 211:../SERVER/dhcp_client.c ****         if (buf[UDP_DATA_P+5]!=transactionID) return(0);
+ 19965              		.loc 1 211 0
+ 19966 0014 90F82F30 		ldrb	r3, [r0, #47]	@ zero_extendqisi2
+ 19967 0018 9342     		cmp	r3, r2
+ 19968 001a 06D1     		bne	.L14
+ 19969 001c 90F83000 		ldrb	r0, [r0, #48]	@ zero_extendqisi2
+ 19970              	.LVL15:
+ 19971 0020 9842     		cmp	r0, r3
+ 19972 0022 14BF     		ite	ne
+ 19973 0024 0020     		movne	r0, #0
+ 19974 0026 0120     		moveq	r0, #1
+ 19975 0028 7047     		bx	lr
+ 19976              	.LVL16:
+ 19977              	.L14:
+ 19978 002a 4FF00000 		mov	r0, #0
+ 19979              	.LVL17:
+ 212:../SERVER/dhcp_client.c ****         if (buf[UDP_DATA_P+6]!=transactionID) return(0);
+ 213:../SERVER/dhcp_client.c ****         return(1);
+ 214:../SERVER/dhcp_client.c **** 
+ 215:../SERVER/dhcp_client.c **** }
+ 19980              		.loc 1 215 0
+ 19981 002e 7047     		bx	lr
+ 19982              		.cfi_endproc
+ 19983              	.LFE34:
+ 19985              		.section	.text.dhcp_is_renew_tid,"ax",%progbits
+ 19986              		.align	2
+ 19987              		.global	dhcp_is_renew_tid
+ 19988              		.thumb
+ 19989              		.thumb_func
+ 19991              	dhcp_is_renew_tid:
+ 19992              	.LFB35:
+ 216:../SERVER/dhcp_client.c **** 
+ 217:../SERVER/dhcp_client.c **** // check if this message was part of a renew or 
+ 218:../SERVER/dhcp_client.c **** uint8_t dhcp_is_renew_tid(uint8_t *buf,uint16_t plen)
+ 219:../SERVER/dhcp_client.c **** {
+ 19993              		.loc 1 219 0
+ 19994              		.cfi_startproc
+ 19995              		@ args = 0, pretend = 0, frame = 0
+ 19996              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19997              		@ link register save eliminated.
+ 19998              	.LVL18:
+ 220:../SERVER/dhcp_client.c ****         if (plen<0x100) return(0);
+ 19999              		.loc 1 220 0
+ 20000 0000 FF29     		cmp	r1, #255
+ 20001 0002 02D8     		bhi	.L18
+ 20002 0004 4FF00000 		mov	r0, #0
+ 20003              	.LVL19:
+ 20004 0008 7047     		bx	lr
+ 20005              	.LVL20:
+ 20006              	.L18:
+ 20007 000a 90F82E00 		ldrb	r0, [r0, #46]	@ zero_extendqisi2
+ 20008              	.LVL21:
+ 20009 000e 0228     		cmp	r0, #2
+ 20010 0010 14BF     		ite	ne
+ 20011 0012 0020     		movne	r0, #0
+ 20012 0014 0120     		moveq	r0, #1
+ 221:../SERVER/dhcp_client.c ****         if (buf[UDP_DATA_P+4]==2) return(1); // we did set first byte in transaction ID to 2 to ind
+ 222:../SERVER/dhcp_client.c ****         return(0);
+ 223:../SERVER/dhcp_client.c **** }
+ 20013              		.loc 1 223 0
+ 20014 0016 7047     		bx	lr
+ 20015              		.cfi_endproc
+ 20016              	.LFE35:
+ 20018              		.section	.text.dhcp_option_parser,"ax",%progbits
+ 20019              		.align	2
+ 20020              		.global	dhcp_option_parser
+ 20021              		.thumb
+ 20022              		.thumb_func
+ 20024              	dhcp_option_parser:
+ 20025              	.LFB36:
+ 224:../SERVER/dhcp_client.c **** 
+ 225:../SERVER/dhcp_client.c **** uint8_t dhcp_option_parser(uint8_t *buf,uint16_t plen)
+ 226:../SERVER/dhcp_client.c **** {
+ 20026              		.loc 1 226 0
+ 20027              		.cfi_startproc
+ 20028              		@ args = 0, pretend = 0, frame = 16
+ 20029              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20030              		@ link register save eliminated.
+ 20031              	.LVL22:
+ 20032 0000 2DE9F00F 		push	{r4, r5, r6, r7, r8, r9, sl, fp}
+ 20033              	.LCFI1:
+ 20034              		.cfi_def_cfa_offset 32
+ 20035 0004 84B0     		sub	sp, sp, #16
+ 20036              	.LCFI2:
+ 20037              		.cfi_def_cfa_offset 48
+ 227:../SERVER/dhcp_client.c ****         uint16_t option_idx;
+ 228:../SERVER/dhcp_client.c ****         uint8_t option_len;
+ 229:../SERVER/dhcp_client.c ****         uint8_t i;
+ 230:../SERVER/dhcp_client.c ****         uint32_t ltime_int32=0;
+ 231:../SERVER/dhcp_client.c ****         // the smallest option is 3 bytes
+ 232:../SERVER/dhcp_client.c ****         if (plen<(UDP_DATA_P+DHCP_OPTION_OFFSET+3)) return(0);
+ 20038              		.loc 1 232 0
+ 20039 0006 B1F58E7F 		cmp	r1, #284
+ 20040 000a 98BF     		it	ls
+ 20041 000c 0020     		movls	r0, #0
+ 20042              	.LVL23:
+ 20043 000e 40F20181 		bls	.L23
+ 20044              		.cfi_offset 11, -4
+ 20045              		.cfi_offset 10, -8
+ 20046              		.cfi_offset 9, -12
+ 20047              		.cfi_offset 8, -16
+ 20048              		.cfi_offset 7, -20
+ 20049              		.cfi_offset 6, -24
+ 20050              		.cfi_offset 5, -28
+ 20051              		.cfi_offset 4, -32
+ 233:../SERVER/dhcp_client.c ****         // options are coded in the form: option_type,option_len,option_val
+ 234:../SERVER/dhcp_client.c ****         option_idx=UDP_DATA_P+DHCP_OPTION_OFFSET;
+ 235:../SERVER/dhcp_client.c ****         while(option_idx+2 <plen ){
+ 20052              		.loc 1 235 0
+ 20053 0012 0D46     		mov	r5, r1
+ 20054 0014 B1F58E7F 		cmp	r1, #284
+ 20055 0018 40F3FA80 		ble	.L24
+ 236:../SERVER/dhcp_client.c ****                 option_len=buf[option_idx+1];
+ 20056              		.loc 1 236 0
+ 20057 001c 90F81B21 		ldrb	r2, [r0, #283]	@ zero_extendqisi2
+ 20058              	.LVL24:
+ 237:../SERVER/dhcp_client.c ****                 if ((option_len<1) || ((option_idx + option_len + 1)> plen)) break;
+ 20059              		.loc 1 237 0
+ 20060 0020 002A     		cmp	r2, #0
+ 20061 0022 00F0F580 		beq	.L24
+ 20062 0026 02F58C73 		add	r3, r2, #280
+ 20063 002a 03F10303 		add	r3, r3, #3
+ 20064 002e 9942     		cmp	r1, r3
+ 20065              	.LVL25:
+ 20066 0030 C0F2EE80 		blt	.L24
+ 20067 0034 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20068 0038 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20069 003c B3F800B0 		ldrh	fp, [r3, #0]
+ 20070 0040 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 20071 0044 C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 20072 0048 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 20073 004a 0293     		str	r3, [sp, #8]
+ 20074 004c 4FF48D7C 		mov	ip, #282
+ 20075 0050 4FF48E74 		mov	r4, #284
+ 20076 0054 6646     		mov	r6, ip
+ 20077 0056 4FF00007 		mov	r7, #0
+ 20078              	.LVL26:
+ 20079 005a 6346     		mov	r3, ip
+ 20080              	.LVL27:
+ 238:../SERVER/dhcp_client.c ****                 switch (buf[option_idx]){
+ 239:../SERVER/dhcp_client.c ****                 case 0: option_idx=plen; // stop loop, we are reading some padding bytes here (shou
+ 240:../SERVER/dhcp_client.c ****                         break;
+ 241:../SERVER/dhcp_client.c ****                      
+ 242:../SERVER/dhcp_client.c ****                 case 1: if (option_len==4){
+ 243:../SERVER/dhcp_client.c ****                                 i=0;
+ 244:../SERVER/dhcp_client.c ****                                 while(i<4){
+ 245:../SERVER/dhcp_client.c ****                                         dhcp_opt_mask[i]=buf[option_idx+2+i];
+ 246:../SERVER/dhcp_client.c ****                                         i++;
+ 247:../SERVER/dhcp_client.c ****                                 }
+ 248:../SERVER/dhcp_client.c ****                         }
+ 249:../SERVER/dhcp_client.c ****                         break;
+ 250:../SERVER/dhcp_client.c ****                 case 3: if (option_len==4){
+ 251:../SERVER/dhcp_client.c ****                                 i=0;
+ 252:../SERVER/dhcp_client.c ****                                 while(i<4){
+ 253:../SERVER/dhcp_client.c ****                                         dhcp_opt_defaultgw[i]=buf[option_idx+2+i];
+ 254:../SERVER/dhcp_client.c ****                                         i++;
+ 255:../SERVER/dhcp_client.c ****                                 }
+ 256:../SERVER/dhcp_client.c ****                         }
+ 257:../SERVER/dhcp_client.c ****                         break;
+ 258:../SERVER/dhcp_client.c ****                 // Lease time: throughout the protocol, times are to 
+ 259:../SERVER/dhcp_client.c ****                 // be represented in units of seconds.  The time value 
+ 260:../SERVER/dhcp_client.c ****                 // of 0xffffffff is reserved to represent "infinity". 
+ 261:../SERVER/dhcp_client.c ****                 // The max lease time size is therefore 32 bit. 
+ 262:../SERVER/dhcp_client.c ****                 // The code for this option is 51, and its length is 4
+ 263:../SERVER/dhcp_client.c ****                 // as per RFC 1533.
+ 264:../SERVER/dhcp_client.c ****                 case 51: 
+ 265:../SERVER/dhcp_client.c ****                         if (option_len!=4){
+ 266:../SERVER/dhcp_client.c ****                                 dhcp_opt_leasetime_minutes=1440; // just to have a reasonable value
+ 267:../SERVER/dhcp_client.c ****                                 break;
+ 268:../SERVER/dhcp_client.c ****                         }
+ 269:../SERVER/dhcp_client.c ****                         i=0;
+ 270:../SERVER/dhcp_client.c ****                         while(i<4){
+ 271:../SERVER/dhcp_client.c ****                                 ltime_int32=(ltime_int32<<8) | buf[option_idx+i+2];
+ 272:../SERVER/dhcp_client.c ****                                 i++;
+ 273:../SERVER/dhcp_client.c ****                         }
+ 274:../SERVER/dhcp_client.c ****                         if (ltime_int32==0xffffffff){
+ 275:../SERVER/dhcp_client.c ****                                 // lease time is infinity
+ 276:../SERVER/dhcp_client.c ****                                 dhcp_opt_leasetime_minutes=0xffff;
+ 277:../SERVER/dhcp_client.c ****                                 break; // end of switch
+ 278:../SERVER/dhcp_client.c ****                         }
+ 279:../SERVER/dhcp_client.c ****                         ltime_int32=ltime_int32>>6; // an inexpesive way to divide by 64 (which is 
+ 280:../SERVER/dhcp_client.c ****                         if (ltime_int32> 0xfffd){ //0xffff is not handeled here because of the abov
+ 281:../SERVER/dhcp_client.c ****                                 dhcp_opt_leasetime_minutes=0xfffd;
+ 282:../SERVER/dhcp_client.c ****                         }else{
+ 283:../SERVER/dhcp_client.c ****                                 dhcp_opt_leasetime_minutes=ltime_int32 & 0xffff;
+ 284:../SERVER/dhcp_client.c ****                         }
+ 285:../SERVER/dhcp_client.c ****                         if (dhcp_opt_leasetime_minutes<5) dhcp_opt_leasetime_minutes=5;
+ 286:../SERVER/dhcp_client.c ****                         break;
+ 287:../SERVER/dhcp_client.c ****                 case 53: dhcp_opt_message_type=buf[option_idx+2];
+ 288:../SERVER/dhcp_client.c ****                         break;
+ 289:../SERVER/dhcp_client.c ****                         // rfc 2131: A DHCP server always returns its 
+ 290:../SERVER/dhcp_client.c ****                         // own address in the 'server identifier' option
+ 291:../SERVER/dhcp_client.c ****                 case 54: if (option_len==4){
+ 292:../SERVER/dhcp_client.c ****                                 i=0;
+ 293:../SERVER/dhcp_client.c ****                                 while(i<4){
+ 294:../SERVER/dhcp_client.c ****                                         dhcp_opt_server_id[i]=buf[option_idx+2+i];
+ 20081              		.loc 1 294 0
+ 20082 005c 40F20009 		movw	r9, #:lower16:.LANCHOR5
+ 20083 0060 C0F20009 		movt	r9, #:upper16:.LANCHOR5
+ 20084              		.loc 1 253 0
+ 20085 0064 40F2000A 		movw	sl, #:lower16:.LANCHOR4
+ 20086 0068 C0F2000A 		movt	sl, #:upper16:.LANCHOR4
+ 20087              		.loc 1 245 0
+ 20088 006c 40F20008 		movw	r8, #:lower16:.LANCHOR3
+ 20089 0070 C0F20008 		movt	r8, #:upper16:.LANCHOR3
+ 20090              		.loc 1 238 0
+ 20091 0074 0391     		str	r1, [sp, #12]
+ 20092              	.LVL28:
+ 20093 0076 0197     		str	r7, [sp, #4]
+ 20094 0078 27E0     		b	.L25
+ 20095              	.LVL29:
+ 20096              	.L39:
+ 20097              		.loc 1 236 0
+ 20098 007a 9C46     		mov	ip, r3
+ 20099 007c 03EB0002 		add	r2, r3, r0
+ 20100 0080 5278     		ldrb	r2, [r2, #1]	@ zero_extendqisi2
+ 20101              	.LVL30:
+ 20102              		.loc 1 237 0
+ 20103 0082 72B9     		cbnz	r2, .L26
+ 20104 0084 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20105              	.LVL31:
+ 20106 0088 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20107 008c A3F800B0 		strh	fp, [r3, #0]	@ movhi
+ 20108 0090 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 20109 0094 C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 20110 0098 0299     		ldr	r1, [sp, #8]
+ 20111 009a 1970     		strb	r1, [r3, #0]
+ 20112 009c 4FF00100 		mov	r0, #1
+ 20113              	.LVL32:
+ 20114 00a0 B8E0     		b	.L23
+ 20115              	.LVL33:
+ 20116              	.L26:
+ 20117 00a2 06F10101 		add	r1, r6, #1
+ 20118 00a6 1144     		add	r1, r1, r2
+ 20119 00a8 A942     		cmp	r1, r5
+ 20120 00aa 0EDD     		ble	.L25
+ 20121 00ac 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20122              	.LVL34:
+ 20123 00b0 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20124 00b4 A3F800B0 		strh	fp, [r3, #0]	@ movhi
+ 20125 00b8 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 20126 00bc C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 20127 00c0 029A     		ldr	r2, [sp, #8]
+ 20128              	.LVL35:
+ 20129 00c2 1A70     		strb	r2, [r3, #0]
+ 20130 00c4 4FF00100 		mov	r0, #1
+ 20131              	.LVL36:
+ 20132 00c8 A4E0     		b	.L23
+ 20133              	.LVL37:
+ 20134              	.L25:
+ 20135              		.loc 1 238 0
+ 20136 00ca 10F80C10 		ldrb	r1, [r0, ip]	@ zero_extendqisi2
+ 20137              	.LVL38:
+ 20138 00ce 3629     		cmp	r1, #54
+ 20139 00d0 00F28380 		bhi	.L27
+ 20140 00d4 DFE801F0 		tbb	[pc, r1]
+ 20141              	.LVL39:
+ 20142              	.L34:
+ 20143 00d8 1C       		.byte	(.L28-.L34)/2
+ 20144 00d9 1E       		.byte	(.L29-.L34)/2
+ 20145 00da 81       		.byte	(.L27-.L34)/2
+ 20146 00db 2E       		.byte	(.L30-.L34)/2
+ 20147 00dc 81       		.byte	(.L27-.L34)/2
+ 20148 00dd 81       		.byte	(.L27-.L34)/2
+ 20149 00de 81       		.byte	(.L27-.L34)/2
+ 20150 00df 81       		.byte	(.L27-.L34)/2
+ 20151 00e0 81       		.byte	(.L27-.L34)/2
+ 20152 00e1 81       		.byte	(.L27-.L34)/2
+ 20153 00e2 81       		.byte	(.L27-.L34)/2
+ 20154 00e3 81       		.byte	(.L27-.L34)/2
+ 20155 00e4 81       		.byte	(.L27-.L34)/2
+ 20156 00e5 81       		.byte	(.L27-.L34)/2
+ 20157 00e6 81       		.byte	(.L27-.L34)/2
+ 20158 00e7 81       		.byte	(.L27-.L34)/2
+ 20159 00e8 81       		.byte	(.L27-.L34)/2
+ 20160 00e9 81       		.byte	(.L27-.L34)/2
+ 20161 00ea 81       		.byte	(.L27-.L34)/2
+ 20162 00eb 81       		.byte	(.L27-.L34)/2
+ 20163 00ec 81       		.byte	(.L27-.L34)/2
+ 20164 00ed 81       		.byte	(.L27-.L34)/2
+ 20165 00ee 81       		.byte	(.L27-.L34)/2
+ 20166 00ef 81       		.byte	(.L27-.L34)/2
+ 20167 00f0 81       		.byte	(.L27-.L34)/2
+ 20168 00f1 81       		.byte	(.L27-.L34)/2
+ 20169 00f2 81       		.byte	(.L27-.L34)/2
+ 20170 00f3 81       		.byte	(.L27-.L34)/2
+ 20171 00f4 81       		.byte	(.L27-.L34)/2
+ 20172 00f5 81       		.byte	(.L27-.L34)/2
+ 20173 00f6 81       		.byte	(.L27-.L34)/2
+ 20174 00f7 81       		.byte	(.L27-.L34)/2
+ 20175 00f8 81       		.byte	(.L27-.L34)/2
+ 20176 00f9 81       		.byte	(.L27-.L34)/2
+ 20177 00fa 81       		.byte	(.L27-.L34)/2
+ 20178 00fb 81       		.byte	(.L27-.L34)/2
+ 20179 00fc 81       		.byte	(.L27-.L34)/2
+ 20180 00fd 81       		.byte	(.L27-.L34)/2
+ 20181 00fe 81       		.byte	(.L27-.L34)/2
+ 20182 00ff 81       		.byte	(.L27-.L34)/2
+ 20183 0100 81       		.byte	(.L27-.L34)/2
+ 20184 0101 81       		.byte	(.L27-.L34)/2
+ 20185 0102 81       		.byte	(.L27-.L34)/2
+ 20186 0103 81       		.byte	(.L27-.L34)/2
+ 20187 0104 81       		.byte	(.L27-.L34)/2
+ 20188 0105 81       		.byte	(.L27-.L34)/2
+ 20189 0106 81       		.byte	(.L27-.L34)/2
+ 20190 0107 81       		.byte	(.L27-.L34)/2
+ 20191 0108 81       		.byte	(.L27-.L34)/2
+ 20192 0109 81       		.byte	(.L27-.L34)/2
+ 20193 010a 81       		.byte	(.L27-.L34)/2
+ 20194 010b 3E       		.byte	(.L31-.L34)/2
+ 20195 010c 81       		.byte	(.L27-.L34)/2
+ 20196 010d 6D       		.byte	(.L32-.L34)/2
+ 20197 010e 72       		.byte	(.L33-.L34)/2
+ 20198 010f 00       		.align	1
+ 20199              	.L28:
+ 20200 0110 039B     		ldr	r3, [sp, #12]
+ 20201              	.LVL40:
+ 20202 0112 62E0     		b	.L27
+ 20203              	.L29:
+ 20204              		.loc 1 242 0
+ 20205 0114 042A     		cmp	r2, #4
+ 20206 0116 60D1     		bne	.L27
+ 20207              		.loc 1 245 0
+ 20208 0118 015D     		ldrb	r1, [r0, r4]	@ zero_extendqisi2
+ 20209 011a 88F80010 		strb	r1, [r8, #0]
+ 20210 011e 0444     		add	r4, r4, r0
+ 20211 0120 6178     		ldrb	r1, [r4, #1]	@ zero_extendqisi2
+ 20212 0122 88F80110 		strb	r1, [r8, #1]
+ 20213 0126 A178     		ldrb	r1, [r4, #2]	@ zero_extendqisi2
+ 20214 0128 88F80210 		strb	r1, [r8, #2]
+ 20215 012c E178     		ldrb	r1, [r4, #3]	@ zero_extendqisi2
+ 20216 012e 88F80310 		strb	r1, [r8, #3]
+ 20217 0132 52E0     		b	.L27
+ 20218              	.L30:
+ 20219              		.loc 1 250 0
+ 20220 0134 042A     		cmp	r2, #4
+ 20221 0136 50D1     		bne	.L27
+ 20222              		.loc 1 253 0
+ 20223 0138 015D     		ldrb	r1, [r0, r4]	@ zero_extendqisi2
+ 20224 013a 8AF80010 		strb	r1, [sl, #0]
+ 20225 013e 0444     		add	r4, r4, r0
+ 20226 0140 6178     		ldrb	r1, [r4, #1]	@ zero_extendqisi2
+ 20227 0142 8AF80110 		strb	r1, [sl, #1]
+ 20228 0146 A178     		ldrb	r1, [r4, #2]	@ zero_extendqisi2
+ 20229 0148 8AF80210 		strb	r1, [sl, #2]
+ 20230 014c E178     		ldrb	r1, [r4, #3]	@ zero_extendqisi2
+ 20231 014e 8AF80310 		strb	r1, [sl, #3]
+ 20232 0152 42E0     		b	.L27
+ 20233              	.L31:
+ 20234              		.loc 1 265 0
+ 20235 0154 042A     		cmp	r2, #4
+ 20236 0156 18BF     		it	ne
+ 20237 0158 4FF4B46B 		movne	fp, #1440
+ 20238 015c 3DD1     		bne	.L27
+ 20239 015e 0644     		add	r6, r0, r6
+ 20240 0160 4FF00001 		mov	r1, #0
+ 20241 0164 019F     		ldr	r7, [sp, #4]
+ 20242              	.LVL41:
+ 20243              	.L36:
+ 20244              		.loc 1 271 0
+ 20245 0166 96F802C0 		ldrb	ip, [r6, #2]	@ zero_extendqisi2
+ 20246 016a 4CEA0727 		orr	r7, ip, r7, lsl #8
+ 20247 016e 01F10101 		add	r1, r1, #1
+ 20248 0172 06F10106 		add	r6, r6, #1
+ 20249              		.loc 1 270 0
+ 20250 0176 0429     		cmp	r1, #4
+ 20251 0178 F5D1     		bne	.L36
+ 20252 017a 0197     		str	r7, [sp, #4]
+ 20253              		.loc 1 274 0
+ 20254 017c B7F1FF3F 		cmp	r7, #-1
+ 20255 0180 08BF     		it	eq
+ 20256 0182 4FF6FF7B 		movweq	fp, #65535
+ 20257 0186 28D0     		beq	.L27
+ 20258              		.loc 1 279 0
+ 20259 0188 DDF804C0 		ldr	ip, [sp, #4]
+ 20260 018c 4FEA9C1C 		lsr	ip, ip, #6
+ 20261 0190 CDF804C0 		str	ip, [sp, #4]
+ 20262              		.loc 1 280 0
+ 20263 0194 4FF6FD71 		movw	r1, #65533
+ 20264 0198 8C45     		cmp	ip, r1
+ 20265 019a 88BF     		it	hi
+ 20266 019c 8B46     		movhi	fp, r1
+ 20267 019e 1CD8     		bhi	.L27
+ 20268              		.loc 1 283 0
+ 20269 01a0 019F     		ldr	r7, [sp, #4]
+ 20270              	.LVL42:
+ 20271 01a2 1FFA87FB 		uxth	fp, r7
+ 20272              		.loc 1 285 0
+ 20273 01a6 BBF1040F 		cmp	fp, #4
+ 20274 01aa 98BF     		it	ls
+ 20275 01ac 4FF0050B 		movls	fp, #5
+ 20276 01b0 13E0     		b	.L27
+ 20277              	.L32:
+ 20278              		.loc 1 287 0
+ 20279 01b2 0CEB0001 		add	r1, ip, r0
+ 20280 01b6 8978     		ldrb	r1, [r1, #2]	@ zero_extendqisi2
+ 20281 01b8 0291     		str	r1, [sp, #8]
+ 20282              		.loc 1 288 0
+ 20283 01ba 0EE0     		b	.L27
+ 20284              	.L33:
+ 20285              		.loc 1 291 0
+ 20286 01bc 042A     		cmp	r2, #4
+ 20287 01be 0CD1     		bne	.L27
+ 20288              		.loc 1 294 0
+ 20289 01c0 015D     		ldrb	r1, [r0, r4]	@ zero_extendqisi2
+ 20290 01c2 89F80010 		strb	r1, [r9, #0]
+ 20291 01c6 0444     		add	r4, r4, r0
+ 20292 01c8 6178     		ldrb	r1, [r4, #1]	@ zero_extendqisi2
+ 20293 01ca 89F80110 		strb	r1, [r9, #1]
+ 20294 01ce A178     		ldrb	r1, [r4, #2]	@ zero_extendqisi2
+ 20295 01d0 89F80210 		strb	r1, [r9, #2]
+ 20296 01d4 E178     		ldrb	r1, [r4, #3]	@ zero_extendqisi2
+ 20297 01d6 89F80310 		strb	r1, [r9, #3]
+ 20298              	.LVL43:
+ 20299              	.L27:
+ 295:../SERVER/dhcp_client.c ****                                         i++;
+ 296:../SERVER/dhcp_client.c ****                                 }
+ 297:../SERVER/dhcp_client.c ****                         }
+ 298:../SERVER/dhcp_client.c ****                         break;
+ 299:../SERVER/dhcp_client.c ****                 }
+ 300:../SERVER/dhcp_client.c ****                 option_idx+=2+option_len;
+ 20300              		.loc 1 300 0
+ 20301 01da 02F10202 		add	r2, r2, #2
+ 20302              	.LVL44:
+ 20303 01de 1344     		add	r3, r3, r2
+ 20304              	.LVL45:
+ 20305 01e0 9BB2     		uxth	r3, r3
+ 20306              	.LVL46:
+ 20307              		.loc 1 235 0
+ 20308 01e2 1E46     		mov	r6, r3
+ 20309 01e4 03F10204 		add	r4, r3, #2
+ 20310 01e8 AC42     		cmp	r4, r5
+ 20311 01ea FFF646AF 		blt	.L39
+ 20312 01ee 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20313              	.LVL47:
+ 20314 01f2 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20315 01f6 A3F800B0 		strh	fp, [r3, #0]	@ movhi
+ 20316 01fa 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 20317 01fe C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 20318 0202 DDF808C0 		ldr	ip, [sp, #8]
+ 20319 0206 83F800C0 		strb	ip, [r3, #0]
+ 20320 020a 4FF00100 		mov	r0, #1
+ 20321              	.LVL48:
+ 20322 020e 01E0     		b	.L23
+ 20323              	.LVL49:
+ 20324              	.L24:
+ 20325 0210 4FF00100 		mov	r0, #1
+ 20326              	.LVL50:
+ 20327              	.L23:
+ 301:../SERVER/dhcp_client.c ****         }
+ 302:../SERVER/dhcp_client.c ****         return(1);
+ 303:../SERVER/dhcp_client.c **** }
+ 20328              		.loc 1 303 0
+ 20329 0214 04B0     		add	sp, sp, #16
+ 20330 0216 BDE8F00F 		pop	{r4, r5, r6, r7, r8, r9, sl, fp}
+ 20331 021a 7047     		bx	lr
+ 20332              		.cfi_endproc
+ 20333              	.LFE36:
+ 20335              		.section	.text.dhcp_get_my_ip,"ax",%progbits
+ 20336              		.align	2
+ 20337              		.global	dhcp_get_my_ip
+ 20338              		.thumb
+ 20339              		.thumb_func
+ 20341              	dhcp_get_my_ip:
+ 20342              	.LFB40:
+ 304:../SERVER/dhcp_client.c **** 
+ 305:../SERVER/dhcp_client.c **** // the answer to this message will come as a broadcast
+ 306:../SERVER/dhcp_client.c **** uint8_t send_dhcp_request(uint8_t *buf,const uint8_t transactionID)
+ 307:../SERVER/dhcp_client.c **** {
+ 308:../SERVER/dhcp_client.c ****         uint8_t i=0;
+ 309:../SERVER/dhcp_client.c ****         make_dhcp_message_template(buf,transactionID);
+ 310:../SERVER/dhcp_client.c ****         // option dhcp message type:
+ 311:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET]=0x35; // 53
+ 312:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+1]=1; //len
+ 313:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+2]=DHCP_REQUEST_V;
+ 314:../SERVER/dhcp_client.c ****         i=3;
+ 315:../SERVER/dhcp_client.c ****         if (dhcp_opt_server_id[0]!=0){
+ 316:../SERVER/dhcp_client.c ****                 buf[UDP_DATA_P+DHCP_OPTION_OFFSET+i]=0x36; // 54=server identifier
+ 317:../SERVER/dhcp_client.c ****                 buf[UDP_DATA_P+DHCP_OPTION_OFFSET+i+1]=4; // len
+ 318:../SERVER/dhcp_client.c ****                 memcpy(buf+UDP_DATA_P+DHCP_OPTION_OFFSET+i+2,dhcp_opt_server_id, 4);
+ 319:../SERVER/dhcp_client.c ****                 i=i+6;
+ 320:../SERVER/dhcp_client.c ****         }
+ 321:../SERVER/dhcp_client.c ****         if (dhcp_yiaddr[0]!=0){
+ 322:../SERVER/dhcp_client.c ****                 buf[UDP_DATA_P+DHCP_OPTION_OFFSET+i]=0x32; // 50=requested IP address
+ 323:../SERVER/dhcp_client.c ****                 buf[UDP_DATA_P+DHCP_OPTION_OFFSET+i+1]=4; // len
+ 324:../SERVER/dhcp_client.c ****                 memcpy(buf+UDP_DATA_P+DHCP_OPTION_OFFSET+i+2,dhcp_yiaddr, 4);
+ 325:../SERVER/dhcp_client.c ****                 i=i+6;
+ 326:../SERVER/dhcp_client.c ****         }
+ 327:../SERVER/dhcp_client.c ****         // option paramter request list:
+ 328:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+i]=0x37; // 55
+ 329:../SERVER/dhcp_client.c ****         // we want: subnet mask, router
+ 330:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+i+1]=2; // len
+ 331:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+i+2]=1; // subnet mask
+ 332:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+i+3]=3; // router=default GW
+ 333:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+i+4]=0xff; // end of options
+ 334:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+i+5]=0; 
+ 335:../SERVER/dhcp_client.c ****         // the length of the udp message part is now DHCP_OPTION_OFFSET+i+5
+ 336:../SERVER/dhcp_client.c ****         send_udp_transmit(buf,DHCP_OPTION_OFFSET+i+5);
+ 337:../SERVER/dhcp_client.c ****         return(0);
+ 338:../SERVER/dhcp_client.c **** }
+ 339:../SERVER/dhcp_client.c **** 
+ 340:../SERVER/dhcp_client.c **** // The renew procedure is described in rfc2131. 
+ 341:../SERVER/dhcp_client.c **** // We send DHCPREQUEST and 'server identifier' MUST NOT be filled 
+ 342:../SERVER/dhcp_client.c **** // in, 'requested IP address' option MUST NOT be filled in, 'ciaddr' 
+ 343:../SERVER/dhcp_client.c **** // MUST be filled. 
+ 344:../SERVER/dhcp_client.c **** // The rfc suggest that I can send the DHCPREQUEST in this case as
+ 345:../SERVER/dhcp_client.c **** // a unicast message and not as a broadcast message but test with
+ 346:../SERVER/dhcp_client.c **** // various DHCP servers show that not all of them listen to
+ 347:../SERVER/dhcp_client.c **** // unicast. We send therefor a broadcast message but we expect
+ 348:../SERVER/dhcp_client.c **** // a unicast answer directly to our mac and IP.
+ 349:../SERVER/dhcp_client.c **** uint8_t send_dhcp_renew_request(uint8_t *buf,const uint8_t transactionID,uint8_t *yiaddr)
+ 350:../SERVER/dhcp_client.c **** {
+ 351:../SERVER/dhcp_client.c ****         make_dhcp_message_template(buf,transactionID);
+ 352:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+4]=2; // set first byte in transaction ID to 2 to indicate renew_request. Th
+ 353:../SERVER/dhcp_client.c ****         // source IP must be my IP since we renew
+ 354:../SERVER/dhcp_client.c ****         memcpy(buf+IP_SRC_P, yiaddr, 4); // ip level source IP
+ 355:../SERVER/dhcp_client.c ****         //
+ 356:../SERVER/dhcp_client.c ****         memcpy(buf+UDP_DATA_P+12,yiaddr, 4); // ciaddr
+ 357:../SERVER/dhcp_client.c ****         // option dhcp message type:
+ 358:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET]=0x35; // 53
+ 359:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+1]=1; //len
+ 360:../SERVER/dhcp_client.c ****         buf[UDP_DATA_P+DHCP_OPTION_OFFSET+2]=DHCP_REQUEST_V;
+ 361:../SERVER/dhcp_client.c ****         // no option paramter request list is needed at renew
+ 362:../SERVER/dhcp_client.c ****         send_udp_transmit(buf,DHCP_OPTION_OFFSET+3);
+ 363:../SERVER/dhcp_client.c ****         // we will get a unicast answer, reception of broadcast packets is turned off
+ 364:../SERVER/dhcp_client.c ****         return(0);
+ 365:../SERVER/dhcp_client.c **** }
+ 366:../SERVER/dhcp_client.c **** 
+ 367:../SERVER/dhcp_client.c **** 
+ 368:../SERVER/dhcp_client.c **** // Initial_tid can be a random number for every board. E.g the last digit
+ 369:../SERVER/dhcp_client.c **** // of the mac address. It is not so important that the number is random.
+ 370:../SERVER/dhcp_client.c **** // It is more important that it is unique and no other board on the same
+ 371:../SERVER/dhcp_client.c **** // Lan has the same number. This is because there might be a power outage
+ 372:../SERVER/dhcp_client.c **** // and all boards reboot afterwards at the same time. At that moment they
+ 373:../SERVER/dhcp_client.c **** // must all have different TIDs otherwise there will be an IP address mess-up.
+ 374:../SERVER/dhcp_client.c **** //
+ 375:../SERVER/dhcp_client.c **** // The function returns 1 once we have a valid IP. 
+ 376:../SERVER/dhcp_client.c **** // At this point you must not call the function again.
+ 377:../SERVER/dhcp_client.c **** uint8_t packetloop_dhcp_initial_ip_assignment(uint8_t *buf,uint16_t plen,uint8_t initial_tid){
+ 378:../SERVER/dhcp_client.c ****         static uint16_t init=0x7fff; // about 3 sec delay
+ 379:../SERVER/dhcp_client.c ****         uint8_t cmd;
+ 380:../SERVER/dhcp_client.c ****         // do nothing if the link is down
+ 381:../SERVER/dhcp_client.c ****         if (!enc28j60linkup()) return(0);
+ 382:../SERVER/dhcp_client.c ****         // first time that this function is called:
+ 383:../SERVER/dhcp_client.c ****         if (plen==0){
+ 384:../SERVER/dhcp_client.c ****                 if (init==2){
+ 385:../SERVER/dhcp_client.c ****                         init=1;
+ 386:../SERVER/dhcp_client.c ****                         dhcp_6sec_cnt=0;
+ 387:../SERVER/dhcp_client.c ****                         dhcp_tid=initial_tid;
+ 388:../SERVER/dhcp_client.c ****                         // Reception of broadcast packets is turned off by default, but
+ 389:../SERVER/dhcp_client.c ****                         // the DHCP offer message that the DHCP server sends will be
+ 390:../SERVER/dhcp_client.c ****                         // a broadcast packet. Enable here and disable later.
+ 391:../SERVER/dhcp_client.c ****                         enc28j60EnableBroadcast();
+ 392:../SERVER/dhcp_client.c ****                         send_dhcp_discover(buf,dhcp_tid);
+ 393:../SERVER/dhcp_client.c ****                         return(0);
+ 394:../SERVER/dhcp_client.c ****                 }
+ 395:../SERVER/dhcp_client.c ****                 if (dhcp_yiaddr[0]==0 && dhcp_6sec_cnt > 5){
+ 396:../SERVER/dhcp_client.c ****                         // still no IP after 30 sec
+ 397:../SERVER/dhcp_client.c ****                         dhcp_tid++;
+ 398:../SERVER/dhcp_client.c ****                         dhcp_6sec_cnt=0;
+ 399:../SERVER/dhcp_client.c ****                         // Reception of broadcast packets is turned off by default, but
+ 400:../SERVER/dhcp_client.c ****                         // the DHCP offer message that the DHCP server sends will be
+ 401:../SERVER/dhcp_client.c ****                         // a broadcast packet. Enable here and disable later.
+ 402:../SERVER/dhcp_client.c ****                         enc28j60EnableBroadcast();
+ 403:../SERVER/dhcp_client.c ****                         send_dhcp_discover(buf,dhcp_tid);
+ 404:../SERVER/dhcp_client.c ****                         return(0);
+ 405:../SERVER/dhcp_client.c ****                 }
+ 406:../SERVER/dhcp_client.c ****                 // We have a little delay (about 3sec) at startup. Sometimes
+ 407:../SERVER/dhcp_client.c ****                 // the power fluctuates or the programmer causes
+ 408:../SERVER/dhcp_client.c ****                 // the board to reset and then immediately reset again.
+ 409:../SERVER/dhcp_client.c ****                 // We wait with the sending of a send_dhcp_discover just in case
+ 410:../SERVER/dhcp_client.c ****                 // we did already so at the last reset which was possibly less
+ 411:../SERVER/dhcp_client.c ****                 // than a second ago.
+ 412:../SERVER/dhcp_client.c ****                 if (init>2){
+ 413:../SERVER/dhcp_client.c ****                         init--;
+ 414:../SERVER/dhcp_client.c ****                 }
+ 415:../SERVER/dhcp_client.c ****                 return(0);
+ 416:../SERVER/dhcp_client.c ****         }
+ 417:../SERVER/dhcp_client.c ****         // plen > 0
+ 418:../SERVER/dhcp_client.c ****         if (is_dhcp_msg_for_me(buf,plen,dhcp_tid)){
+ 419:../SERVER/dhcp_client.c ****                 // It's really a borderline case that we the the dhcp_is_renew_tid
+ 420:../SERVER/dhcp_client.c ****                 // function call for. It could only happen if the board is power cyceled 
+ 421:../SERVER/dhcp_client.c ****                 // during operation.
+ 422:../SERVER/dhcp_client.c ****                 if (dhcp_is_renew_tid(buf,plen)==1) return(0); // should have been initial tid, jus
+ 423:../SERVER/dhcp_client.c ****                 cmd=dhcp_get_message_type(buf,plen);
+ 424:../SERVER/dhcp_client.c ****                 if (cmd==2){ // DHCPOFFER =2
+ 425:../SERVER/dhcp_client.c ****                         init=1; // no more init needed
+ 426:../SERVER/dhcp_client.c ****                         dhcp_get_yiaddr(buf,plen);
+ 427:../SERVER/dhcp_client.c ****                         dhcp_option_parser(buf,plen);
+ 428:../SERVER/dhcp_client.c ****                         // answer offer with a request:
+ 429:../SERVER/dhcp_client.c ****                         send_dhcp_request(buf,dhcp_tid);
+ 430:../SERVER/dhcp_client.c ****                 }
+ 431:../SERVER/dhcp_client.c ****                 if (cmd==5){ // DHCPACK =5
+ 432:../SERVER/dhcp_client.c ****                         // success, DHCPACK, we have the IP
+ 433:../SERVER/dhcp_client.c ****                         init=1; // no more init needed
+ 434:../SERVER/dhcp_client.c ****                         enc28j60DisableBroadcast();
+ 435:../SERVER/dhcp_client.c ****                         return(1);
+ 436:../SERVER/dhcp_client.c ****                 }
+ 437:../SERVER/dhcp_client.c ****         }
+ 438:../SERVER/dhcp_client.c ****         return(0);
+ 439:../SERVER/dhcp_client.c **** }
+ 440:../SERVER/dhcp_client.c **** 
+ 441:../SERVER/dhcp_client.c **** // call this to get the current IP 
+ 442:../SERVER/dhcp_client.c **** // returns {0,0,0,0} in assigend_yiaddr if called before we have a valid IP been offered
+ 443:../SERVER/dhcp_client.c **** // otherwise returns back the IP address (4bytes) in assigend_yiaddr.
+ 444:../SERVER/dhcp_client.c **** // assigend_netmask will hold the netmask and assigend_gw the default gateway
+ 445:../SERVER/dhcp_client.c **** // You can fill fields that you don't want (not interessted in) to NULL
+ 446:../SERVER/dhcp_client.c **** void dhcp_get_my_ip(uint8_t *assigend_yiaddr,uint8_t *assigend_netmask, uint8_t *assigend_gw){
+ 20343              		.loc 1 446 0
+ 20344              		.cfi_startproc
+ 20345              		@ args = 0, pretend = 0, frame = 0
+ 20346              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20347              	.LVL51:
+ 20348 0000 38B5     		push	{r3, r4, r5, lr}
+ 20349              	.LCFI3:
+ 20350              		.cfi_def_cfa_offset 16
+ 20351 0002 0D46     		mov	r5, r1
+ 20352              		.cfi_offset 14, -4
+ 20353              		.cfi_offset 5, -8
+ 20354              		.cfi_offset 4, -12
+ 20355              		.cfi_offset 3, -16
+ 20356 0004 1446     		mov	r4, r2
+ 447:../SERVER/dhcp_client.c ****         if (assigend_yiaddr) memcpy(assigend_yiaddr,dhcp_yiaddr,4); 
+ 20357              		.loc 1 447 0
+ 20358 0006 38B1     		cbz	r0, .L44
+ 20359              	.LVL52:
+ 20360 0008 40F20001 		movw	r1, #:lower16:.LANCHOR6
+ 20361 000c C0F20001 		movt	r1, #:upper16:.LANCHOR6
+ 20362 0010 4FF00402 		mov	r2, #4
+ 20363 0014 FFF7FEFF 		bl	memcpy
+ 20364              	.LVL53:
+ 20365              	.L44:
+ 448:../SERVER/dhcp_client.c ****         if (assigend_netmask) memcpy(assigend_netmask,dhcp_opt_mask,4); 
+ 20366              		.loc 1 448 0
+ 20367 0018 45B1     		cbz	r5, .L45
+ 20368 001a 2846     		mov	r0, r5
+ 20369              	.LVL54:
+ 20370 001c 40F20001 		movw	r1, #:lower16:.LANCHOR3
+ 20371 0020 C0F20001 		movt	r1, #:upper16:.LANCHOR3
+ 20372 0024 4FF00402 		mov	r2, #4
+ 20373 0028 FFF7FEFF 		bl	memcpy
+ 20374              	.LVL55:
+ 20375              	.L45:
+ 449:../SERVER/dhcp_client.c ****         if (assigend_gw) memcpy(assigend_gw,dhcp_opt_defaultgw,4); 
+ 20376              		.loc 1 449 0
+ 20377 002c 44B1     		cbz	r4, .L47
+ 20378 002e 2046     		mov	r0, r4
+ 20379              	.LVL56:
+ 20380 0030 40F20001 		movw	r1, #:lower16:.LANCHOR4
+ 20381 0034 C0F20001 		movt	r1, #:upper16:.LANCHOR4
+ 20382 0038 4FF00402 		mov	r2, #4
+ 20383 003c FFF7FEFF 		bl	memcpy
+ 20384              	.LVL57:
+ 20385              	.L47:
+ 20386 0040 38BD     		pop	{r3, r4, r5, pc}
+ 20387              		.cfi_endproc
+ 20388              	.LFE40:
+ 20390 0042 00BF     		.section	.text.dhcp_get_yiaddr,"ax",%progbits
+ 20391              		.align	2
+ 20392              		.global	dhcp_get_yiaddr
+ 20393              		.thumb
+ 20394              		.thumb_func
+ 20396              	dhcp_get_yiaddr:
+ 20397              	.LFB33:
+ 20398              		.loc 1 193 0
+ 20399              		.cfi_startproc
+ 20400              		@ args = 0, pretend = 0, frame = 0
+ 20401              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20402              	.LVL58:
+ 20403 0000 08B5     		push	{r3, lr}
+ 20404              	.LCFI4:
+ 20405              		.cfi_def_cfa_offset 8
+ 20406              		.loc 1 195 0
+ 20407 0002 FF29     		cmp	r1, #255
+ 20408 0004 0ED9     		bls	.L49
+ 20409              		.cfi_offset 14, -4
+ 20410              		.cfi_offset 3, -8
+ 20411              		.loc 1 196 0
+ 20412 0006 0146     		mov	r1, r0
+ 20413              	.LVL59:
+ 20414 0008 11F83A3F 		ldrb	r3, [r1, #58]!	@ zero_extendqisi2
+ 20415 000c 53B1     		cbz	r3, .L49
+ 20416              		.loc 1 198 0
+ 20417 000e 40F20000 		movw	r0, #:lower16:.LANCHOR6
+ 20418              	.LVL60:
+ 20419 0012 C0F20000 		movt	r0, #:upper16:.LANCHOR6
+ 20420 0016 4FF00402 		mov	r2, #4
+ 20421 001a FFF7FEFF 		bl	memcpy
+ 20422 001e 4FF00100 		mov	r0, #1
+ 20423              		.loc 1 199 0
+ 20424 0022 08BD     		pop	{r3, pc}
+ 20425              	.LVL61:
+ 20426              	.L49:
+ 20427 0024 4FF00000 		mov	r0, #0
+ 20428              	.LVL62:
+ 20429              		.loc 1 202 0
+ 20430 0028 08BD     		pop	{r3, pc}
+ 20431              		.cfi_endproc
+ 20432              	.LFE33:
+ 20434 002a 00BF     		.section	.text.make_dhcp_message_template,"ax",%progbits
+ 20435              		.align	2
+ 20436              		.global	make_dhcp_message_template
+ 20437              		.thumb
+ 20438              		.thumb_func
+ 20440              	make_dhcp_message_template:
+ 20441              	.LFB30:
+ 20442              		.loc 1 80 0
+ 20443              		.cfi_startproc
+ 20444              		@ args = 0, pretend = 0, frame = 8
+ 20445              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20446              	.LVL63:
+ 20447 0000 30B5     		push	{r4, r5, lr}
+ 20448              	.LCFI5:
+ 20449              		.cfi_def_cfa_offset 12
+ 20450 0002 85B0     		sub	sp, sp, #20
+ 20451              	.LCFI6:
+ 20452              		.cfi_def_cfa_offset 32
+ 20453 0004 0446     		mov	r4, r0
+ 20454              		.cfi_offset 14, -4
+ 20455              		.cfi_offset 5, -8
+ 20456              		.cfi_offset 4, -12
+ 20457 0006 0D46     		mov	r5, r1
+ 20458              		.loc 1 82 0
+ 20459 0008 40F20002 		movw	r2, #:lower16:.LANCHOR7
+ 20460 000c C0F20002 		movt	r2, #:upper16:.LANCHOR7
+ 20461 0010 02AB     		add	r3, sp, #8
+ 20462 0012 92E80300 		ldmia	r2, {r0, r1}
+ 20463              	.LVL64:
+ 20464 0016 43F8040B 		str	r0, [r3], #4
+ 20465 001a 1980     		strh	r1, [r3, #0]	@ movhi
+ 20466              		.loc 1 84 0
+ 20467 001c 02AA     		add	r2, sp, #8
+ 20468 001e 0092     		str	r2, [sp, #0]
+ 20469 0020 2046     		mov	r0, r4
+ 20470 0022 4FF04401 		mov	r1, #68
+ 20471 0026 4FF04303 		mov	r3, #67
+ 20472 002a FFF7FEFF 		bl	send_udp_prepare
+ 20473              		.loc 1 88 0
+ 20474 002e 4FF00003 		mov	r3, #0
+ 20475 0032 A376     		strb	r3, [r4, #26]
+ 20476 0034 E376     		strb	r3, [r4, #27]
+ 20477 0036 2377     		strb	r3, [r4, #28]
+ 20478 0038 6377     		strb	r3, [r4, #29]
+ 20479              		.loc 1 92 0
+ 20480 003a 4FF00102 		mov	r2, #1
+ 20481 003e 84F82A20 		strb	r2, [r4, #42]
+ 20482              		.loc 1 93 0
+ 20483 0042 84F82B20 		strb	r2, [r4, #43]
+ 20484              		.loc 1 94 0
+ 20485 0046 4FF00601 		mov	r1, #6
+ 20486 004a 84F82C10 		strb	r1, [r4, #44]
+ 20487              		.loc 1 99 0
+ 20488 004e 84F82E20 		strb	r2, [r4, #46]
+ 20489              		.loc 1 102 0
+ 20490 0052 84F82F50 		strb	r5, [r4, #47]
+ 20491 0056 84F83050 		strb	r5, [r4, #48]
+ 20492 005a 84F83150 		strb	r5, [r4, #49]
+ 20493              		.loc 1 111 0
+ 20494 005e 1946     		mov	r1, r3
+ 20495              	.L53:
+ 20496 0060 04EB0302 		add	r2, r4, r3
+ 20497 0064 82F83210 		strb	r1, [r2, #50]
+ 20498 0068 03F10103 		add	r3, r3, #1
+ 20499              		.loc 1 110 0
+ 20500 006c 142B     		cmp	r3, #20
+ 20501 006e F7D1     		bne	.L53
+ 20502 0070 2346     		mov	r3, r4
+ 20503 0072 4FF00002 		mov	r2, #0
+ 20504              	.L54:
+ 20505              		.loc 1 117 0
+ 20506 0076 9979     		ldrb	r1, [r3, #6]	@ zero_extendqisi2
+ 20507 0078 83F84610 		strb	r1, [r3, #70]
+ 20508 007c 02F10102 		add	r2, r2, #1
+ 20509 0080 03F10103 		add	r3, r3, #1
+ 20510              		.loc 1 116 0
+ 20511 0084 062A     		cmp	r2, #6
+ 20512 0086 F6D1     		bne	.L54
+ 20513 0088 4FF00003 		mov	r3, #0
+ 20514              		.loc 1 124 0
+ 20515 008c 1946     		mov	r1, r3
+ 20516              	.L55:
+ 20517 008e 04EB0302 		add	r2, r4, r3
+ 20518 0092 82F84C10 		strb	r1, [r2, #76]
+ 20519 0096 03F10103 		add	r3, r3, #1
+ 20520              		.loc 1 123 0
+ 20521 009a CA2B     		cmp	r3, #202
+ 20522 009c F7D1     		bne	.L55
+ 20523              		.loc 1 129 0
+ 20524 009e 4FF06303 		mov	r3, #99
+ 20525 00a2 84F81631 		strb	r3, [r4, #278]
+ 20526              		.loc 1 130 0
+ 20527 00a6 6FF07D02 		mvn	r2, #125
+ 20528 00aa 84F81721 		strb	r2, [r4, #279]
+ 20529              		.loc 1 131 0
+ 20530 00ae 4FF05302 		mov	r2, #83
+ 20531 00b2 84F81821 		strb	r2, [r4, #280]
+ 20532              		.loc 1 132 0
+ 20533 00b6 84F81931 		strb	r3, [r4, #281]
+ 20534              		.loc 1 133 0
+ 20535 00ba 05B0     		add	sp, sp, #20
+ 20536 00bc 30BD     		pop	{r4, r5, pc}
+ 20537              		.cfi_endproc
+ 20538              	.LFE30:
+ 20540 00be 00BF     		.section	.text.send_dhcp_renew_request,"ax",%progbits
+ 20541              		.align	2
+ 20542              		.global	send_dhcp_renew_request
+ 20543              		.thumb
+ 20544              		.thumb_func
+ 20546              	send_dhcp_renew_request:
+ 20547              	.LFB38:
+ 20548              		.loc 1 350 0
+ 20549              		.cfi_startproc
+ 20550              		@ args = 0, pretend = 0, frame = 0
+ 20551              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20552              	.LVL65:
+ 20553 0000 70B5     		push	{r4, r5, r6, lr}
+ 20554              	.LCFI7:
+ 20555              		.cfi_def_cfa_offset 16
+ 20556 0002 0446     		mov	r4, r0
+ 20557              		.cfi_offset 14, -4
+ 20558              		.cfi_offset 6, -8
+ 20559              		.cfi_offset 5, -12
+ 20560              		.cfi_offset 4, -16
+ 20561 0004 1546     		mov	r5, r2
+ 20562              		.loc 1 351 0
+ 20563 0006 FFF7FEFF 		bl	make_dhcp_message_template
+ 20564              	.LVL66:
+ 20565              		.loc 1 352 0
+ 20566 000a 4FF00203 		mov	r3, #2
+ 20567 000e 84F82E30 		strb	r3, [r4, #46]
+ 20568              		.loc 1 354 0
+ 20569 0012 4FF00406 		mov	r6, #4
+ 20570 0016 04F11A00 		add	r0, r4, #26
+ 20571 001a 2946     		mov	r1, r5
+ 20572 001c 3246     		mov	r2, r6
+ 20573 001e FFF7FEFF 		bl	memcpy
+ 20574              		.loc 1 356 0
+ 20575 0022 04F13600 		add	r0, r4, #54
+ 20576 0026 2946     		mov	r1, r5
+ 20577 0028 3246     		mov	r2, r6
+ 20578 002a FFF7FEFF 		bl	memcpy
+ 20579              		.loc 1 358 0
+ 20580 002e 4FF03503 		mov	r3, #53
+ 20581 0032 84F81A31 		strb	r3, [r4, #282]
+ 20582              		.loc 1 359 0
+ 20583 0036 4FF00103 		mov	r3, #1
+ 20584 003a 84F81B31 		strb	r3, [r4, #283]
+ 20585              		.loc 1 360 0
+ 20586 003e 4FF00303 		mov	r3, #3
+ 20587 0042 84F81C31 		strb	r3, [r4, #284]
+ 20588              		.loc 1 362 0
+ 20589 0046 2046     		mov	r0, r4
+ 20590 0048 4FF0F301 		mov	r1, #243
+ 20591 004c FFF7FEFF 		bl	send_udp_transmit
+ 20592              		.loc 1 365 0
+ 20593 0050 4FF00000 		mov	r0, #0
+ 20594 0054 70BD     		pop	{r4, r5, r6, pc}
+ 20595              		.cfi_endproc
+ 20596              	.LFE38:
+ 20598 0056 00BF     		.section	.text.packetloop_dhcp_renewhandler,"ax",%progbits
+ 20599              		.align	2
+ 20600              		.global	packetloop_dhcp_renewhandler
+ 20601              		.thumb
+ 20602              		.thumb_func
+ 20604              	packetloop_dhcp_renewhandler:
+ 20605              	.LFB41:
+ 450:../SERVER/dhcp_client.c **** }
+ 451:../SERVER/dhcp_client.c **** 
+ 452:../SERVER/dhcp_client.c **** // Put the following function into your main packet loop.
+ 453:../SERVER/dhcp_client.c **** // returns plen of original packet if buf is not touched.
+ 454:../SERVER/dhcp_client.c **** // returns 0 if plen was originally zero. returns 0 if DHCP messages
+ 455:../SERVER/dhcp_client.c **** // was processed.
+ 456:../SERVER/dhcp_client.c **** // We don't need to expect changing IP addresses. We can stick
+ 457:../SERVER/dhcp_client.c **** // to the IP that we got once. The server has really no power to
+ 458:../SERVER/dhcp_client.c **** // do anything about that.
+ 459:../SERVER/dhcp_client.c **** uint16_t packetloop_dhcp_renewhandler(uint8_t *buf,uint16_t plen){
+ 20606              		.loc 1 459 0
+ 20607              		.cfi_startproc
+ 20608              		@ args = 0, pretend = 0, frame = 0
+ 20609              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20610              	.LVL67:
+ 20611 0000 38B5     		push	{r3, r4, r5, lr}
+ 20612              	.LCFI8:
+ 20613              		.cfi_def_cfa_offset 16
+ 20614 0002 0546     		mov	r5, r0
+ 20615              		.cfi_offset 14, -4
+ 20616              		.cfi_offset 5, -8
+ 20617              		.cfi_offset 4, -12
+ 20618              		.cfi_offset 3, -16
+ 20619 0004 0C46     		mov	r4, r1
+ 460:../SERVER/dhcp_client.c ****         if (dhcp_6sec_cnt> 8){  // we let it run a bit faster than once every minute because it is 
+ 20620              		.loc 1 460 0
+ 20621 0006 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 20622 000a C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 20623 000e 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 20624 0010 082B     		cmp	r3, #8
+ 20625 0012 19D9     		bls	.L63
+ 20626              	.LVL68:
+ 461:../SERVER/dhcp_client.c ****                 dhcp_6sec_cnt=0;
+ 20627              		.loc 1 461 0
+ 20628 0014 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 20629 0018 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 20630 001c 4FF00002 		mov	r2, #0
+ 20631 0020 1A70     		strb	r2, [r3, #0]
+ 462:../SERVER/dhcp_client.c ****                 // count down unless the lease was infinite
+ 463:../SERVER/dhcp_client.c ****                 if (dhcp_opt_leasetime_minutes < 0xffff && dhcp_opt_leasetime_minutes>1){
+ 20632              		.loc 1 463 0
+ 20633 0022 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20634 0026 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20635 002a 1B88     		ldrh	r3, [r3, #0]
+ 20636 002c A3F10201 		sub	r1, r3, #2
+ 20637 0030 89B2     		uxth	r1, r1
+ 20638 0032 4FF6FC72 		movw	r2, #65532
+ 20639 0036 9142     		cmp	r1, r2
+ 464:../SERVER/dhcp_client.c ****                         dhcp_opt_leasetime_minutes--;
+ 20640              		.loc 1 464 0
+ 20641 0038 9FBF     		itttt	ls
+ 20642 003a 40F20002 		movwls	r2, #:lower16:.LANCHOR1
+ 20643 003e C0F20002 		movtls	r2, #:upper16:.LANCHOR1
+ 20644 0042 03F1FF33 		addls	r3, r3, #-1
+ 20645 0046 1380     		strhls	r3, [r2, #0]	@ movhi
+ 20646              	.LVL69:
+ 20647              	.L63:
+ 465:../SERVER/dhcp_client.c ****                 }
+ 466:../SERVER/dhcp_client.c ****         }
+ 467:../SERVER/dhcp_client.c ****         if (plen ==0 && dhcp_opt_leasetime_minutes < 3){
+ 20648              		.loc 1 467 0
+ 20649 0048 14BB     		cbnz	r4, .L64
+ 20650 004a 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20651 004e C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20652 0052 1B88     		ldrh	r3, [r3, #0]
+ 20653 0054 022B     		cmp	r3, #2
+ 20654 0056 39D8     		bhi	.L65
+ 468:../SERVER/dhcp_client.c ****                 if (!enc28j60linkup()) return(plen); // do nothing if link is down
+ 20655              		.loc 1 468 0
+ 20656 0058 FFF7FEFF 		bl	enc28j60linkup
+ 20657 005c 0028     		cmp	r0, #0
+ 20658 005e 35D0     		beq	.L65
+ 469:../SERVER/dhcp_client.c ****                 dhcp_tid++;
+ 20659              		.loc 1 469 0
+ 20660 0060 40F20003 		movw	r3, #:lower16:.LANCHOR8
+ 20661 0064 C0F20003 		movt	r3, #:upper16:.LANCHOR8
+ 20662 0068 1978     		ldrb	r1, [r3, #0]	@ zero_extendqisi2
+ 20663 006a 01F10101 		add	r1, r1, #1
+ 20664 006e C9B2     		uxtb	r1, r1
+ 20665 0070 1970     		strb	r1, [r3, #0]
+ 470:../SERVER/dhcp_client.c ****                 send_dhcp_renew_request(buf,dhcp_tid,dhcp_yiaddr);
+ 20666              		.loc 1 470 0
+ 20667 0072 2846     		mov	r0, r5
+ 20668 0074 40F20002 		movw	r2, #:lower16:.LANCHOR6
+ 20669 0078 C0F20002 		movt	r2, #:upper16:.LANCHOR6
+ 20670 007c FFF7FEFF 		bl	send_dhcp_renew_request
+ 471:../SERVER/dhcp_client.c ****                 dhcp_opt_leasetime_minutes=5; // repeat in two minutes if no answer
+ 20671              		.loc 1 471 0
+ 20672 0080 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20673 0084 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20674 0088 4FF00502 		mov	r2, #5	@ movhi
+ 20675 008c 1A80     		strh	r2, [r3, #0]	@ movhi
+ 472:../SERVER/dhcp_client.c ****                 return(0);
+ 20676              		.loc 1 472 0
+ 20677 008e 1DE0     		b	.L65
+ 20678              	.LVL70:
+ 20679              	.L64:
+ 473:../SERVER/dhcp_client.c ****         }
+ 474:../SERVER/dhcp_client.c ****         if (plen && is_dhcp_msg_for_me(buf,plen,dhcp_tid)){
+ 20680              		.loc 1 474 0
+ 20681 0090 40F20003 		movw	r3, #:lower16:.LANCHOR8
+ 20682 0094 C0F20003 		movt	r3, #:upper16:.LANCHOR8
+ 20683 0098 2846     		mov	r0, r5
+ 20684 009a 2146     		mov	r1, r4
+ 20685 009c 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 20686 009e FFF7FEFF 		bl	is_dhcp_msg_for_me
+ 20687 00a2 98B1     		cbz	r0, .L65
+ 475:../SERVER/dhcp_client.c ****                 // we check the dhcp_renew_tid because if 
+ 476:../SERVER/dhcp_client.c ****                 if (dhcp_get_message_type(buf,plen)==5){ // DHCPACK =5
+ 20688              		.loc 1 476 0
+ 20689 00a4 2846     		mov	r0, r5
+ 20690 00a6 2146     		mov	r1, r4
+ 20691 00a8 FFF7FEFF 		bl	dhcp_get_message_type
+ 20692 00ac 0528     		cmp	r0, #5
+ 20693 00ae 0BD1     		bne	.L66
+ 477:../SERVER/dhcp_client.c ****                         // success, DHCPACK, we have the IP
+ 478:../SERVER/dhcp_client.c ****                         if (dhcp_is_renew_tid(buf,plen)){
+ 20694              		.loc 1 478 0
+ 20695 00b0 2846     		mov	r0, r5
+ 20696 00b2 2146     		mov	r1, r4
+ 20697 00b4 FFF7FEFF 		bl	dhcp_is_renew_tid
+ 20698 00b8 30B1     		cbz	r0, .L66
+ 479:../SERVER/dhcp_client.c ****                                 dhcp_option_parser(buf,plen); // get new lease time, it will as wel
+ 20699              		.loc 1 479 0
+ 20700 00ba 2846     		mov	r0, r5
+ 20701 00bc 2146     		mov	r1, r4
+ 20702 00be FFF7FEFF 		bl	dhcp_option_parser
+ 20703 00c2 4FF00004 		mov	r4, #0
+ 20704              	.LVL71:
+ 20705 00c6 01E0     		b	.L65
+ 20706              	.L66:
+ 20707 00c8 4FF00004 		mov	r4, #0
+ 20708              	.LVL72:
+ 20709              	.L65:
+ 480:../SERVER/dhcp_client.c ****                         }
+ 481:../SERVER/dhcp_client.c ****                 }
+ 482:../SERVER/dhcp_client.c ****                 return(0);
+ 483:../SERVER/dhcp_client.c ****         }
+ 484:../SERVER/dhcp_client.c ****         return(plen);
+ 485:../SERVER/dhcp_client.c **** }
+ 20710              		.loc 1 485 0
+ 20711 00cc 2046     		mov	r0, r4
+ 20712 00ce 38BD     		pop	{r3, r4, r5, pc}
+ 20713              		.cfi_endproc
+ 20714              	.LFE41:
+ 20716              		.section	.text.send_dhcp_request,"ax",%progbits
+ 20717              		.align	2
+ 20718              		.global	send_dhcp_request
+ 20719              		.thumb
+ 20720              		.thumb_func
+ 20722              	send_dhcp_request:
+ 20723              	.LFB37:
+ 20724              		.loc 1 307 0
+ 20725              		.cfi_startproc
+ 20726              		@ args = 0, pretend = 0, frame = 0
+ 20727              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20728              	.LVL73:
+ 20729 0000 70B5     		push	{r4, r5, r6, lr}
+ 20730              	.LCFI9:
+ 20731              		.cfi_def_cfa_offset 16
+ 20732 0002 0446     		mov	r4, r0
+ 20733              		.cfi_offset 14, -4
+ 20734              		.cfi_offset 6, -8
+ 20735              		.cfi_offset 5, -12
+ 20736              		.cfi_offset 4, -16
+ 20737              		.loc 1 309 0
+ 20738 0004 FFF7FEFF 		bl	make_dhcp_message_template
+ 20739              	.LVL74:
+ 20740              		.loc 1 311 0
+ 20741 0008 4FF03503 		mov	r3, #53
+ 20742 000c 84F81A31 		strb	r3, [r4, #282]
+ 20743              		.loc 1 312 0
+ 20744 0010 4FF00103 		mov	r3, #1
+ 20745 0014 84F81B31 		strb	r3, [r4, #283]
+ 20746              		.loc 1 313 0
+ 20747 0018 4FF00303 		mov	r3, #3
+ 20748 001c 84F81C31 		strb	r3, [r4, #284]
+ 20749              		.loc 1 315 0
+ 20750 0020 40F20003 		movw	r3, #:lower16:.LANCHOR5
+ 20751 0024 C0F20003 		movt	r3, #:upper16:.LANCHOR5
+ 20752 0028 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 20753 002a 13B9     		cbnz	r3, .L69
+ 20754 002c 4FF00305 		mov	r5, #3
+ 20755              	.LVL75:
+ 20756 0030 13E0     		b	.L70
+ 20757              	.LVL76:
+ 20758              	.L69:
+ 20759              		.loc 1 316 0
+ 20760 0032 4FF03603 		mov	r3, #54
+ 20761 0036 84F81D31 		strb	r3, [r4, #285]
+ 20762              		.loc 1 317 0
+ 20763 003a 4FF00402 		mov	r2, #4
+ 20764 003e 84F81E21 		strb	r2, [r4, #286]
+ 20765              		.loc 1 318 0
+ 20766 0042 04F58E70 		add	r0, r4, #284
+ 20767 0046 00F10300 		add	r0, r0, #3
+ 20768 004a 40F20001 		movw	r1, #:lower16:.LANCHOR5
+ 20769 004e C0F20001 		movt	r1, #:upper16:.LANCHOR5
+ 20770 0052 FFF7FEFF 		bl	memcpy
+ 20771 0056 4FF00905 		mov	r5, #9
+ 20772              	.LVL77:
+ 20773              	.L70:
+ 20774              		.loc 1 321 0
+ 20775 005a 40F20003 		movw	r3, #:lower16:.LANCHOR6
+ 20776 005e C0F20003 		movt	r3, #:upper16:.LANCHOR6
+ 20777 0062 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 20778 0064 ABB1     		cbz	r3, .L71
+ 20779              		.loc 1 322 0
+ 20780 0066 05EB0403 		add	r3, r5, r4
+ 20781 006a 4FF03202 		mov	r2, #50
+ 20782 006e 83F81A21 		strb	r2, [r3, #282]
+ 20783              		.loc 1 323 0
+ 20784 0072 4FF00402 		mov	r2, #4
+ 20785 0076 83F81B21 		strb	r2, [r3, #283]
+ 20786              		.loc 1 324 0
+ 20787 007a 05F58E70 		add	r0, r5, #284
+ 20788 007e 2044     		add	r0, r4, r0
+ 20789 0080 40F20001 		movw	r1, #:lower16:.LANCHOR6
+ 20790 0084 C0F20001 		movt	r1, #:upper16:.LANCHOR6
+ 20791 0088 FFF7FEFF 		bl	memcpy
+ 20792              		.loc 1 325 0
+ 20793 008c 05F10605 		add	r5, r5, #6
+ 20794              	.LVL78:
+ 20795 0090 EDB2     		uxtb	r5, r5
+ 20796              	.LVL79:
+ 20797              	.L71:
+ 20798              		.loc 1 328 0
+ 20799 0092 05EB0403 		add	r3, r5, r4
+ 20800 0096 4FF03702 		mov	r2, #55
+ 20801 009a 83F81A21 		strb	r2, [r3, #282]
+ 20802              		.loc 1 330 0
+ 20803 009e 4FF00202 		mov	r2, #2
+ 20804 00a2 83F81B21 		strb	r2, [r3, #283]
+ 20805              		.loc 1 331 0
+ 20806 00a6 4FF00102 		mov	r2, #1
+ 20807 00aa 83F81C21 		strb	r2, [r3, #284]
+ 20808              		.loc 1 332 0
+ 20809 00ae 4FF00302 		mov	r2, #3
+ 20810 00b2 83F81D21 		strb	r2, [r3, #285]
+ 20811              		.loc 1 333 0
+ 20812 00b6 4FF0FF32 		mov	r2, #-1
+ 20813 00ba 83F81E21 		strb	r2, [r3, #286]
+ 20814              		.loc 1 334 0
+ 20815 00be 4FF00006 		mov	r6, #0
+ 20816 00c2 83F81F61 		strb	r6, [r3, #287]
+ 20817              		.loc 1 336 0
+ 20818 00c6 2046     		mov	r0, r4
+ 20819 00c8 05F1F501 		add	r1, r5, #245
+ 20820 00cc FFF7FEFF 		bl	send_udp_transmit
+ 20821              		.loc 1 338 0
+ 20822 00d0 3046     		mov	r0, r6
+ 20823 00d2 70BD     		pop	{r4, r5, r6, pc}
+ 20824              		.cfi_endproc
+ 20825              	.LFE37:
+ 20827              		.section	.text.send_dhcp_discover,"ax",%progbits
+ 20828              		.align	2
+ 20829              		.global	send_dhcp_discover
+ 20830              		.thumb
+ 20831              		.thumb_func
+ 20833              	send_dhcp_discover:
+ 20834              	.LFB31:
+ 20835              		.loc 1 137 0
+ 20836              		.cfi_startproc
+ 20837              		@ args = 0, pretend = 0, frame = 0
+ 20838              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20839              	.LVL80:
+ 20840 0000 38B5     		push	{r3, r4, r5, lr}
+ 20841              	.LCFI10:
+ 20842              		.cfi_def_cfa_offset 16
+ 20843 0002 0446     		mov	r4, r0
+ 20844              		.cfi_offset 14, -4
+ 20845              		.cfi_offset 5, -8
+ 20846              		.cfi_offset 4, -12
+ 20847              		.cfi_offset 3, -16
+ 20848              		.loc 1 138 0
+ 20849 0004 FFF7FEFF 		bl	make_dhcp_message_template
+ 20850              	.LVL81:
+ 20851              		.loc 1 140 0
+ 20852 0008 4FF03503 		mov	r3, #53
+ 20853 000c 84F81A31 		strb	r3, [r4, #282]
+ 20854              		.loc 1 141 0
+ 20855 0010 4FF00103 		mov	r3, #1
+ 20856 0014 84F81B31 		strb	r3, [r4, #283]
+ 20857              		.loc 1 142 0
+ 20858 0018 84F81C31 		strb	r3, [r4, #284]
+ 20859              		.loc 1 144 0
+ 20860 001c 4FF03702 		mov	r2, #55
+ 20861 0020 84F81D21 		strb	r2, [r4, #285]
+ 20862              		.loc 1 146 0
+ 20863 0024 4FF00202 		mov	r2, #2
+ 20864 0028 84F81E21 		strb	r2, [r4, #286]
+ 20865              		.loc 1 147 0
+ 20866 002c 84F81F31 		strb	r3, [r4, #287]
+ 20867              		.loc 1 148 0
+ 20868 0030 4FF00303 		mov	r3, #3
+ 20869 0034 84F82031 		strb	r3, [r4, #288]
+ 20870              		.loc 1 149 0
+ 20871 0038 4FF0FF33 		mov	r3, #-1
+ 20872 003c 84F82131 		strb	r3, [r4, #289]
+ 20873              		.loc 1 150 0
+ 20874 0040 4FF00005 		mov	r5, #0
+ 20875 0044 84F82251 		strb	r5, [r4, #290]
+ 20876              		.loc 1 153 0
+ 20877 0048 2046     		mov	r0, r4
+ 20878 004a 4FF0F801 		mov	r1, #248
+ 20879 004e FFF7FEFF 		bl	send_udp_transmit
+ 20880              		.loc 1 155 0
+ 20881 0052 2846     		mov	r0, r5
+ 20882 0054 38BD     		pop	{r3, r4, r5, pc}
+ 20883              		.cfi_endproc
+ 20884              	.LFE31:
+ 20886 0056 00BF     		.section	.text.packetloop_dhcp_initial_ip_assignment,"ax",%progbits
+ 20887              		.align	2
+ 20888              		.global	packetloop_dhcp_initial_ip_assignment
+ 20889              		.thumb
+ 20890              		.thumb_func
+ 20892              	packetloop_dhcp_initial_ip_assignment:
+ 20893              	.LFB39:
+ 20894              		.loc 1 377 0
+ 20895              		.cfi_startproc
+ 20896              		@ args = 0, pretend = 0, frame = 0
+ 20897              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20898              	.LVL82:
+ 20899 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 20900              	.LCFI11:
+ 20901              		.cfi_def_cfa_offset 24
+ 20902 0002 0546     		mov	r5, r0
+ 20903              		.cfi_offset 14, -4
+ 20904              		.cfi_offset 7, -8
+ 20905              		.cfi_offset 6, -12
+ 20906              		.cfi_offset 5, -16
+ 20907              		.cfi_offset 4, -20
+ 20908              		.cfi_offset 3, -24
+ 20909 0004 0C46     		mov	r4, r1
+ 20910 0006 1646     		mov	r6, r2
+ 20911              		.loc 1 381 0
+ 20912 0008 FFF7FEFF 		bl	enc28j60linkup
+ 20913              	.LVL83:
+ 20914 000c 0028     		cmp	r0, #0
+ 20915 000e 00F09280 		beq	.L76
+ 20916              		.loc 1 383 0
+ 20917 0012 002C     		cmp	r4, #0
+ 20918 0014 51D1     		bne	.L77
+ 20919              		.loc 1 384 0
+ 20920 0016 40F20003 		movw	r3, #:lower16:.LANCHOR9
+ 20921 001a C0F20003 		movt	r3, #:upper16:.LANCHOR9
+ 20922 001e 1A88     		ldrh	r2, [r3, #0]
+ 20923 0020 022A     		cmp	r2, #2
+ 20924 0022 1AD1     		bne	.L78
+ 20925              		.loc 1 385 0
+ 20926 0024 40F20003 		movw	r3, #:lower16:.LANCHOR9
+ 20927 0028 C0F20003 		movt	r3, #:upper16:.LANCHOR9
+ 20928 002c 4FF00102 		mov	r2, #1	@ movhi
+ 20929 0030 1A80     		strh	r2, [r3, #0]	@ movhi
+ 20930              		.loc 1 386 0
+ 20931 0032 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 20932 0036 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 20933 003a 4FF00007 		mov	r7, #0
+ 20934 003e 1F70     		strb	r7, [r3, #0]
+ 20935              		.loc 1 387 0
+ 20936 0040 40F20004 		movw	r4, #:lower16:.LANCHOR8
+ 20937              	.LVL84:
+ 20938 0044 C0F20004 		movt	r4, #:upper16:.LANCHOR8
+ 20939 0048 2670     		strb	r6, [r4, #0]
+ 20940              		.loc 1 391 0
+ 20941 004a FFF7FEFF 		bl	enc28j60EnableBroadcast
+ 20942              		.loc 1 392 0
+ 20943 004e 2846     		mov	r0, r5
+ 20944 0050 2178     		ldrb	r1, [r4, #0]	@ zero_extendqisi2
+ 20945 0052 FFF7FEFF 		bl	send_dhcp_discover
+ 20946 0056 3846     		mov	r0, r7
+ 20947              		.loc 1 393 0
+ 20948 0058 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 20949              	.LVL85:
+ 20950              	.L78:
+ 20951              		.loc 1 395 0
+ 20952 005a 40F20003 		movw	r3, #:lower16:.LANCHOR6
+ 20953 005e C0F20003 		movt	r3, #:upper16:.LANCHOR6
+ 20954 0062 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 20955 0064 EBB9     		cbnz	r3, .L80
+ 20956 0066 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 20957 006a C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 20958 006e 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 20959 0070 052B     		cmp	r3, #5
+ 20960 0072 16D9     		bls	.L80
+ 20961              		.loc 1 397 0
+ 20962 0074 40F20004 		movw	r4, #:lower16:.LANCHOR8
+ 20963              	.LVL86:
+ 20964 0078 C0F20004 		movt	r4, #:upper16:.LANCHOR8
+ 20965 007c 2378     		ldrb	r3, [r4, #0]	@ zero_extendqisi2
+ 20966 007e 03F10103 		add	r3, r3, #1
+ 20967 0082 2370     		strb	r3, [r4, #0]
+ 20968              		.loc 1 398 0
+ 20969 0084 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 20970 0088 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 20971 008c 4FF00006 		mov	r6, #0
+ 20972              	.LVL87:
+ 20973 0090 1E70     		strb	r6, [r3, #0]
+ 20974              		.loc 1 402 0
+ 20975 0092 FFF7FEFF 		bl	enc28j60EnableBroadcast
+ 20976              		.loc 1 403 0
+ 20977 0096 2846     		mov	r0, r5
+ 20978 0098 2178     		ldrb	r1, [r4, #0]	@ zero_extendqisi2
+ 20979 009a FFF7FEFF 		bl	send_dhcp_discover
+ 20980 009e 3046     		mov	r0, r6
+ 20981              		.loc 1 404 0
+ 20982 00a0 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 20983              	.LVL88:
+ 20984              	.L80:
+ 20985              		.loc 1 412 0
+ 20986 00a2 022A     		cmp	r2, #2
+ 20987 00a4 47D9     		bls	.L76
+ 20988              		.loc 1 413 0
+ 20989 00a6 40F20003 		movw	r3, #:lower16:.LANCHOR9
+ 20990 00aa C0F20003 		movt	r3, #:upper16:.LANCHOR9
+ 20991 00ae 02F1FF32 		add	r2, r2, #-1
+ 20992 00b2 1A80     		strh	r2, [r3, #0]	@ movhi
+ 20993 00b4 4FF00000 		mov	r0, #0
+ 20994 00b8 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 20995              	.L77:
+ 20996              		.loc 1 418 0
+ 20997 00ba 40F20003 		movw	r3, #:lower16:.LANCHOR8
+ 20998 00be C0F20003 		movt	r3, #:upper16:.LANCHOR8
+ 20999 00c2 2846     		mov	r0, r5
+ 21000 00c4 2146     		mov	r1, r4
+ 21001 00c6 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 21002 00c8 FFF7FEFF 		bl	is_dhcp_msg_for_me
+ 21003 00cc 0028     		cmp	r0, #0
+ 21004 00ce 32D0     		beq	.L76
+ 21005              		.loc 1 422 0
+ 21006 00d0 2846     		mov	r0, r5
+ 21007 00d2 2146     		mov	r1, r4
+ 21008 00d4 FFF7FEFF 		bl	dhcp_is_renew_tid
+ 21009 00d8 0128     		cmp	r0, #1
+ 21010 00da 2CD0     		beq	.L76
+ 21011              		.loc 1 423 0
+ 21012 00dc 2846     		mov	r0, r5
+ 21013 00de 2146     		mov	r1, r4
+ 21014 00e0 FFF7FEFF 		bl	dhcp_get_message_type
+ 21015              		.loc 1 424 0
+ 21016 00e4 0228     		cmp	r0, #2
+ 21017              	.LVL89:
+ 21018 00e6 19D1     		bne	.L81
+ 21019              		.loc 1 425 0
+ 21020 00e8 40F20003 		movw	r3, #:lower16:.LANCHOR9
+ 21021 00ec C0F20003 		movt	r3, #:upper16:.LANCHOR9
+ 21022 00f0 4FF00102 		mov	r2, #1	@ movhi
+ 21023 00f4 1A80     		strh	r2, [r3, #0]	@ movhi
+ 21024              		.loc 1 426 0
+ 21025 00f6 2846     		mov	r0, r5
+ 21026              	.LVL90:
+ 21027 00f8 2146     		mov	r1, r4
+ 21028 00fa FFF7FEFF 		bl	dhcp_get_yiaddr
+ 21029              		.loc 1 427 0
+ 21030 00fe 2846     		mov	r0, r5
+ 21031 0100 2146     		mov	r1, r4
+ 21032 0102 FFF7FEFF 		bl	dhcp_option_parser
+ 21033              		.loc 1 429 0
+ 21034 0106 40F20003 		movw	r3, #:lower16:.LANCHOR8
+ 21035 010a C0F20003 		movt	r3, #:upper16:.LANCHOR8
+ 21036 010e 2846     		mov	r0, r5
+ 21037 0110 1978     		ldrb	r1, [r3, #0]	@ zero_extendqisi2
+ 21038 0112 FFF7FEFF 		bl	send_dhcp_request
+ 21039 0116 4FF00000 		mov	r0, #0
+ 21040 011a F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 21041              	.LVL91:
+ 21042              	.L81:
+ 21043              		.loc 1 431 0
+ 21044 011c 0528     		cmp	r0, #5
+ 21045 011e 0AD1     		bne	.L76
+ 21046              		.loc 1 433 0
+ 21047 0120 40F20003 		movw	r3, #:lower16:.LANCHOR9
+ 21048 0124 C0F20003 		movt	r3, #:upper16:.LANCHOR9
+ 21049 0128 4FF00106 		mov	r6, #1
+ 21050              	.LVL92:
+ 21051 012c 1E80     		strh	r6, [r3, #0]	@ movhi
+ 21052              		.loc 1 434 0
+ 21053 012e FFF7FEFF 		bl	enc28j60DisableBroadcast
+ 21054              	.LVL93:
+ 21055 0132 3046     		mov	r0, r6
+ 21056              		.loc 1 435 0
+ 21057 0134 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 21058              	.LVL94:
+ 21059              	.L76:
+ 21060 0136 4FF00000 		mov	r0, #0
+ 21061              	.LVL95:
+ 21062              		.loc 1 439 0
+ 21063 013a F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 21064              		.cfi_endproc
+ 21065              	.LFE39:
+ 21067              		.section	.rodata.C.18.3813,"a",%progbits
+ 21068              		.align	2
+ 21069              		.set	.LANCHOR7,. + 0
+ 21072              	C.18.3813:
+ 21073 0000 FF       		.byte	-1
+ 21074 0001 FF       		.byte	-1
+ 21075 0002 FF       		.byte	-1
+ 21076 0003 FF       		.byte	-1
+ 21077 0004 FF       		.byte	-1
+ 21078 0005 FF       		.byte	-1
+ 21079 0006 0000     		.section	.bss.dhcp_opt_leasetime_minutes,"aw",%nobits
+ 21080              		.align	1
+ 21081              		.set	.LANCHOR1,. + 0
+ 21084              	dhcp_opt_leasetime_minutes:
+ 21085 0000 0000     		.space	2
+ 21086              		.section	.bss.dhcp_opt_defaultgw,"aw",%nobits
+ 21087              		.align	2
+ 21088              		.set	.LANCHOR4,. + 0
+ 21091              	dhcp_opt_defaultgw:
+ 21092 0000 00000000 		.space	4
+ 21093              		.section	.bss.dhcp_opt_server_id,"aw",%nobits
+ 21094              		.align	2
+ 21095              		.set	.LANCHOR5,. + 0
+ 21098              	dhcp_opt_server_id:
+ 21099 0000 00000000 		.space	4
+ 21100              		.section	.bss.dhcp_opt_message_type,"aw",%nobits
+ 21101              		.set	.LANCHOR2,. + 0
+ 21104              	dhcp_opt_message_type:
+ 21105 0000 00       		.space	1
+ 21106              		.section	.bss.dhcp_yiaddr,"aw",%nobits
+ 21107              		.align	2
+ 21108              		.set	.LANCHOR6,. + 0
+ 21111              	dhcp_yiaddr:
+ 21112 0000 00000000 		.space	4
+ 21113              		.section	.bss.dhcp_opt_mask,"aw",%nobits
+ 21114              		.align	2
+ 21115              		.set	.LANCHOR3,. + 0
+ 21118              	dhcp_opt_mask:
+ 21119 0000 00000000 		.space	4
+ 21120              		.section	.bss.dhcp_tid,"aw",%nobits
+ 21121              		.set	.LANCHOR8,. + 0
+ 21124              	dhcp_tid:
+ 21125 0000 00       		.space	1
+ 21126              		.section	.bss.dhcp_6sec_cnt,"aw",%nobits
+ 21127              		.set	.LANCHOR0,. + 0
+ 21130              	dhcp_6sec_cnt:
+ 21131 0000 00       		.space	1
+ 21132              		.section	.data.init.4057,"aw",%progbits
+ 21133              		.align	1
+ 21134              		.set	.LANCHOR9,. + 0
+ 21137              	init.4057:
+ 21138 0000 FF7F     		.short	32767
+ 21139              		.text
+ 21140              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 dhcp_client.c
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:19824  .text.dhcp_6sec_tick:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:19829  .text.dhcp_6sec_tick:00000000 dhcp_6sec_tick
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21127  .bss.dhcp_6sec_cnt:00000000 .LANCHOR0
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:19849  .text.dhcp_get_message_type:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:19854  .text.dhcp_get_message_type:00000000 dhcp_get_message_type
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:19941  .text.is_dhcp_msg_for_me:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:19946  .text.is_dhcp_msg_for_me:00000000 is_dhcp_msg_for_me
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:19986  .text.dhcp_is_renew_tid:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:19991  .text.dhcp_is_renew_tid:00000000 dhcp_is_renew_tid
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20019  .text.dhcp_option_parser:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20024  .text.dhcp_option_parser:00000000 dhcp_option_parser
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21081  .bss.dhcp_opt_leasetime_minutes:00000000 .LANCHOR1
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21101  .bss.dhcp_opt_message_type:00000000 .LANCHOR2
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21095  .bss.dhcp_opt_server_id:00000000 .LANCHOR5
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21088  .bss.dhcp_opt_defaultgw:00000000 .LANCHOR4
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21115  .bss.dhcp_opt_mask:00000000 .LANCHOR3
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20143  .text.dhcp_option_parser:000000d8 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20336  .text.dhcp_get_my_ip:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20341  .text.dhcp_get_my_ip:00000000 dhcp_get_my_ip
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21108  .bss.dhcp_yiaddr:00000000 .LANCHOR6
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20391  .text.dhcp_get_yiaddr:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20396  .text.dhcp_get_yiaddr:00000000 dhcp_get_yiaddr
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20435  .text.make_dhcp_message_template:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20440  .text.make_dhcp_message_template:00000000 make_dhcp_message_template
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21069  .rodata.C.18.3813:00000000 .LANCHOR7
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20541  .text.send_dhcp_renew_request:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20546  .text.send_dhcp_renew_request:00000000 send_dhcp_renew_request
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20599  .text.packetloop_dhcp_renewhandler:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20604  .text.packetloop_dhcp_renewhandler:00000000 packetloop_dhcp_renewhandler
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21121  .bss.dhcp_tid:00000000 .LANCHOR8
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20717  .text.send_dhcp_request:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20722  .text.send_dhcp_request:00000000 send_dhcp_request
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20828  .text.send_dhcp_discover:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20833  .text.send_dhcp_discover:00000000 send_dhcp_discover
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20887  .text.packetloop_dhcp_initial_ip_assignment:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20892  .text.packetloop_dhcp_initial_ip_assignment:00000000 packetloop_dhcp_initial_ip_assignment
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21134  .data.init.4057:00000000 .LANCHOR9
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21068  .rodata.C.18.3813:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21072  .rodata.C.18.3813:00000000 C.18.3813
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21080  .bss.dhcp_opt_leasetime_minutes:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21084  .bss.dhcp_opt_leasetime_minutes:00000000 dhcp_opt_leasetime_minutes
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21087  .bss.dhcp_opt_defaultgw:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21091  .bss.dhcp_opt_defaultgw:00000000 dhcp_opt_defaultgw
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21094  .bss.dhcp_opt_server_id:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21098  .bss.dhcp_opt_server_id:00000000 dhcp_opt_server_id
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21104  .bss.dhcp_opt_message_type:00000000 dhcp_opt_message_type
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21105  .bss.dhcp_opt_message_type:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21107  .bss.dhcp_yiaddr:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21111  .bss.dhcp_yiaddr:00000000 dhcp_yiaddr
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21114  .bss.dhcp_opt_mask:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21118  .bss.dhcp_opt_mask:00000000 dhcp_opt_mask
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21124  .bss.dhcp_tid:00000000 dhcp_tid
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21125  .bss.dhcp_tid:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21130  .bss.dhcp_6sec_cnt:00000000 dhcp_6sec_cnt
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21131  .bss.dhcp_6sec_cnt:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21133  .data.init.4057:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:21137  .data.init.4057:00000000 init.4057
+                     .debug_frame:00000010 $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20198  .text.dhcp_option_parser:0000010f $d
+C:\Users\user\AppData\Local\Temp\ccz7zc5i.s:20198  .text.dhcp_option_parser:00000110 $t
+
+UNDEFINED SYMBOLS
+memcpy
+send_udp_prepare
+send_udp_transmit
+enc28j60linkup
+enc28j60EnableBroadcast
+enc28j60DisableBroadcast

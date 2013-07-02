@@ -1,0 +1,876 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"websrv_help_functions.c"
+  23              	.Ltext0:
+  24              		.file 1 "../SERVER/websrv_help_functions.c"
+ 1981              		.align	2
+ 1982              		.global	find_key_val
+ 1983              		.thumb
+ 1984              		.thumb_func
+ 1986              	find_key_val:
+ 1987              	.LFB0:
+   1:../SERVER/websrv_help_functions.c **** /*********************************************
+   2:../SERVER/websrv_help_functions.c ****  * vim:sw=8:ts=8:si:et
+   3:../SERVER/websrv_help_functions.c ****  * To use the above modeline in vim you must have "set modeline" in your .vimrc
+   4:../SERVER/websrv_help_functions.c ****  * Author: Guido Socher
+   5:../SERVER/websrv_help_functions.c ****  * Copyright:LGPL V2
+   6:../SERVER/websrv_help_functions.c ****  * See http://www.gnu.org/licenses/old-licenses/lgpl-2.0.html
+   7:../SERVER/websrv_help_functions.c ****  *
+   8:../SERVER/websrv_help_functions.c ****  * Some common utilities needed for IP and web applications.
+   9:../SERVER/websrv_help_functions.c ****  * The defines below are controlled via ip_config.h. By choosing
+  10:../SERVER/websrv_help_functions.c ****  * the right defines for your application in ip_config.h you can 
+  11:../SERVER/websrv_help_functions.c ****  * significantly reduce the size of the resulting code.
+  12:../SERVER/websrv_help_functions.c ****  *********************************************/
+  13:../SERVER/websrv_help_functions.c **** #include <stdlib.h>
+  14:../SERVER/websrv_help_functions.c **** #include <string.h>
+  15:../SERVER/websrv_help_functions.c **** #include <ctype.h>
+  16:../SERVER/websrv_help_functions.c **** #include "ip_config.h"
+  17:../SERVER/websrv_help_functions.c **** #include <inttypes.h>
+  18:../SERVER/websrv_help_functions.c **** #include "conversion.h"
+  19:../SERVER/websrv_help_functions.c **** #include "websrv_help_functions.h"
+  20:../SERVER/websrv_help_functions.c **** 
+  21:../SERVER/websrv_help_functions.c **** #ifdef FROMDECODE_websrv_help
+  22:../SERVER/websrv_help_functions.c **** // search for a string of the form key=value in
+  23:../SERVER/websrv_help_functions.c **** // a string that looks like q?xyz=abc&uvw=defgh HTTP/1.1\r\n
+  24:../SERVER/websrv_help_functions.c **** //
+  25:../SERVER/websrv_help_functions.c **** // The returned value is stored in strbuf. You must allocate
+  26:../SERVER/websrv_help_functions.c **** // enough storage for strbuf, maxlen is the size of strbuf.
+  27:../SERVER/websrv_help_functions.c **** // I.e the value it is declared with: strbuf[5]-> maxlen=5
+  28:../SERVER/websrv_help_functions.c **** 
+  29:../SERVER/websrv_help_functions.c **** uint8_t find_key_val(char *str,char *strbuf, uint8_t maxlen,char *key)
+  30:../SERVER/websrv_help_functions.c **** {
+ 1988              		.loc 1 30 0
+ 1989              		.cfi_startproc
+ 1990              		@ args = 0, pretend = 0, frame = 0
+ 1991              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1992              		@ link register save eliminated.
+ 1993              	.LVL0:
+ 1994 0000 2DE9F005 		push	{r4, r5, r6, r7, r8, sl}
+ 1995              	.LCFI0:
+ 1996              		.cfi_def_cfa_offset 24
+  31:../SERVER/websrv_help_functions.c ****         uint8_t found=0;
+  32:../SERVER/websrv_help_functions.c ****         uint8_t i=0;
+  33:../SERVER/websrv_help_functions.c **** 				char * str_cpy = str;
+  34:../SERVER/websrv_help_functions.c ****         char *kp;
+  35:../SERVER/websrv_help_functions.c ****         kp=key;
+  36:../SERVER/websrv_help_functions.c ****         while(*str &&  *str!=' ' && *str!='\r' && found==0){
+ 1997              		.loc 1 36 0
+ 1998 0004 90F800C0 		ldrb	ip, [r0, #0]	@ zero_extendqisi2
+ 1999 0008 BCF12004 		subs	r4, ip, #32
+ 2000 000c 18BF     		it	ne
+ 2001 000e 0124     		movne	r4, #1
+ 2002              		.cfi_offset 10, -4
+ 2003              		.cfi_offset 8, -8
+ 2004              		.cfi_offset 7, -12
+ 2005              		.cfi_offset 6, -16
+ 2006              		.cfi_offset 5, -20
+ 2007              		.cfi_offset 4, -24
+ 2008 0010 BCF1000F 		cmp	ip, #0
+ 2009 0014 0CBF     		ite	eq
+ 2010 0016 0024     		moveq	r4, #0
+ 2011 0018 04F00104 		andne	r4, r4, #1
+ 2012 001c 002C     		cmp	r4, #0
+ 2013 001e 6DD0     		beq	.L2
+ 2014 0020 BCF10D0F 		cmp	ip, #13
+ 2015 0024 6AD0     		beq	.L2
+ 2016 0026 1C46     		mov	r4, r3
+ 2017              	.LVL1:
+ 2018 0028 4FF00006 		mov	r6, #0
+ 2019              	.LVL2:
+  37:../SERVER/websrv_help_functions.c ****                 if (*str == *kp){
+  38:../SERVER/websrv_help_functions.c ****                         // At the beginning of the key we must check
+  39:../SERVER/websrv_help_functions.c ****                         // if this is the start of the key otherwise we will
+  40:../SERVER/websrv_help_functions.c ****                         // match on 'foobar' when only looking for 'bar', by andras tucsni
+  41:../SERVER/websrv_help_functions.c ****                         if (kp==key &&  ! ( *(str-1) == '?' || *(str-1) == '&' ) ) goto NEXT;
+  42:../SERVER/websrv_help_functions.c ****                         kp++;
+  43:../SERVER/websrv_help_functions.c ****                         if (*kp == '\0'){
+  44:../SERVER/websrv_help_functions.c ****                                 str++;
+  45:../SERVER/websrv_help_functions.c ****                                 kp=key;
+  46:../SERVER/websrv_help_functions.c ****                                 if (*str == '='){
+ 2020              		.loc 1 46 0
+ 2021 002c 1F46     		mov	r7, r3
+ 2022              	.LVL3:
+ 2023 002e 4FF00108 		mov	r8, #1
+ 2024              	.LVL4:
+ 2025              	.L7:
+ 2026              		.loc 1 37 0
+ 2027 0032 2578     		ldrb	r5, [r4, #0]	@ zero_extendqisi2
+ 2028 0034 6545     		cmp	r5, ip
+ 2029 0036 19D1     		bne	.L3
+ 2030              	.LVL5:
+ 2031              		.loc 1 41 0
+ 2032 0038 9C42     		cmp	r4, r3
+ 2033 003a 0CD1     		bne	.L4
+ 2034 003c 10F801CC 		ldrb	ip, [r0, #-1]	@ zero_extendqisi2
+ 2035 0040 BCF12605 		subs	r5, ip, #38
+ 2036 0044 18BF     		it	ne
+ 2037 0046 0125     		movne	r5, #1
+ 2038 0048 BCF13F0F 		cmp	ip, #63
+ 2039 004c 0CBF     		ite	eq
+ 2040 004e 0025     		moveq	r5, #0
+ 2041 0050 05F00105 		andne	r5, r5, #1
+ 2042 0054 55B9     		cbnz	r5, .L3
+ 2043              	.L4:
+ 2044              		.loc 1 43 0
+ 2045 0056 14F8015F 		ldrb	r5, [r4, #1]!	@ zero_extendqisi2
+ 2046 005a 45B9     		cbnz	r5, .L5
+ 2047              		.loc 1 46 0
+ 2048 005c 10F801CF 		ldrb	ip, [r0, #1]!	@ zero_extendqisi2
+ 2049 0060 BCF13D0F 		cmp	ip, #61
+ 2050 0064 04BF     		itt	eq
+ 2051 0066 3C46     		moveq	r4, r7
+ 2052 0068 4646     		moveq	r6, r8
+ 2053 006a 00D0     		beq	.L5
+ 2054              	.L3:
+ 2055 006c 3C46     		mov	r4, r7
+ 2056              	.L5:
+ 2057              		.loc 1 36 0
+ 2058 006e 10F801CF 		ldrb	ip, [r0, #1]!	@ zero_extendqisi2
+ 2059 0072 BCF12005 		subs	r5, ip, #32
+ 2060 0076 18BF     		it	ne
+ 2061 0078 0125     		movne	r5, #1
+ 2062 007a BCF1000F 		cmp	ip, #0
+ 2063 007e 0CBF     		ite	eq
+ 2064 0080 0025     		moveq	r5, #0
+ 2065 0082 05F00105 		andne	r5, r5, #1
+ 2066 0086 5DB1     		cbz	r5, .L6
+ 2067 0088 86F0010A 		eor	sl, r6, #1
+ 2068 008c BCF10D0F 		cmp	ip, #13
+ 2069 0090 0CBF     		ite	eq
+ 2070 0092 4FF0000A 		moveq	sl, #0
+ 2071 0096 0AF0010A 		andne	sl, sl, #1
+ 2072 009a BAF1000F 		cmp	sl, #0
+ 2073 009e C8D1     		bne	.L7
+ 2074              	.L6:
+  47:../SERVER/websrv_help_functions.c ****                                         found=1;
+  48:../SERVER/websrv_help_functions.c ****                                 }
+  49:../SERVER/websrv_help_functions.c ****                         }
+  50:../SERVER/websrv_help_functions.c ****                 }else{
+  51:../SERVER/websrv_help_functions.c ****                         kp=key;
+  52:../SERVER/websrv_help_functions.c ****                 }
+  53:../SERVER/websrv_help_functions.c **** NEXT:
+  54:../SERVER/websrv_help_functions.c ****                 str++;
+  55:../SERVER/websrv_help_functions.c ****         }
+  56:../SERVER/websrv_help_functions.c ****         if (found==1){
+ 2075              		.loc 1 56 0
+ 2076 00a0 76B3     		cbz	r6, .L8
+ 2077              	.LVL6:
+  57:../SERVER/websrv_help_functions.c ****                 // copy the value to a buffer and terminate it with '\0'
+  58:../SERVER/websrv_help_functions.c ****                 while(*str &&  *str!=' ' && *str!='\r' && *str!='&' && i<maxlen-1){
+ 2078              		.loc 1 58 0
+ 2079 00a2 3DB3     		cbz	r5, .L9
+ 2080 00a4 BCF10D0F 		cmp	ip, #13
+ 2081 00a8 24D0     		beq	.L9
+ 2082 00aa BCF1260F 		cmp	ip, #38
+ 2083 00ae 21D0     		beq	.L9
+ 2084 00b0 02F1FF32 		add	r2, r2, #-1
+ 2085              	.LVL7:
+ 2086 00b4 002A     		cmp	r2, #0
+ 2087 00b6 1DDD     		ble	.L9
+ 2088 00b8 4FF00003 		mov	r3, #0
+ 2089              	.LVL8:
+ 2090              	.L10:
+  59:../SERVER/websrv_help_functions.c ****                         *strbuf=*str;
+ 2091              		.loc 1 59 0
+ 2092 00bc 01F801CB 		strb	ip, [r1], #1
+ 2093              		.loc 1 58 0
+ 2094 00c0 90F801C0 		ldrb	ip, [r0, #1]	@ zero_extendqisi2
+ 2095              	.LVL9:
+ 2096 00c4 BCF12004 		subs	r4, ip, #32
+ 2097 00c8 18BF     		it	ne
+ 2098 00ca 0124     		movne	r4, #1
+ 2099 00cc BCF1000F 		cmp	ip, #0
+ 2100 00d0 0CBF     		ite	eq
+ 2101 00d2 0024     		moveq	r4, #0
+ 2102 00d4 04F00104 		andne	r4, r4, #1
+ 2103 00d8 64B1     		cbz	r4, .L9
+ 2104 00da BCF10D0F 		cmp	ip, #13
+ 2105 00de 09D0     		beq	.L9
+ 2106 00e0 BCF1260F 		cmp	ip, #38
+ 2107 00e4 06D0     		beq	.L9
+  60:../SERVER/websrv_help_functions.c ****                         i++;
+ 2108              		.loc 1 60 0
+ 2109 00e6 03F10103 		add	r3, r3, #1
+ 2110              	.LVL10:
+ 2111 00ea DBB2     		uxtb	r3, r3
+ 2112              	.LVL11:
+ 2113 00ec 00F10100 		add	r0, r0, #1
+ 2114              		.loc 1 58 0
+ 2115 00f0 9342     		cmp	r3, r2
+ 2116 00f2 E3DB     		blt	.L10
+ 2117              	.LVL12:
+ 2118              	.L9:
+  61:../SERVER/websrv_help_functions.c ****                         str++;
+  62:../SERVER/websrv_help_functions.c ****                         strbuf++;
+  63:../SERVER/websrv_help_functions.c ****                 }
+  64:../SERVER/websrv_help_functions.c ****                 *strbuf='\0';
+ 2119              		.loc 1 64 0
+ 2120 00f4 4FF00003 		mov	r3, #0
+ 2121              	.LVL13:
+ 2122 00f8 0B70     		strb	r3, [r1, #0]
+ 2123 00fa 01E0     		b	.L8
+ 2124              	.LVL14:
+ 2125              	.L2:
+ 2126 00fc 4FF00006 		mov	r6, #0
+ 2127              	.LVL15:
+ 2128              	.L8:
+  65:../SERVER/websrv_help_functions.c ****         }
+  66:../SERVER/websrv_help_functions.c ****         // return 1 if found (the string in strbuf might still be an empty string)
+  67:../SERVER/websrv_help_functions.c ****         // otherwise return 0
+  68:../SERVER/websrv_help_functions.c **** 				str = str_cpy;
+  69:../SERVER/websrv_help_functions.c ****         return(found);
+  70:../SERVER/websrv_help_functions.c **** }
+ 2129              		.loc 1 70 0
+ 2130 0100 3046     		mov	r0, r6
+ 2131              	.LVL16:
+ 2132 0102 BDE8F005 		pop	{r4, r5, r6, r7, r8, sl}
+ 2133 0106 7047     		bx	lr
+ 2134              		.cfi_endproc
+ 2135              	.LFE0:
+ 2137              		.section	.text.h2int,"ax",%progbits
+ 2138              		.align	2
+ 2139              		.global	h2int
+ 2140              		.thumb
+ 2141              		.thumb_func
+ 2143              	h2int:
+ 2144              	.LFB1:
+  71:../SERVER/websrv_help_functions.c **** 
+  72:../SERVER/websrv_help_functions.c **** // convert a single hex digit character to its integer value
+  73:../SERVER/websrv_help_functions.c **** unsigned char h2int(char c)
+  74:../SERVER/websrv_help_functions.c **** {
+ 2145              		.loc 1 74 0
+ 2146              		.cfi_startproc
+ 2147              		@ args = 0, pretend = 0, frame = 0
+ 2148              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2149              		@ link register save eliminated.
+ 2150              	.LVL17:
+ 2151 0000 0346     		mov	r3, r0
+  75:../SERVER/websrv_help_functions.c ****         if (c >= '0' && c <='9'){
+ 2152              		.loc 1 75 0
+ 2153 0002 A0F13000 		sub	r0, r0, #48
+ 2154              	.LVL18:
+ 2155 0006 C0B2     		uxtb	r0, r0
+ 2156 0008 0928     		cmp	r0, #9
+ 2157 000a 14D9     		bls	.L15
+  76:../SERVER/websrv_help_functions.c ****                 return((unsigned char)c - '0');
+  77:../SERVER/websrv_help_functions.c ****         }
+  78:../SERVER/websrv_help_functions.c ****         if (c >= 'a' && c <='f'){
+ 2158              		.loc 1 78 0
+ 2159 000c A3F16102 		sub	r2, r3, #97
+ 2160 0010 D2B2     		uxtb	r2, r2
+ 2161 0012 052A     		cmp	r2, #5
+ 2162 0014 03D8     		bhi	.L16
+  79:../SERVER/websrv_help_functions.c ****                 return((unsigned char)c - 'a' + 10);
+ 2163              		.loc 1 79 0
+ 2164 0016 A3F15700 		sub	r0, r3, #87
+ 2165 001a C0B2     		uxtb	r0, r0
+ 2166 001c 7047     		bx	lr
+ 2167              	.L16:
+  80:../SERVER/websrv_help_functions.c ****         }
+  81:../SERVER/websrv_help_functions.c ****         if (c >= 'A' && c <='F'){
+ 2168              		.loc 1 81 0
+ 2169 001e A3F14102 		sub	r2, r3, #65
+ 2170 0022 D2B2     		uxtb	r2, r2
+ 2171 0024 052A     		cmp	r2, #5
+  82:../SERVER/websrv_help_functions.c ****                 return((unsigned char)c - 'A' + 10);
+ 2172              		.loc 1 82 0
+ 2173 0026 9CBF     		itt	ls
+ 2174 0028 A3F13700 		subls	r0, r3, #55
+ 2175 002c C0B2     		uxtbls	r0, r0
+ 2176              		.loc 1 81 0
+ 2177 002e 02D9     		bls	.L15
+ 2178 0030 4FF00000 		mov	r0, #0
+ 2179 0034 7047     		bx	lr
+ 2180              	.L15:
+  83:../SERVER/websrv_help_functions.c ****         }
+  84:../SERVER/websrv_help_functions.c ****         return(0);
+  85:../SERVER/websrv_help_functions.c **** }
+ 2181              		.loc 1 85 0
+ 2182 0036 7047     		bx	lr
+ 2183              		.cfi_endproc
+ 2184              	.LFE1:
+ 2186              		.section	.text.urldecode,"ax",%progbits
+ 2187              		.align	2
+ 2188              		.global	urldecode
+ 2189              		.thumb
+ 2190              		.thumb_func
+ 2192              	urldecode:
+ 2193              	.LFB2:
+  86:../SERVER/websrv_help_functions.c **** 
+  87:../SERVER/websrv_help_functions.c **** // decode a url string e.g "hello%20joe" or "hello+joe" becomes "hello joe"
+  88:../SERVER/websrv_help_functions.c **** void urldecode(char *urlbuf)
+  89:../SERVER/websrv_help_functions.c **** {
+ 2194              		.loc 1 89 0
+ 2195              		.cfi_startproc
+ 2196              		@ args = 0, pretend = 0, frame = 0
+ 2197              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2198              	.LVL19:
+ 2199 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 2200              	.LCFI1:
+ 2201              		.cfi_def_cfa_offset 24
+ 2202 0002 0446     		mov	r4, r0
+ 2203              		.cfi_offset 14, -4
+ 2204              		.cfi_offset 7, -8
+ 2205              		.cfi_offset 6, -12
+ 2206              		.cfi_offset 5, -16
+ 2207              		.cfi_offset 4, -20
+ 2208              		.cfi_offset 3, -24
+  90:../SERVER/websrv_help_functions.c ****         char c;
+  91:../SERVER/websrv_help_functions.c ****         char *dst;
+  92:../SERVER/websrv_help_functions.c ****         dst=urlbuf;
+  93:../SERVER/websrv_help_functions.c ****         while ((c = *urlbuf)) {
+ 2209              		.loc 1 93 0
+ 2210 0004 0578     		ldrb	r5, [r0, #0]	@ zero_extendqisi2
+ 2211              	.LVL20:
+ 2212 0006 0DB9     		cbnz	r5, .L20
+ 2213 0008 0646     		mov	r6, r0
+ 2214              	.LVL21:
+ 2215 000a 1CE0     		b	.L21
+ 2216              	.LVL22:
+ 2217              	.L20:
+ 2218 000c 0646     		mov	r6, r0
+ 2219              	.LVL23:
+  94:../SERVER/websrv_help_functions.c ****                 if (c == '+') c = ' ';
+ 2220              		.loc 1 94 0
+ 2221 000e 4FF02007 		mov	r7, #32
+ 2222              	.LVL24:
+ 2223              	.L24:
+ 2224 0012 2B2D     		cmp	r5, #43
+ 2225 0014 08BF     		it	eq
+ 2226 0016 3D46     		moveq	r5, r7
+ 2227 0018 0FD0     		beq	.L23
+ 2228              	.LVL25:
+  95:../SERVER/websrv_help_functions.c ****                 if (c == '%') {
+ 2229              		.loc 1 95 0
+ 2230 001a 252D     		cmp	r5, #37
+ 2231 001c 0DD1     		bne	.L23
+  96:../SERVER/websrv_help_functions.c ****                         urlbuf++;
+ 2232              		.loc 1 96 0
+ 2233 001e 04F10103 		add	r3, r4, #1
+ 2234              	.LVL26:
+  97:../SERVER/websrv_help_functions.c ****                         c = *urlbuf;
+  98:../SERVER/websrv_help_functions.c ****                         urlbuf++;
+ 2235              		.loc 1 98 0
+ 2236 0022 1C46     		mov	r4, r3
+  99:../SERVER/websrv_help_functions.c ****                         c = (h2int(c) << 4) | h2int(*urlbuf);
+ 2237              		.loc 1 99 0
+ 2238 0024 1878     		ldrb	r0, [r3, #0]	@ zero_extendqisi2
+ 2239 0026 FFF7FEFF 		bl	h2int
+ 2240              	.LVL27:
+ 2241 002a 0546     		mov	r5, r0
+ 2242              	.LVL28:
+ 2243 002c 14F8010F 		ldrb	r0, [r4, #1]!	@ zero_extendqisi2
+ 2244 0030 FFF7FEFF 		bl	h2int
+ 2245 0034 40EA0515 		orr	r5, r0, r5, lsl #4
+ 2246 0038 EDB2     		uxtb	r5, r5
+ 2247              	.LVL29:
+ 2248              	.L23:
+ 100:../SERVER/websrv_help_functions.c ****                 }
+ 101:../SERVER/websrv_help_functions.c ****                 *dst = c;
+ 2249              		.loc 1 101 0
+ 2250 003a 06F8015B 		strb	r5, [r6], #1
+ 2251              		.loc 1 93 0
+ 2252 003e 14F8015F 		ldrb	r5, [r4, #1]!	@ zero_extendqisi2
+ 2253              	.LVL30:
+ 2254 0042 002D     		cmp	r5, #0
+ 2255 0044 E5D1     		bne	.L24
+ 2256              	.L21:
+ 102:../SERVER/websrv_help_functions.c ****                 dst++;
+ 103:../SERVER/websrv_help_functions.c ****                 urlbuf++;
+ 104:../SERVER/websrv_help_functions.c ****         }
+ 105:../SERVER/websrv_help_functions.c ****         *dst = '\0';
+ 2257              		.loc 1 105 0
+ 2258 0046 4FF00003 		mov	r3, #0
+ 2259 004a 3370     		strb	r3, [r6, #0]
+ 106:../SERVER/websrv_help_functions.c **** }
+ 2260              		.loc 1 106 0
+ 2261 004c F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 2262              		.cfi_endproc
+ 2263              	.LFE2:
+ 2265 004e 00BF     		.section	.text.int2h,"ax",%progbits
+ 2266              		.align	2
+ 2267              		.global	int2h
+ 2268              		.thumb
+ 2269              		.thumb_func
+ 2271              	int2h:
+ 2272              	.LFB3:
+ 107:../SERVER/websrv_help_functions.c **** 
+ 108:../SERVER/websrv_help_functions.c **** #endif //  FROMDECODE_websrv_help
+ 109:../SERVER/websrv_help_functions.c **** 
+ 110:../SERVER/websrv_help_functions.c **** #ifdef URLENCODE_websrv_help
+ 111:../SERVER/websrv_help_functions.c **** 
+ 112:../SERVER/websrv_help_functions.c **** // convert a single character to a 2 digit hex str
+ 113:../SERVER/websrv_help_functions.c **** // a terminating '\0' is added
+ 114:../SERVER/websrv_help_functions.c **** void int2h(char c, char *hstr)
+ 115:../SERVER/websrv_help_functions.c **** {
+ 2273              		.loc 1 115 0
+ 2274              		.cfi_startproc
+ 2275              		@ args = 0, pretend = 0, frame = 0
+ 2276              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2277              		@ link register save eliminated.
+ 2278              	.LVL31:
+ 116:../SERVER/websrv_help_functions.c ****         hstr[1]=(c & 0xf)+'0';
+ 2279              		.loc 1 116 0
+ 2280 0000 0B46     		mov	r3, r1
+ 2281 0002 00F00F02 		and	r2, r0, #15
+ 2282 0006 02F1300C 		add	ip, r2, #48
+ 2283 000a 03F801CF 		strb	ip, [r3, #1]!
+ 117:../SERVER/websrv_help_functions.c ****         if ((c & 0xf) >9){
+ 2284              		.loc 1 117 0
+ 2285 000e 092A     		cmp	r2, #9
+ 118:../SERVER/websrv_help_functions.c ****                 hstr[1]=(c & 0xf) - 10 + 'a';
+ 2286              		.loc 1 118 0
+ 2287 0010 C4BF     		itt	gt
+ 2288 0012 5732     		addgt	r2, r2, #87
+ 2289 0014 1A70     		strbgt	r2, [r3, #0]
+ 119:../SERVER/websrv_help_functions.c ****         }
+ 120:../SERVER/websrv_help_functions.c ****         c=(c>>4)&0xf;
+ 2290              		.loc 1 120 0
+ 2291 0016 4FEA1010 		lsr	r0, r0, #4
+ 2292              	.LVL32:
+ 121:../SERVER/websrv_help_functions.c ****         hstr[0]=c+'0';
+ 2293              		.loc 1 121 0
+ 2294 001a 00F13003 		add	r3, r0, #48
+ 2295 001e 0B70     		strb	r3, [r1, #0]
+ 122:../SERVER/websrv_help_functions.c ****         if (c > 9){
+ 2296              		.loc 1 122 0
+ 2297 0020 0928     		cmp	r0, #9
+ 123:../SERVER/websrv_help_functions.c ****                 hstr[0]=c - 10 + 'a';
+ 2298              		.loc 1 123 0
+ 2299 0022 84BF     		itt	hi
+ 2300 0024 5730     		addhi	r0, r0, #87
+ 2301              	.LVL33:
+ 2302 0026 0870     		strbhi	r0, [r1, #0]
+ 124:../SERVER/websrv_help_functions.c ****         }
+ 125:../SERVER/websrv_help_functions.c ****         hstr[2]='\0';
+ 2303              		.loc 1 125 0
+ 2304 0028 4FF00003 		mov	r3, #0
+ 2305 002c 8B70     		strb	r3, [r1, #2]
+ 126:../SERVER/websrv_help_functions.c **** }
+ 2306              		.loc 1 126 0
+ 2307 002e 7047     		bx	lr
+ 2308              		.cfi_endproc
+ 2309              	.LFE3:
+ 2311              		.section	.text.urlencode,"ax",%progbits
+ 2312              		.align	2
+ 2313              		.global	urlencode
+ 2314              		.thumb
+ 2315              		.thumb_func
+ 2317              	urlencode:
+ 2318              	.LFB4:
+ 127:../SERVER/websrv_help_functions.c **** 
+ 128:../SERVER/websrv_help_functions.c **** // There must be enough space in urlbuf. In the worst case that would be
+ 129:../SERVER/websrv_help_functions.c **** // 3 times the length of str
+ 130:../SERVER/websrv_help_functions.c **** void urlencode(const char *str,char *urlbuf)
+ 131:../SERVER/websrv_help_functions.c **** {
+ 2319              		.loc 1 131 0
+ 2320              		.cfi_startproc
+ 2321              		@ args = 0, pretend = 0, frame = 0
+ 2322              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2323              	.LVL34:
+ 2324 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 2325              	.LCFI2:
+ 2326              		.cfi_def_cfa_offset 24
+ 2327 0004 0D46     		mov	r5, r1
+ 2328              		.cfi_offset 14, -4
+ 2329              		.cfi_offset 8, -8
+ 2330              		.cfi_offset 7, -12
+ 2331              		.cfi_offset 6, -16
+ 2332              		.cfi_offset 5, -20
+ 2333              		.cfi_offset 4, -24
+ 2334              		.loc 1 131 0
+ 2335 0006 00F10104 		add	r4, r0, #1
+ 132:../SERVER/websrv_help_functions.c ****         char c;
+ 133:../SERVER/websrv_help_functions.c ****         while ((c = *str)) {
+ 134:../SERVER/websrv_help_functions.c ****                 if (c == ' '||isalnum(c)){ 
+ 2336              		.loc 1 134 0
+ 2337 000a 40F20006 		movw	r6, #:lower16:__ctype_ptr__
+ 2338 000e C0F20006 		movt	r6, #:upper16:__ctype_ptr__
+ 135:../SERVER/websrv_help_functions.c ****                         if (c == ' '){ 
+ 136:../SERVER/websrv_help_functions.c ****                                 c = '+';
+ 137:../SERVER/websrv_help_functions.c ****                         }
+ 138:../SERVER/websrv_help_functions.c ****                         *urlbuf=c;
+ 139:../SERVER/websrv_help_functions.c ****                         str++;
+ 140:../SERVER/websrv_help_functions.c ****                         urlbuf++;
+ 141:../SERVER/websrv_help_functions.c ****                         continue;
+ 142:../SERVER/websrv_help_functions.c ****                 }
+ 143:../SERVER/websrv_help_functions.c ****                 *urlbuf='%';
+ 2339              		.loc 1 143 0
+ 2340 0012 4FF02508 		mov	r8, #37
+ 2341              		.loc 1 134 0
+ 2342 0016 4FF02B07 		mov	r7, #43
+ 2343              	.LVL35:
+ 2344              		.loc 1 133 0
+ 2345 001a 15E0     		b	.L32
+ 2346              	.LVL36:
+ 2347              	.L37:
+ 2348              		.loc 1 134 0
+ 2349 001c 2028     		cmp	r0, #32
+ 2350 001e 08BF     		it	eq
+ 2351 0020 3846     		moveq	r0, r7
+ 2352 0022 05D0     		beq	.L34
+ 2353 0024 3368     		ldr	r3, [r6, #0]
+ 2354 0026 0344     		add	r3, r0, r3
+ 2355 0028 5B78     		ldrb	r3, [r3, #1]	@ zero_extendqisi2
+ 2356 002a 13F0070F 		tst	r3, #7
+ 2357 002e 02D0     		beq	.L35
+ 2358              	.L34:
+ 2359              		.loc 1 138 0
+ 2360 0030 05F8010B 		strb	r0, [r5], #1
+ 2361              		.loc 1 141 0
+ 2362 0034 06E0     		b	.L36
+ 2363              	.L35:
+ 2364              		.loc 1 143 0
+ 2365 0036 05F8018B 		strb	r8, [r5], #1
+ 144:../SERVER/websrv_help_functions.c ****                 urlbuf++;
+ 145:../SERVER/websrv_help_functions.c ****                 int2h(c,urlbuf);
+ 2366              		.loc 1 145 0
+ 2367 003a 2946     		mov	r1, r5
+ 2368 003c FFF7FEFF 		bl	int2h
+ 2369              	.LVL37:
+ 146:../SERVER/websrv_help_functions.c ****                 urlbuf++;
+ 147:../SERVER/websrv_help_functions.c ****                 urlbuf++;
+ 2370              		.loc 1 147 0
+ 2371 0040 05F10205 		add	r5, r5, #2
+ 2372              	.LVL38:
+ 2373              	.L36:
+ 2374 0044 04F10104 		add	r4, r4, #1
+ 2375              	.LVL39:
+ 2376              	.L32:
+ 2377              		.loc 1 133 0
+ 2378 0048 14F8010C 		ldrb	r0, [r4, #-1]	@ zero_extendqisi2
+ 2379              	.LVL40:
+ 2380 004c 0028     		cmp	r0, #0
+ 2381 004e E5D1     		bne	.L37
+ 148:../SERVER/websrv_help_functions.c ****                 str++;
+ 149:../SERVER/websrv_help_functions.c ****         }
+ 150:../SERVER/websrv_help_functions.c ****         *urlbuf='\0';
+ 2382              		.loc 1 150 0
+ 2383 0050 4FF00003 		mov	r3, #0
+ 2384 0054 2B70     		strb	r3, [r5, #0]
+ 151:../SERVER/websrv_help_functions.c **** }
+ 2385              		.loc 1 151 0
+ 2386 0056 BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 2387              		.cfi_endproc
+ 2388              	.LFE4:
+ 2390 005a 00BF     		.section	.text.mk_net_str,"ax",%progbits
+ 2391              		.align	2
+ 2392              		.global	mk_net_str
+ 2393              		.thumb
+ 2394              		.thumb_func
+ 2396              	mk_net_str:
+ 2397              	.LFB6:
+ 152:../SERVER/websrv_help_functions.c **** 
+ 153:../SERVER/websrv_help_functions.c **** #endif // URLENCODE_websrv_help
+ 154:../SERVER/websrv_help_functions.c **** 
+ 155:../SERVER/websrv_help_functions.c **** // parse a string that is an IP address and extract the IP to ip_byte_str
+ 156:../SERVER/websrv_help_functions.c **** uint8_t parse_ip(uint8_t *ip_byte_str,const char *str)
+ 157:../SERVER/websrv_help_functions.c **** {
+ 158:../SERVER/websrv_help_functions.c ****         char strbuf[4];
+ 159:../SERVER/websrv_help_functions.c ****         uint8_t bufpos=0;
+ 160:../SERVER/websrv_help_functions.c ****         uint8_t i=0;
+ 161:../SERVER/websrv_help_functions.c ****         while(i<4){
+ 162:../SERVER/websrv_help_functions.c ****                 ip_byte_str[i]=0;
+ 163:../SERVER/websrv_help_functions.c ****                 i++;
+ 164:../SERVER/websrv_help_functions.c ****         }
+ 165:../SERVER/websrv_help_functions.c ****         i=0;
+ 166:../SERVER/websrv_help_functions.c ****         while(*str && i<4){
+ 167:../SERVER/websrv_help_functions.c ****                 // if a number then start
+ 168:../SERVER/websrv_help_functions.c ****                 if (bufpos < 3 && isdigit(*str)){
+ 169:../SERVER/websrv_help_functions.c ****                         strbuf[bufpos]=*str; // copy
+ 170:../SERVER/websrv_help_functions.c ****                         bufpos++;
+ 171:../SERVER/websrv_help_functions.c ****                 }
+ 172:../SERVER/websrv_help_functions.c ****                 if (bufpos && *str == '.'){
+ 173:../SERVER/websrv_help_functions.c ****                         strbuf[bufpos]='\0';
+ 174:../SERVER/websrv_help_functions.c ****                         ip_byte_str[i]=(atoi(strbuf)&0xff);
+ 175:../SERVER/websrv_help_functions.c ****                         i++;
+ 176:../SERVER/websrv_help_functions.c ****                         bufpos=0;
+ 177:../SERVER/websrv_help_functions.c ****                 }
+ 178:../SERVER/websrv_help_functions.c ****                 str++;
+ 179:../SERVER/websrv_help_functions.c ****         }
+ 180:../SERVER/websrv_help_functions.c ****         if (i==3){ // must have read the first componets of the IP
+ 181:../SERVER/websrv_help_functions.c ****                 strbuf[bufpos]='\0';
+ 182:../SERVER/websrv_help_functions.c ****                 ip_byte_str[i]=(atoi(strbuf)&0xff);
+ 183:../SERVER/websrv_help_functions.c ****                 return(0);
+ 184:../SERVER/websrv_help_functions.c ****         }
+ 185:../SERVER/websrv_help_functions.c ****         return(1);
+ 186:../SERVER/websrv_help_functions.c **** }
+ 187:../SERVER/websrv_help_functions.c **** 
+ 188:../SERVER/websrv_help_functions.c **** // take a byte string and convert it to a human readable display string  (base is 10 for ip and 16 
+ 189:../SERVER/websrv_help_functions.c **** void mk_net_str(char *resultstr,uint8_t *ip_byte_str,uint8_t len,char separator,uint8_t base)
+ 190:../SERVER/websrv_help_functions.c **** {
+ 2398              		.loc 1 190 0
+ 2399              		.cfi_startproc
+ 2400              		@ args = 4, pretend = 0, frame = 0
+ 2401              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2402              	.LVL41:
+ 2403 0000 2DE9F84F 		push	{r3, r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 2404              	.LCFI3:
+ 2405              		.cfi_def_cfa_offset 40
+ 2406              	.LVL42:
+ 2407 0004 0646     		mov	r6, r0
+ 2408              		.cfi_offset 14, -4
+ 2409              		.cfi_offset 11, -8
+ 2410              		.cfi_offset 10, -12
+ 2411              		.cfi_offset 9, -16
+ 2412              		.cfi_offset 8, -20
+ 2413              		.cfi_offset 7, -24
+ 2414              		.cfi_offset 6, -28
+ 2415              		.cfi_offset 5, -32
+ 2416              		.cfi_offset 4, -36
+ 2417              		.cfi_offset 3, -40
+ 2418 0006 8946     		mov	r9, r1
+ 2419 0008 9846     		mov	r8, r3
+ 2420              	.LVL43:
+ 2421 000a 9DF828A0 		ldrb	sl, [sp, #40]	@ zero_extendqisi2
+ 2422              	.LVL44:
+ 191:../SERVER/websrv_help_functions.c ****         uint8_t i=0;
+ 192:../SERVER/websrv_help_functions.c ****         uint8_t j=0;
+ 193:../SERVER/websrv_help_functions.c ****         while(i<len){
+ 2423              		.loc 1 193 0
+ 2424 000e 9346     		mov	fp, r2
+ 2425 0010 12B9     		cbnz	r2, .L40
+ 2426              	.LVL45:
+ 2427 0012 4FF00004 		mov	r4, #0
+ 2428              	.LVL46:
+ 2429 0016 20E0     		b	.L41
+ 2430              	.LVL47:
+ 2431              	.L40:
+ 2432 0018 4FF00007 		mov	r7, #0
+ 2433 001c 3C46     		mov	r4, r7
+ 2434              	.LVL48:
+ 2435              	.L45:
+ 194:../SERVER/websrv_help_functions.c ****                 itoa((int)ip_byte_str[i],&resultstr[j],base);
+ 2436              		.loc 1 194 0
+ 2437 001e 06EB0405 		add	r5, r6, r4
+ 2438 0022 19F80700 		ldrb	r0, [r9, r7]	@ zero_extendqisi2
+ 2439 0026 2946     		mov	r1, r5
+ 2440 0028 5246     		mov	r2, sl
+ 2441              	.LVL49:
+ 2442 002a FFF7FEFF 		bl	itoa
+ 195:../SERVER/websrv_help_functions.c ****                 // search end of str:
+ 196:../SERVER/websrv_help_functions.c ****                 while(resultstr[j]){j++;}
+ 2443              		.loc 1 196 0
+ 2444 002e 2B78     		ldrb	r3, [r5, #0]	@ zero_extendqisi2
+ 2445 0030 3BB1     		cbz	r3, .L42
+ 2446              	.L47:
+ 2447 0032 04F10104 		add	r4, r4, #1
+ 2448              	.LVL50:
+ 2449 0036 E4B2     		uxtb	r4, r4
+ 2450              	.LVL51:
+ 2451 0038 06EB0405 		add	r5, r6, r4
+ 2452 003c 2B78     		ldrb	r3, [r5, #0]	@ zero_extendqisi2
+ 2453 003e 002B     		cmp	r3, #0
+ 2454 0040 F7D1     		bne	.L47
+ 2455              	.L42:
+ 197:../SERVER/websrv_help_functions.c ****                 if (separator){ // no separator, separator==NULL is as well possible, suggested by 
+ 2456              		.loc 1 197 0
+ 2457 0042 B8F1000F 		cmp	r8, #0
+ 2458 0046 04D0     		beq	.L44
+ 198:../SERVER/websrv_help_functions.c ****                         resultstr[j]=separator;
+ 2459              		.loc 1 198 0
+ 2460 0048 85F80080 		strb	r8, [r5, #0]
+ 199:../SERVER/websrv_help_functions.c ****                         j++;
+ 2461              		.loc 1 199 0
+ 2462 004c 04F10104 		add	r4, r4, #1
+ 2463              	.LVL52:
+ 2464 0050 E4B2     		uxtb	r4, r4
+ 2465              	.LVL53:
+ 2466              	.L44:
+ 2467 0052 07F10107 		add	r7, r7, #1
+ 2468              		.loc 1 193 0
+ 2469 0056 5F45     		cmp	r7, fp
+ 2470 0058 E1DB     		blt	.L45
+ 2471              	.LVL54:
+ 2472              	.L41:
+ 200:../SERVER/websrv_help_functions.c ****                 }
+ 201:../SERVER/websrv_help_functions.c ****                 i++;
+ 202:../SERVER/websrv_help_functions.c ****         }
+ 203:../SERVER/websrv_help_functions.c ****         j--;
+ 204:../SERVER/websrv_help_functions.c ****         resultstr[j]='\0';
+ 2473              		.loc 1 204 0
+ 2474 005a 04F1FF33 		add	r3, r4, #-1
+ 2475 005e DBB2     		uxtb	r3, r3
+ 2476 0060 4FF00002 		mov	r2, #0
+ 2477              	.LVL55:
+ 2478 0064 F254     		strb	r2, [r6, r3]
+ 205:../SERVER/websrv_help_functions.c **** }
+ 2479              		.loc 1 205 0
+ 2480 0066 BDE8F88F 		pop	{r3, r4, r5, r6, r7, r8, r9, sl, fp, pc}
+ 2481              		.cfi_endproc
+ 2482              	.LFE6:
+ 2484 006a 00BF     		.section	.text.parse_ip,"ax",%progbits
+ 2485              		.align	2
+ 2486              		.global	parse_ip
+ 2487              		.thumb
+ 2488              		.thumb_func
+ 2490              	parse_ip:
+ 2491              	.LFB5:
+ 2492              		.loc 1 157 0
+ 2493              		.cfi_startproc
+ 2494              		@ args = 0, pretend = 0, frame = 8
+ 2495              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2496              	.LVL56:
+ 2497 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, sl, lr}
+ 2498              	.LCFI4:
+ 2499              		.cfi_def_cfa_offset 32
+ 2500 0004 82B0     		sub	sp, sp, #8
+ 2501              	.LCFI5:
+ 2502              		.cfi_def_cfa_offset 40
+ 2503 0006 0746     		mov	r7, r0
+ 2504              		.cfi_offset 14, -4
+ 2505              		.cfi_offset 10, -8
+ 2506              		.cfi_offset 9, -12
+ 2507              		.cfi_offset 8, -16
+ 2508              		.cfi_offset 7, -20
+ 2509              		.cfi_offset 6, -24
+ 2510              		.cfi_offset 5, -28
+ 2511              		.cfi_offset 4, -32
+ 2512              		.loc 1 157 0
+ 2513 0008 4FF00003 		mov	r3, #0
+ 2514              		.loc 1 162 0
+ 2515 000c 1A46     		mov	r2, r3
+ 2516              	.LVL57:
+ 2517              	.L51:
+ 2518 000e FA54     		strb	r2, [r7, r3]
+ 2519 0010 03F10103 		add	r3, r3, #1
+ 2520              		.loc 1 161 0
+ 2521 0014 042B     		cmp	r3, #4
+ 2522 0016 FAD1     		bne	.L51
+ 2523              		.loc 1 166 0
+ 2524 0018 0A78     		ldrb	r2, [r1, #0]	@ zero_extendqisi2
+ 2525 001a 002A     		cmp	r2, #0
+ 2526 001c 45D0     		beq	.L52
+ 2527 001e 0C46     		mov	r4, r1
+ 2528 0020 4FF00005 		mov	r5, #0
+ 2529              	.LVL58:
+ 2530 0024 2B46     		mov	r3, r5
+ 2531              	.LVL59:
+ 2532              		.loc 1 168 0
+ 2533 0026 40F20006 		movw	r6, #:lower16:__ctype_ptr__
+ 2534 002a C0F20006 		movt	r6, #:upper16:__ctype_ptr__
+ 2535              		.loc 1 173 0
+ 2536 002e A846     		mov	r8, r5
+ 2537              		.loc 1 174 0
+ 2538 0030 0DF1040A 		add	sl, sp, #4
+ 2539              		.loc 1 175 0
+ 2540 0034 A946     		mov	r9, r5
+ 2541              	.LVL60:
+ 2542              	.L55:
+ 2543              		.loc 1 168 0
+ 2544 0036 022B     		cmp	r3, #2
+ 2545 0038 0CD8     		bhi	.L53
+ 2546              	.LVL61:
+ 2547 003a 3168     		ldr	r1, [r6, #0]
+ 2548              	.LVL62:
+ 2549 003c 1144     		add	r1, r2, r1
+ 2550 003e 4978     		ldrb	r1, [r1, #1]	@ zero_extendqisi2
+ 2551 0040 11F0040F 		tst	r1, #4
+ 2552              		.loc 1 169 0
+ 2553 0044 1FBF     		itttt	ne
+ 2554 0046 02A8     		addne	r0, sp, #8
+ 2555 0048 C118     		addne	r1, r0, r3
+ 2556 004a 01F8042C 		strbne	r2, [r1, #-4]
+ 2557              		.loc 1 170 0
+ 2558 004e 0133     		addne	r3, r3, #1
+ 2559              	.LVL63:
+ 2560 0050 18BF     		it	ne
+ 2561 0052 DBB2     		uxtbne	r3, r3
+ 2562              	.LVL64:
+ 2563              	.L53:
+ 2564              		.loc 1 172 0
+ 2565 0054 73B1     		cbz	r3, .L54
+ 2566 0056 2278     		ldrb	r2, [r4, #0]	@ zero_extendqisi2
+ 2567 0058 2E2A     		cmp	r2, #46
+ 2568 005a 0BD1     		bne	.L54
+ 2569              		.loc 1 173 0
+ 2570 005c 02AA     		add	r2, sp, #8
+ 2571 005e 1344     		add	r3, r2, r3
+ 2572              	.LVL65:
+ 2573 0060 03F8048C 		strb	r8, [r3, #-4]
+ 2574              		.loc 1 174 0
+ 2575 0064 5046     		mov	r0, sl
+ 2576 0066 FFF7FEFF 		bl	atoi
+ 2577              	.LVL66:
+ 2578 006a 7855     		strb	r0, [r7, r5]
+ 2579              		.loc 1 175 0
+ 2580 006c 05F10105 		add	r5, r5, #1
+ 2581              	.LVL67:
+ 2582 0070 EDB2     		uxtb	r5, r5
+ 2583              	.LVL68:
+ 2584 0072 4B46     		mov	r3, r9
+ 2585              	.LVL69:
+ 2586              	.L54:
+ 2587              		.loc 1 166 0
+ 2588 0074 14F8012F 		ldrb	r2, [r4, #1]!	@ zero_extendqisi2
+ 2589 0078 032D     		cmp	r5, #3
+ 2590 007a 8CBF     		ite	hi
+ 2591 007c 0021     		movhi	r1, #0
+ 2592 007e 0121     		movls	r1, #1
+ 2593              	.LVL70:
+ 2594 0080 002A     		cmp	r2, #0
+ 2595 0082 0CBF     		ite	eq
+ 2596 0084 0021     		moveq	r1, #0
+ 2597 0086 01F00101 		andne	r1, r1, #1
+ 2598 008a 0029     		cmp	r1, #0
+ 2599 008c D3D1     		bne	.L55
+ 2600              		.loc 1 180 0
+ 2601 008e 032D     		cmp	r5, #3
+ 2602 0090 0BD1     		bne	.L52
+ 2603              		.loc 1 181 0
+ 2604 0092 02A8     		add	r0, sp, #8
+ 2605 0094 0344     		add	r3, r0, r3
+ 2606              	.LVL71:
+ 2607 0096 4FF00004 		mov	r4, #0
+ 2608 009a 03F8044C 		strb	r4, [r3, #-4]
+ 2609              		.loc 1 182 0
+ 2610 009e 01A8     		add	r0, sp, #4
+ 2611 00a0 FFF7FEFF 		bl	atoi
+ 2612 00a4 F870     		strb	r0, [r7, #3]
+ 2613 00a6 2046     		mov	r0, r4
+ 2614              		.loc 1 183 0
+ 2615 00a8 01E0     		b	.L56
+ 2616              	.LVL72:
+ 2617              	.L52:
+ 2618 00aa 4FF00100 		mov	r0, #1
+ 2619              	.LVL73:
+ 2620              	.L56:
+ 2621              		.loc 1 186 0
+ 2622 00ae 02B0     		add	sp, sp, #8
+ 2623 00b0 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+ 2624              		.cfi_endproc
+ 2625              	.LFE5:
+ 2627              		.text
+ 2628              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 websrv_help_functions.c
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:1981   .text.find_key_val:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:1986   .text.find_key_val:00000000 find_key_val
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2138   .text.h2int:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2143   .text.h2int:00000000 h2int
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2187   .text.urldecode:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2192   .text.urldecode:00000000 urldecode
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2266   .text.int2h:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2271   .text.int2h:00000000 int2h
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2312   .text.urlencode:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2317   .text.urlencode:00000000 urlencode
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2391   .text.mk_net_str:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2396   .text.mk_net_str:00000000 mk_net_str
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2485   .text.parse_ip:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccOfFdKU.s:2490   .text.parse_ip:00000000 parse_ip
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+__ctype_ptr__
+itoa
+atoi

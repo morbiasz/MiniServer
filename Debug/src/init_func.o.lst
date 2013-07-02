@@ -1,0 +1,793 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"init_func.c"
+  23              	.Ltext0:
+  24              		.file 1 "../src/init_func.c"
+ 19966              		.align	2
+ 19967              		.global	_sbrk
+ 19968              		.thumb
+ 19969              		.thumb_func
+ 19971              	_sbrk:
+ 19972              	.LFB34:
+   1:../src/init_func.c **** #include "init_func.h"
+   2:../src/init_func.c **** #include "stm32f10x.h"
+   3:../src/init_func.c **** #include <stm32f10x_tim.h>
+   4:../src/init_func.c **** #include <server_config.h>
+   5:../src/init_func.c **** 
+   6:../src/init_func.c **** //Configures output/input directions
+   7:../src/init_func.c **** void GPIO_Config(void) {
+   8:../src/init_func.c **** 
+   9:../src/init_func.c **** 	//STM32 Discovery leds: green( Pin_9) and blue (Pin_8)
+  10:../src/init_func.c **** 	GPIO_InitTypeDef  GPIO_InitStructure;
+  11:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_8 ;
+  12:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  13:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  14:../src/init_func.c **** 	GPIO_Init(GPIOC, &GPIO_InitStructure);
+  15:../src/init_func.c **** 
+  16:../src/init_func.c **** 	//STM32 Discovery onboard button
+  17:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+  18:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  19:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  20:../src/init_func.c **** 	GPIO_Init(GPIOA, &GPIO_InitStructure);
+  21:../src/init_func.c **** 	
+  22:../src/init_func.c **** 	//CS dla karty i enc28j60
+  23:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3 | GPIO_Pin_4;
+  24:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  25:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  26:../src/init_func.c **** 	GPIO_Init(GPIOA, &GPIO_InitStructure);
+  27:../src/init_func.c **** 
+  28:../src/init_func.c **** 	#if RGB_DIODE
+  29:../src/init_func.c **** 	//Pin dla Channel 3,2,1 PWM TIM4
+  30:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_7 | GPIO_Pin_6;
+  31:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  32:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
+  33:../src/init_func.c **** 	GPIO_Init(GPIOB, &GPIO_InitStructure);	
+  34:../src/init_func.c **** 	#endif
+  35:../src/init_func.c **** 	
+  36:../src/init_func.c **** 	#if RC5_CONTROL
+  37:../src/init_func.c **** 	//Pin for RC5 interrupt
+  38:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+  39:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  40:../src/init_func.c **** 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  41:../src/init_func.c **** 	GPIO_Init(GPIOC, &GPIO_InitStructure);	
+  42:../src/init_func.c **** 	#endif
+  43:../src/init_func.c **** 	
+  44:../src/init_func.c **** 	//Also PC10 is used for 1Wire
+  45:../src/init_func.c **** 
+  46:../src/init_func.c **** }
+  47:../src/init_func.c **** 
+  48:../src/init_func.c **** //PLL configuration and clock distribution
+  49:../src/init_func.c **** void RCC_Conf(void) {
+  50:../src/init_func.c ****   ErrorStatus HSEStartUpStatus;	
+  51:../src/init_func.c **** 
+  52:../src/init_func.c ****   /* SYSCLK, HCLK, PCLK2 and PCLK1 configuration -----------------------*/    
+  53:../src/init_func.c ****   /* RCC system reset(for debug purpose) */ 
+  54:../src/init_func.c ****   RCC_DeInit(); 
+  55:../src/init_func.c ****  
+  56:../src/init_func.c ****   /* Enable HSE */ 
+  57:../src/init_func.c ****   RCC_HSEConfig(RCC_HSE_ON); 
+  58:../src/init_func.c ****  
+  59:../src/init_func.c ****   /* Wait till HSE is ready */ 
+  60:../src/init_func.c ****   HSEStartUpStatus = RCC_WaitForHSEStartUp(); 
+  61:../src/init_func.c ****  
+  62:../src/init_func.c ****   if (HSEStartUpStatus == SUCCESS) 
+  63:../src/init_func.c ****   { 
+  64:../src/init_func.c **** 
+  65:../src/init_func.c ****   	FLASH_PrefetchBufferCmd(FLASH_PrefetchBuffer_Enable);
+  66:../src/init_func.c **** 	FLASH_SetLatency(FLASH_Latency_0);
+  67:../src/init_func.c **** 
+  68:../src/init_func.c ****     /* HCLK = SYSCLK */ 
+  69:../src/init_func.c ****     RCC_HCLKConfig(RCC_SYSCLK_Div1);  
+  70:../src/init_func.c ****    
+  71:../src/init_func.c ****     /* PCLK2 = HCLK */ 
+  72:../src/init_func.c ****     RCC_PCLK2Config(RCC_HCLK_Div1);  	  							// APB2, max 72Mhz
+  73:../src/init_func.c ****  
+  74:../src/init_func.c ****     /* PCLK1 = HCLK */ 
+  75:../src/init_func.c ****     RCC_PCLK1Config(RCC_HCLK_Div1); 	   							//APB1, max 36Mhz
+  76:../src/init_func.c ****      
+  77:../src/init_func.c ****     /* PLLCLK = (8MHz/2) * 6 = 24 MHz */ 
+  78:../src/init_func.c ****     RCC_PREDIV1Config(RCC_PREDIV1_Source_HSE, RCC_PREDIV1_Div2); 
+  79:../src/init_func.c ****     RCC_PLLConfig(RCC_PLLSource_PREDIV1, RCC_PLLMul_6); 
+  80:../src/init_func.c ****  
+  81:../src/init_func.c ****     /* Enable PLL */  
+  82:../src/init_func.c ****     RCC_PLLCmd(ENABLE); 
+  83:../src/init_func.c ****  
+  84:../src/init_func.c ****     /* Wait till PLL is ready */ 
+  85:../src/init_func.c ****     while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET); 
+  86:../src/init_func.c ****  
+  87:../src/init_func.c ****     /* Select PLL as system clock source */ 
+  88:../src/init_func.c ****     RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK); 
+  89:../src/init_func.c ****  
+  90:../src/init_func.c ****     /* Wait till PLL is used as system clock source */ 
+  91:../src/init_func.c ****     while (RCC_GetSYSCLKSource() != 0x08); 
+  92:../src/init_func.c ****  
+  93:../src/init_func.c ****   } 
+  94:../src/init_func.c ****   else 
+  95:../src/init_func.c ****   { 
+  96:../src/init_func.c ****     while (1) { ; }	 
+  97:../src/init_func.c **** 
+  98:../src/init_func.c ****   }
+  99:../src/init_func.c **** 
+ 100:../src/init_func.c ****   /* list of used peripherals */
+ 101:../src/init_func.c **** 
+ 102:../src/init_func.c ****   RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+ 103:../src/init_func.c ****   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+ 104:../src/init_func.c ****   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+ 105:../src/init_func.c ****   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+ 106:../src/init_func.c ****   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+ 107:../src/init_func.c **** 	
+ 108:../src/init_func.c **** 	// Delay_us
+ 109:../src/init_func.c ****   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+ 110:../src/init_func.c **** 	
+ 111:../src/init_func.c **** 	// RC5
+ 112:../src/init_func.c ****   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+ 113:../src/init_func.c **** 	
+ 114:../src/init_func.c **** 	// SERVO & RGB_DIODE
+ 115:../src/init_func.c ****   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+ 116:../src/init_func.c **** 	
+ 117:../src/init_func.c ****   /*
+ 118:../src/init_func.c **** 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+ 119:../src/init_func.c **** 	*/
+ 120:../src/init_func.c **** 	
+ 121:../src/init_func.c **** 	// ENC28j60
+ 122:../src/init_func.c ****   RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
+ 123:../src/init_func.c **** 	
+ 124:../src/init_func.c **** 	// Karta SD
+ 125:../src/init_func.c **** 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
+ 126:../src/init_func.c **** 
+ 127:../src/init_func.c **** 
+ 128:../src/init_func.c **** }
+ 129:../src/init_func.c **** 
+ 130:../src/init_func.c **** 
+ 131:../src/init_func.c **** /* Configures Nested Vectored Interrupt Controller */
+ 132:../src/init_func.c **** void NVIC_Config(void) {
+ 133:../src/init_func.c **** 
+ 134:../src/init_func.c **** 	NVIC_InitTypeDef NVIC_InitStructure;
+ 135:../src/init_func.c **** 	
+ 136:../src/init_func.c **** 	#if RC5_CONTROL
+ 137:../src/init_func.c **** 	EXTI_InitTypeDef EXTI_InitStructure;
+ 138:../src/init_func.c **** 	#endif
+ 139:../src/init_func.c **** 	
+ 140:../src/init_func.c **** 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0);
+ 141:../src/init_func.c **** 	
+ 142:../src/init_func.c **** 	#if RC5_CONTROL
+ 143:../src/init_func.c **** 	//ustwienie dzialania GPIO jako linii EXTI
+ 144:../src/init_func.c **** 	GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource7);
+ 145:../src/init_func.c **** 
+ 146:../src/init_func.c **** 	// --- Konfiguracja przerwania dla RC5  ----- //
+ 147:../src/init_func.c **** 	EXTI_InitStructure.EXTI_Line = EXTI_Line7;
+ 148:../src/init_func.c ****   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+ 149:../src/init_func.c ****   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+ 150:../src/init_func.c ****   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+ 151:../src/init_func.c ****   EXTI_Init(&EXTI_InitStructure);
+ 152:../src/init_func.c **** 	
+ 153:../src/init_func.c **** 	EXTI_ClearITPendingBit(EXTI_Line5);
+ 154:../src/init_func.c **** 
+ 155:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQn; 		
+ 156:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+ 157:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+ 158:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+ 159:../src/init_func.c **** 	NVIC_Init(&NVIC_InitStructure);
+ 160:../src/init_func.c **** 
+ 161:../src/init_func.c **** 	// Timer uzywany przy dekodowaniu RC5	
+ 162:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
+ 163:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+ 164:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+ 165:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+ 166:../src/init_func.c **** 	NVIC_Init(&NVIC_InitStructure);	
+ 167:../src/init_func.c **** 	
+ 168:../src/init_func.c **** 	#endif
+ 169:../src/init_func.c **** 
+ 170:../src/init_func.c **** // -----------------------------------------------//
+ 171:../src/init_func.c **** 
+ 172:../src/init_func.c **** //  ---- Uzywane przez interpreter polecen ------ //
+ 173:../src/init_func.c **** 
+ 174:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+ 175:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+ 176:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+ 177:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+ 178:../src/init_func.c **** 	NVIC_Init(&NVIC_InitStructure);
+ 179:../src/init_func.c **** 	
+ 180:../src/init_func.c **** // ----------------------------------------------//
+ 181:../src/init_func.c **** 
+ 182:../src/init_func.c **** // ------------- Zegar RTC ---------------------//
+ 183:../src/init_func.c **** 
+ 184:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannel = RTC_IRQn;				//przerwanie zegara RTC, co jedna sekundy wywo³y
+ 185:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+ 186:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
+ 187:../src/init_func.c **** 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+ 188:../src/init_func.c **** 	NVIC_Init(&NVIC_InitStructure);
+ 189:../src/init_func.c **** 	
+ 190:../src/init_func.c **** // ----------------------------------------------//	
+ 191:../src/init_func.c **** 	
+ 192:../src/init_func.c **** }
+ 193:../src/init_func.c **** 
+ 194:../src/init_func.c **** // Konfiguracja kanalu TIM4 dla potrzeb sterowania serwomechanizmem: f = 50Hz, regulowane wypelnien
+ 195:../src/init_func.c **** void pwmSetup(void) {
+ 196:../src/init_func.c **** 
+ 197:../src/init_func.c ****      TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct; 
+ 198:../src/init_func.c **** 
+ 199:../src/init_func.c **** 		 //Set to 50Hz frequency, pulse width = (TIM_Pulse/2000)*2ms
+ 200:../src/init_func.c ****      TIM_TimeBaseStructInit( &TIM_TimeBaseInitStruct ); 
+ 201:../src/init_func.c ****      TIM_TimeBaseInitStruct.TIM_Period = 2000; 
+ 202:../src/init_func.c ****      TIM_TimeBaseInitStruct.TIM_Prescaler = 24;			//240 dla 50Hz
+ 203:../src/init_func.c **** 	 TIM_TimeBaseInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
+ 204:../src/init_func.c **** 	 TIM_TimeBaseInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
+ 205:../src/init_func.c ****      TIM_TimeBaseInit( TIM4, &TIM_TimeBaseInitStruct ); 
+ 206:../src/init_func.c ****   
+ 207:../src/init_func.c ****      TIM_Cmd( TIM4, ENABLE );
+ 208:../src/init_func.c **** 
+ 209:../src/init_func.c **** }
+ 210:../src/init_func.c **** 
+ 211:../src/init_func.c **** // Konfiguracja kanalow TIM4 dla potrzeb sterowania dioda RGB
+ 212:../src/init_func.c **** void rgbPwmSetup(void)
+ 213:../src/init_func.c **** {
+ 214:../src/init_func.c **** 		TIM_OCInitTypeDef TIM_OCInitStruct; 
+ 215:../src/init_func.c **** 	
+ 216:../src/init_func.c **** 		TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable);
+ 217:../src/init_func.c **** 		TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable);	
+ 218:../src/init_func.c **** 
+ 219:../src/init_func.c **** // Kanal 3	
+ 220:../src/init_func.c **** 		TIM_OCInitStruct.TIM_OCMode = TIM_OCMode_PWM1;
+ 221:../src/init_func.c **** 		TIM_OCInitStruct.TIM_OutputState = TIM_OutputState_Enable;
+ 222:../src/init_func.c **** 		TIM_OCInitStruct.TIM_Pulse = 1000;
+ 223:../src/init_func.c **** 		TIM_OCInitStruct.TIM_OCPolarity = TIM_OCPolarity_Low;
+ 224:../src/init_func.c **** 	
+ 225:../src/init_func.c **** 		TIM_OC3Init( TIM4, &TIM_OCInitStruct );
+ 226:../src/init_func.c **** 		TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
+ 227:../src/init_func.c **** 
+ 228:../src/init_func.c **** 
+ 229:../src/init_func.c **** // Kanal 2	
+ 230:../src/init_func.c **** 		TIM_OCInitStruct.TIM_OCMode = TIM_OCMode_PWM1;
+ 231:../src/init_func.c **** 		TIM_OCInitStruct.TIM_OutputState = TIM_OutputState_Enable;
+ 232:../src/init_func.c **** 		TIM_OCInitStruct.TIM_Pulse = 1000;
+ 233:../src/init_func.c **** 		TIM_OCInitStruct.TIM_OCPolarity = TIM_OCPolarity_Low;
+ 234:../src/init_func.c **** 	
+ 235:../src/init_func.c **** 		TIM_OC2Init( TIM4, &TIM_OCInitStruct );
+ 236:../src/init_func.c **** 		TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable);
+ 237:../src/init_func.c **** 
+ 238:../src/init_func.c **** 
+ 239:../src/init_func.c **** // Kanal 1
+ 240:../src/init_func.c **** 		TIM_OCInitStruct.TIM_OCMode = TIM_OCMode_PWM1;
+ 241:../src/init_func.c **** 		TIM_OCInitStruct.TIM_OutputState = TIM_OutputState_Enable;
+ 242:../src/init_func.c **** 		TIM_OCInitStruct.TIM_Pulse = 1000;
+ 243:../src/init_func.c **** 		TIM_OCInitStruct.TIM_OCPolarity = TIM_OCPolarity_Low;
+ 244:../src/init_func.c **** 	
+ 245:../src/init_func.c **** 		TIM_OC1Init( TIM4, &TIM_OCInitStruct );
+ 246:../src/init_func.c **** 		TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable);
+ 247:../src/init_func.c **** 
+ 248:../src/init_func.c **** 		TIM_ARRPreloadConfig(TIM4, ENABLE);
+ 249:../src/init_func.c **** 	
+ 250:../src/init_func.c **** }
+ 251:../src/init_func.c **** 
+ 252:../src/init_func.c **** caddr_t _sbrk (int size)
+ 253:../src/init_func.c **** {
+ 19973              		.loc 1 253 0
+ 19974              		.cfi_startproc
+ 19975              		@ args = 0, pretend = 0, frame = 0
+ 19976              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19977              	.LVL0:
+ 19978 0000 08B5     		push	{r3, lr}
+ 19979              	.LCFI0:
+ 19980              		.cfi_def_cfa_offset 8
+ 254:../src/init_func.c ****    extern char __heap_start;
+ 255:../src/init_func.c ****    extern char __heap_end;
+ 256:../src/init_func.c ****    static char *current_heap_end = &__heap_start;
+ 257:../src/init_func.c ****    char *previous_heap_end;
+ 258:../src/init_func.c **** 
+ 259:../src/init_func.c ****    previous_heap_end = current_heap_end;
+ 19981              		.loc 1 259 0
+ 19982 0002 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 19983              		.cfi_offset 14, -4
+ 19984              		.cfi_offset 3, -8
+ 19985 0006 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 19986 000a 1B68     		ldr	r3, [r3, #0]
+ 19987              	.LVL1:
+ 260:../src/init_func.c **** 
+ 261:../src/init_func.c ****    if (current_heap_end + size > &__heap_end)
+ 19988              		.loc 1 261 0
+ 19989 000c 1844     		add	r0, r3, r0
+ 19990              	.LVL2:
+ 19991 000e 40F20002 		movw	r2, #:lower16:__heap_end
+ 19992 0012 C0F20002 		movt	r2, #:upper16:__heap_end
+ 19993 0016 9042     		cmp	r0, r2
+ 262:../src/init_func.c ****    {
+ 263:../src/init_func.c ****       errno = ENOMEM;
+ 264:../src/init_func.c ****       return (caddr_t) -1;
+ 265:../src/init_func.c ****    }
+ 266:../src/init_func.c **** 
+ 267:../src/init_func.c ****    current_heap_end += size;
+ 19994              		.loc 1 267 0
+ 19995 0018 9EBF     		ittt	ls
+ 19996 001a 40F20002 		movwls	r2, #:lower16:.LANCHOR0
+ 19997 001e C0F20002 		movtls	r2, #:upper16:.LANCHOR0
+ 19998 0022 1060     		strls	r0, [r2, #0]
+ 19999              		.loc 1 261 0
+ 20000 0024 06D9     		bls	.L3
+ 20001              		.loc 1 263 0
+ 20002 0026 FFF7FEFF 		bl	__errno
+ 20003              	.LVL3:
+ 20004 002a 4FF00C03 		mov	r3, #12
+ 20005 002e 0360     		str	r3, [r0, #0]
+ 20006 0030 4FF0FF33 		mov	r3, #-1
+ 20007              	.LVL4:
+ 20008              	.L3:
+ 268:../src/init_func.c **** 
+ 269:../src/init_func.c ****    return (caddr_t) previous_heap_end;
+ 270:../src/init_func.c **** }
+ 20009              		.loc 1 270 0
+ 20010 0034 1846     		mov	r0, r3
+ 20011 0036 08BD     		pop	{r3, pc}
+ 20012              		.cfi_endproc
+ 20013              	.LFE34:
+ 20015              		.section	.text.rgbPwmSetup,"ax",%progbits
+ 20016              		.align	2
+ 20017              		.global	rgbPwmSetup
+ 20018              		.thumb
+ 20019              		.thumb_func
+ 20021              	rgbPwmSetup:
+ 20022              	.LFB33:
+ 20023              		.loc 1 213 0
+ 20024              		.cfi_startproc
+ 20025              		@ args = 0, pretend = 0, frame = 16
+ 20026              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20027 0000 2DE9F045 		push	{r4, r5, r6, r7, r8, sl, lr}
+ 20028              	.LCFI1:
+ 20029              		.cfi_def_cfa_offset 28
+ 20030 0004 85B0     		sub	sp, sp, #20
+ 20031              	.LCFI2:
+ 20032              		.cfi_def_cfa_offset 48
+ 20033              		.loc 1 216 0
+ 20034 0006 40F60004 		movw	r4, #:lower16:1073743872
+ 20035              		.cfi_offset 14, -4
+ 20036              		.cfi_offset 10, -8
+ 20037              		.cfi_offset 8, -12
+ 20038              		.cfi_offset 7, -16
+ 20039              		.cfi_offset 6, -20
+ 20040              		.cfi_offset 5, -24
+ 20041              		.cfi_offset 4, -28
+ 20042 000a C4F20004 		movt	r4, #:upper16:1073743872
+ 20043 000e 2046     		mov	r0, r4
+ 20044 0010 4FF00801 		mov	r1, #8
+ 20045 0014 FFF7FEFF 		bl	TIM_OC2PreloadConfig
+ 20046              		.loc 1 217 0
+ 20047 0018 2046     		mov	r0, r4
+ 20048 001a 4FF00801 		mov	r1, #8
+ 20049 001e FFF7FEFF 		bl	TIM_OC1PreloadConfig
+ 20050              		.loc 1 220 0
+ 20051 0022 4FF06007 		mov	r7, #96
+ 20052 0026 ADF80070 		strh	r7, [sp, #0]	@ movhi
+ 20053              		.loc 1 221 0
+ 20054 002a 4FF00106 		mov	r6, #1
+ 20055 002e ADF80260 		strh	r6, [sp, #2]	@ movhi
+ 20056              		.loc 1 222 0
+ 20057 0032 4FF47A78 		mov	r8, #1000
+ 20058 0036 ADF80680 		strh	r8, [sp, #6]	@ movhi
+ 20059              		.loc 1 223 0
+ 20060 003a 4FF0020A 		mov	sl, #2
+ 20061 003e ADF808A0 		strh	sl, [sp, #8]	@ movhi
+ 20062              		.loc 1 225 0
+ 20063 0042 6D46     		mov	r5, sp
+ 20064 0044 2046     		mov	r0, r4
+ 20065 0046 6946     		mov	r1, sp
+ 20066 0048 FFF7FEFF 		bl	TIM_OC3Init
+ 20067              		.loc 1 226 0
+ 20068 004c 2046     		mov	r0, r4
+ 20069 004e 4FF00801 		mov	r1, #8
+ 20070 0052 FFF7FEFF 		bl	TIM_OC3PreloadConfig
+ 20071              		.loc 1 230 0
+ 20072 0056 ADF80070 		strh	r7, [sp, #0]	@ movhi
+ 20073              		.loc 1 231 0
+ 20074 005a ADF80260 		strh	r6, [sp, #2]	@ movhi
+ 20075              		.loc 1 232 0
+ 20076 005e ADF80680 		strh	r8, [sp, #6]	@ movhi
+ 20077              		.loc 1 233 0
+ 20078 0062 ADF808A0 		strh	sl, [sp, #8]	@ movhi
+ 20079              		.loc 1 235 0
+ 20080 0066 2046     		mov	r0, r4
+ 20081 0068 6946     		mov	r1, sp
+ 20082 006a FFF7FEFF 		bl	TIM_OC2Init
+ 20083              		.loc 1 236 0
+ 20084 006e 2046     		mov	r0, r4
+ 20085 0070 4FF00801 		mov	r1, #8
+ 20086 0074 FFF7FEFF 		bl	TIM_OC2PreloadConfig
+ 20087              		.loc 1 240 0
+ 20088 0078 ADF80070 		strh	r7, [sp, #0]	@ movhi
+ 20089              		.loc 1 241 0
+ 20090 007c ADF80260 		strh	r6, [sp, #2]	@ movhi
+ 20091              		.loc 1 242 0
+ 20092 0080 ADF80680 		strh	r8, [sp, #6]	@ movhi
+ 20093              		.loc 1 243 0
+ 20094 0084 ADF808A0 		strh	sl, [sp, #8]	@ movhi
+ 20095              		.loc 1 245 0
+ 20096 0088 2046     		mov	r0, r4
+ 20097 008a 6946     		mov	r1, sp
+ 20098 008c FFF7FEFF 		bl	TIM_OC1Init
+ 20099              		.loc 1 246 0
+ 20100 0090 2046     		mov	r0, r4
+ 20101 0092 4FF00801 		mov	r1, #8
+ 20102 0096 FFF7FEFF 		bl	TIM_OC1PreloadConfig
+ 20103              		.loc 1 248 0
+ 20104 009a 2046     		mov	r0, r4
+ 20105 009c 3146     		mov	r1, r6
+ 20106 009e FFF7FEFF 		bl	TIM_ARRPreloadConfig
+ 20107              		.loc 1 250 0
+ 20108 00a2 05B0     		add	sp, sp, #20
+ 20109 00a4 BDE8F085 		pop	{r4, r5, r6, r7, r8, sl, pc}
+ 20110              		.cfi_endproc
+ 20111              	.LFE33:
+ 20113              		.section	.text.pwmSetup,"ax",%progbits
+ 20114              		.align	2
+ 20115              		.global	pwmSetup
+ 20116              		.thumb
+ 20117              		.thumb_func
+ 20119              	pwmSetup:
+ 20120              	.LFB32:
+ 20121              		.loc 1 195 0
+ 20122              		.cfi_startproc
+ 20123              		@ args = 0, pretend = 0, frame = 16
+ 20124              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20125 0000 30B5     		push	{r4, r5, lr}
+ 20126              	.LCFI3:
+ 20127              		.cfi_def_cfa_offset 12
+ 20128 0002 85B0     		sub	sp, sp, #20
+ 20129              	.LCFI4:
+ 20130              		.cfi_def_cfa_offset 32
+ 20131              		.loc 1 200 0
+ 20132 0004 01AD     		add	r5, sp, #4
+ 20133              		.cfi_offset 14, -4
+ 20134              		.cfi_offset 5, -8
+ 20135              		.cfi_offset 4, -12
+ 20136 0006 2846     		mov	r0, r5
+ 20137 0008 FFF7FEFF 		bl	TIM_TimeBaseStructInit
+ 20138              		.loc 1 201 0
+ 20139 000c 4FF4FA63 		mov	r3, #2000	@ movhi
+ 20140 0010 ADF80830 		strh	r3, [sp, #8]	@ movhi
+ 20141              		.loc 1 202 0
+ 20142 0014 4FF01803 		mov	r3, #24	@ movhi
+ 20143 0018 ADF80430 		strh	r3, [sp, #4]	@ movhi
+ 20144              		.loc 1 203 0
+ 20145 001c 4FF00003 		mov	r3, #0
+ 20146 0020 ADF80A30 		strh	r3, [sp, #10]	@ movhi
+ 20147              		.loc 1 204 0
+ 20148 0024 ADF80630 		strh	r3, [sp, #6]	@ movhi
+ 20149              		.loc 1 205 0
+ 20150 0028 40F60004 		movw	r4, #:lower16:1073743872
+ 20151 002c C4F20004 		movt	r4, #:upper16:1073743872
+ 20152 0030 2046     		mov	r0, r4
+ 20153 0032 2946     		mov	r1, r5
+ 20154 0034 FFF7FEFF 		bl	TIM_TimeBaseInit
+ 20155              		.loc 1 207 0
+ 20156 0038 2046     		mov	r0, r4
+ 20157 003a 4FF00101 		mov	r1, #1
+ 20158 003e FFF7FEFF 		bl	TIM_Cmd
+ 20159              		.loc 1 209 0
+ 20160 0042 05B0     		add	sp, sp, #20
+ 20161 0044 30BD     		pop	{r4, r5, pc}
+ 20162              		.cfi_endproc
+ 20163              	.LFE32:
+ 20165 0046 00BF     		.section	.text.NVIC_Config,"ax",%progbits
+ 20166              		.align	2
+ 20167              		.global	NVIC_Config
+ 20168              		.thumb
+ 20169              		.thumb_func
+ 20171              	NVIC_Config:
+ 20172              	.LFB31:
+ 20173              		.loc 1 132 0
+ 20174              		.cfi_startproc
+ 20175              		@ args = 0, pretend = 0, frame = 8
+ 20176              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20177 0000 70B5     		push	{r4, r5, r6, lr}
+ 20178              	.LCFI5:
+ 20179              		.cfi_def_cfa_offset 16
+ 20180 0002 82B0     		sub	sp, sp, #8
+ 20181              	.LCFI6:
+ 20182              		.cfi_def_cfa_offset 24
+ 20183              		.loc 1 140 0
+ 20184 0004 4FF00060 		mov	r0, #134217728
+ 20185 0008 4FF00001 		mov	r1, #0
+ 20186              		.cfi_offset 14, -4
+ 20187              		.cfi_offset 6, -8
+ 20188              		.cfi_offset 5, -12
+ 20189              		.cfi_offset 4, -16
+ 20190 000c FFF7FEFF 		bl	NVIC_SetVectorTable
+ 20191              		.loc 1 174 0
+ 20192 0010 4FF02503 		mov	r3, #37
+ 20193 0014 8DF80430 		strb	r3, [sp, #4]
+ 20194              		.loc 1 175 0
+ 20195 0018 4FF00005 		mov	r5, #0
+ 20196 001c 8DF80550 		strb	r5, [sp, #5]
+ 20197              		.loc 1 176 0
+ 20198 0020 4FF00203 		mov	r3, #2
+ 20199 0024 8DF80630 		strb	r3, [sp, #6]
+ 20200              		.loc 1 177 0
+ 20201 0028 4FF00104 		mov	r4, #1
+ 20202 002c 8DF80740 		strb	r4, [sp, #7]
+ 20203              		.loc 1 178 0
+ 20204 0030 01AE     		add	r6, sp, #4
+ 20205 0032 3046     		mov	r0, r6
+ 20206 0034 FFF7FEFF 		bl	NVIC_Init
+ 20207              		.loc 1 184 0
+ 20208 0038 4FF00303 		mov	r3, #3
+ 20209 003c 8DF80430 		strb	r3, [sp, #4]
+ 20210              		.loc 1 185 0
+ 20211 0040 8DF80550 		strb	r5, [sp, #5]
+ 20212              		.loc 1 186 0
+ 20213 0044 8DF80630 		strb	r3, [sp, #6]
+ 20214              		.loc 1 187 0
+ 20215 0048 8DF80740 		strb	r4, [sp, #7]
+ 20216              		.loc 1 188 0
+ 20217 004c 3046     		mov	r0, r6
+ 20218 004e FFF7FEFF 		bl	NVIC_Init
+ 20219              		.loc 1 192 0
+ 20220 0052 02B0     		add	sp, sp, #8
+ 20221 0054 70BD     		pop	{r4, r5, r6, pc}
+ 20222              		.cfi_endproc
+ 20223              	.LFE31:
+ 20225 0056 00BF     		.section	.text.RCC_Conf,"ax",%progbits
+ 20226              		.align	2
+ 20227              		.global	RCC_Conf
+ 20228              		.thumb
+ 20229              		.thumb_func
+ 20231              	RCC_Conf:
+ 20232              	.LFB30:
+ 20233              		.loc 1 49 0
+ 20234              		.cfi_startproc
+ 20235              		@ args = 0, pretend = 0, frame = 0
+ 20236              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20237 0000 10B5     		push	{r4, lr}
+ 20238              	.LCFI7:
+ 20239              		.cfi_def_cfa_offset 8
+ 20240              		.loc 1 54 0
+ 20241              		.cfi_offset 14, -4
+ 20242              		.cfi_offset 4, -8
+ 20243 0002 FFF7FEFF 		bl	RCC_DeInit
+ 20244              		.loc 1 57 0
+ 20245 0006 4FF48030 		mov	r0, #65536
+ 20246 000a FFF7FEFF 		bl	RCC_HSEConfig
+ 20247              		.loc 1 60 0
+ 20248 000e FFF7FEFF 		bl	RCC_WaitForHSEStartUp
+ 20249              		.loc 1 62 0
+ 20250 0012 0128     		cmp	r0, #1
+ 20251 0014 33D1     		bne	.L20
+ 20252              		.loc 1 65 0
+ 20253 0016 00F10F00 		add	r0, r0, #15
+ 20254 001a FFF7FEFF 		bl	FLASH_PrefetchBufferCmd
+ 20255              		.loc 1 66 0
+ 20256 001e 4FF00000 		mov	r0, #0
+ 20257 0022 FFF7FEFF 		bl	FLASH_SetLatency
+ 20258              		.loc 1 69 0
+ 20259 0026 4FF00000 		mov	r0, #0
+ 20260 002a FFF7FEFF 		bl	RCC_HCLKConfig
+ 20261              		.loc 1 72 0
+ 20262 002e 4FF00000 		mov	r0, #0
+ 20263 0032 FFF7FEFF 		bl	RCC_PCLK2Config
+ 20264              		.loc 1 75 0
+ 20265 0036 4FF00000 		mov	r0, #0
+ 20266 003a FFF7FEFF 		bl	RCC_PCLK1Config
+ 20267              		.loc 1 78 0
+ 20268 003e 4FF00000 		mov	r0, #0
+ 20269 0042 4FF00101 		mov	r1, #1
+ 20270 0046 FFF7FEFF 		bl	RCC_PREDIV1Config
+ 20271              		.loc 1 79 0
+ 20272 004a 4FF48030 		mov	r0, #65536
+ 20273 004e 4FF48011 		mov	r1, #1048576
+ 20274 0052 FFF7FEFF 		bl	RCC_PLLConfig
+ 20275              		.loc 1 82 0
+ 20276 0056 4FF00100 		mov	r0, #1
+ 20277 005a FFF7FEFF 		bl	RCC_PLLCmd
+ 20278              		.loc 1 85 0
+ 20279 005e 4FF03904 		mov	r4, #57
+ 20280              	.L13:
+ 20281 0062 2046     		mov	r0, r4
+ 20282 0064 FFF7FEFF 		bl	RCC_GetFlagStatus
+ 20283 0068 0028     		cmp	r0, #0
+ 20284 006a FAD0     		beq	.L13
+ 20285              		.loc 1 88 0
+ 20286 006c 4FF00200 		mov	r0, #2
+ 20287 0070 FFF7FEFF 		bl	RCC_SYSCLKConfig
+ 20288              	.L14:
+ 20289              		.loc 1 91 0
+ 20290 0074 FFF7FEFF 		bl	RCC_GetSYSCLKSource
+ 20291 0078 0828     		cmp	r0, #8
+ 20292 007a FBD1     		bne	.L14
+ 20293 007c 00E0     		b	.L21
+ 20294              	.L20:
+ 20295 007e FEE7     		b	.L20
+ 20296              	.L21:
+ 20297              		.loc 1 102 0
+ 20298 0080 4FF48040 		mov	r0, #16384
+ 20299 0084 4FF00101 		mov	r1, #1
+ 20300 0088 FFF7FEFF 		bl	RCC_APB2PeriphClockCmd
+ 20301              		.loc 1 103 0
+ 20302 008c 4FF00400 		mov	r0, #4
+ 20303 0090 4FF00101 		mov	r1, #1
+ 20304 0094 FFF7FEFF 		bl	RCC_APB2PeriphClockCmd
+ 20305              		.loc 1 104 0
+ 20306 0098 4FF00800 		mov	r0, #8
+ 20307 009c 4FF00101 		mov	r1, #1
+ 20308 00a0 FFF7FEFF 		bl	RCC_APB2PeriphClockCmd
+ 20309              		.loc 1 105 0
+ 20310 00a4 4FF01000 		mov	r0, #16
+ 20311 00a8 4FF00101 		mov	r1, #1
+ 20312 00ac FFF7FEFF 		bl	RCC_APB2PeriphClockCmd
+ 20313              		.loc 1 106 0
+ 20314 00b0 4FF00100 		mov	r0, #1
+ 20315 00b4 0146     		mov	r1, r0
+ 20316 00b6 FFF7FEFF 		bl	RCC_APB2PeriphClockCmd
+ 20317              		.loc 1 109 0
+ 20318 00ba 4FF00100 		mov	r0, #1
+ 20319 00be 0146     		mov	r1, r0
+ 20320 00c0 FFF7FEFF 		bl	RCC_APB1PeriphClockCmd
+ 20321              		.loc 1 112 0
+ 20322 00c4 4FF00200 		mov	r0, #2
+ 20323 00c8 4FF00101 		mov	r1, #1
+ 20324 00cc FFF7FEFF 		bl	RCC_APB1PeriphClockCmd
+ 20325              		.loc 1 115 0
+ 20326 00d0 4FF00400 		mov	r0, #4
+ 20327 00d4 4FF00101 		mov	r1, #1
+ 20328 00d8 FFF7FEFF 		bl	RCC_APB1PeriphClockCmd
+ 20329              		.loc 1 122 0
+ 20330 00dc 4FF48050 		mov	r0, #4096
+ 20331 00e0 4FF00101 		mov	r1, #1
+ 20332 00e4 FFF7FEFF 		bl	RCC_APB2PeriphClockCmd
+ 20333              		.loc 1 125 0
+ 20334 00e8 4FF48040 		mov	r0, #16384
+ 20335 00ec 4FF00101 		mov	r1, #1
+ 20336 00f0 FFF7FEFF 		bl	RCC_APB1PeriphClockCmd
+ 20337              		.loc 1 128 0
+ 20338 00f4 10BD     		pop	{r4, pc}
+ 20339              		.cfi_endproc
+ 20340              	.LFE30:
+ 20342 00f6 00BF     		.section	.text.GPIO_Config,"ax",%progbits
+ 20343              		.align	2
+ 20344              		.global	GPIO_Config
+ 20345              		.thumb
+ 20346              		.thumb_func
+ 20348              	GPIO_Config:
+ 20349              	.LFB29:
+ 20350              		.loc 1 7 0
+ 20351              		.cfi_startproc
+ 20352              		@ args = 0, pretend = 0, frame = 8
+ 20353              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20354 0000 2DE9F045 		push	{r4, r5, r6, r7, r8, sl, lr}
+ 20355              	.LCFI8:
+ 20356              		.cfi_def_cfa_offset 28
+ 20357 0004 83B0     		sub	sp, sp, #12
+ 20358              	.LCFI9:
+ 20359              		.cfi_def_cfa_offset 40
+ 20360              		.loc 1 11 0
+ 20361 0006 4FF44073 		mov	r3, #768	@ movhi
+ 20362 000a ADF80430 		strh	r3, [sp, #4]	@ movhi
+ 20363              		.loc 1 12 0
+ 20364 000e 4FF01007 		mov	r7, #16
+ 20365              		.cfi_offset 14, -4
+ 20366              		.cfi_offset 10, -8
+ 20367              		.cfi_offset 8, -12
+ 20368              		.cfi_offset 7, -16
+ 20369              		.cfi_offset 6, -20
+ 20370              		.cfi_offset 5, -24
+ 20371              		.cfi_offset 4, -28
+ 20372 0012 8DF80770 		strb	r7, [sp, #7]
+ 20373              		.loc 1 13 0
+ 20374 0016 4FF00306 		mov	r6, #3
+ 20375 001a 8DF80660 		strb	r6, [sp, #6]
+ 20376              		.loc 1 14 0
+ 20377 001e 01AC     		add	r4, sp, #4
+ 20378 0020 41F20000 		movw	r0, #:lower16:1073811456
+ 20379 0024 C4F20100 		movt	r0, #:upper16:1073811456
+ 20380 0028 2146     		mov	r1, r4
+ 20381 002a FFF7FEFF 		bl	GPIO_Init
+ 20382              		.loc 1 17 0
+ 20383 002e 4FF00103 		mov	r3, #1
+ 20384 0032 9A46     		mov	sl, r3	@ movhi
+ 20385 0034 ADF80430 		strh	r3, [sp, #4]	@ movhi
+ 20386              		.loc 1 18 0
+ 20387 0038 4FF00403 		mov	r3, #4
+ 20388 003c 8DF80730 		strb	r3, [sp, #7]
+ 20389              		.loc 1 19 0
+ 20390 0040 8DF80660 		strb	r6, [sp, #6]
+ 20391              		.loc 1 20 0
+ 20392 0044 40F60005 		movw	r5, #:lower16:1073809408
+ 20393 0048 C4F20105 		movt	r5, #:upper16:1073809408
+ 20394 004c 2846     		mov	r0, r5
+ 20395 004e 2146     		mov	r1, r4
+ 20396 0050 FFF7FEFF 		bl	GPIO_Init
+ 20397              		.loc 1 23 0
+ 20398 0054 4FF01803 		mov	r3, #24
+ 20399 0058 9846     		mov	r8, r3	@ movhi
+ 20400 005a ADF80430 		strh	r3, [sp, #4]	@ movhi
+ 20401              		.loc 1 24 0
+ 20402 005e 8DF80770 		strb	r7, [sp, #7]
+ 20403              		.loc 1 25 0
+ 20404 0062 8DF80660 		strb	r6, [sp, #6]
+ 20405              		.loc 1 26 0
+ 20406 0066 2846     		mov	r0, r5
+ 20407 0068 2146     		mov	r1, r4
+ 20408 006a FFF7FEFF 		bl	GPIO_Init
+ 20409              		.loc 1 30 0
+ 20410 006e 4FF4E073 		mov	r3, #448	@ movhi
+ 20411 0072 ADF80430 		strh	r3, [sp, #4]	@ movhi
+ 20412              		.loc 1 31 0
+ 20413 0076 8DF80780 		strb	r8, [sp, #7]
+ 20414              		.loc 1 32 0
+ 20415 007a 8DF806A0 		strb	sl, [sp, #6]
+ 20416              		.loc 1 33 0
+ 20417 007e 40F60040 		movw	r0, #:lower16:1073810432
+ 20418 0082 C4F20100 		movt	r0, #:upper16:1073810432
+ 20419 0086 2146     		mov	r1, r4
+ 20420 0088 FFF7FEFF 		bl	GPIO_Init
+ 20421              		.loc 1 46 0
+ 20422 008c 03B0     		add	sp, sp, #12
+ 20423 008e BDE8F085 		pop	{r4, r5, r6, r7, r8, sl, pc}
+ 20424              		.cfi_endproc
+ 20425              	.LFE29:
+ 20427 0092 00BF     		.section	.data.current_heap_end.3233,"aw",%progbits
+ 20428              		.align	2
+ 20429              		.set	.LANCHOR0,. + 0
+ 20432              	current_heap_end.3233:
+ 20433 0000 00000000 		.word	__heap_start
+ 20434              		.text
+ 20435              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 init_func.c
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:19966  .text._sbrk:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:19971  .text._sbrk:00000000 _sbrk
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20429  .data.current_heap_end.3233:00000000 .LANCHOR0
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20016  .text.rgbPwmSetup:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20021  .text.rgbPwmSetup:00000000 rgbPwmSetup
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20114  .text.pwmSetup:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20119  .text.pwmSetup:00000000 pwmSetup
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20166  .text.NVIC_Config:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20171  .text.NVIC_Config:00000000 NVIC_Config
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20226  .text.RCC_Conf:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20231  .text.RCC_Conf:00000000 RCC_Conf
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20343  .text.GPIO_Config:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20348  .text.GPIO_Config:00000000 GPIO_Config
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20428  .data.current_heap_end.3233:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccjemCCG.s:20432  .data.current_heap_end.3233:00000000 current_heap_end.3233
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+__heap_end
+__errno
+TIM_OC2PreloadConfig
+TIM_OC1PreloadConfig
+TIM_OC3Init
+TIM_OC3PreloadConfig
+TIM_OC2Init
+TIM_OC1Init
+TIM_ARRPreloadConfig
+TIM_TimeBaseStructInit
+TIM_TimeBaseInit
+TIM_Cmd
+NVIC_SetVectorTable
+NVIC_Init
+RCC_DeInit
+RCC_HSEConfig
+RCC_WaitForHSEStartUp
+FLASH_PrefetchBufferCmd
+FLASH_SetLatency
+RCC_HCLKConfig
+RCC_PCLK2Config
+RCC_PCLK1Config
+RCC_PREDIV1Config
+RCC_PLLConfig
+RCC_PLLCmd
+RCC_GetFlagStatus
+RCC_SYSCLKConfig
+RCC_GetSYSCLKSource
+RCC_APB2PeriphClockCmd
+RCC_APB1PeriphClockCmd
+GPIO_Init
+__heap_start

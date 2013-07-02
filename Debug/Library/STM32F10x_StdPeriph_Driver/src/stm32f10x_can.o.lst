@@ -1,0 +1,2394 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"stm32f10x_can.c"
+  23              	.Ltext0:
+  24              		.file 1 "../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c"
+ 18662              		.align	2
+ 18663              		.global	CAN_Init
+ 18664              		.thumb
+ 18665              		.thumb_func
+ 18667              	CAN_Init:
+ 18668              	.LFB30:
+   1:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+   2:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   ******************************************************************************
+   3:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @file    stm32f10x_can.c
+   4:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @author  MCD Application Team
+   5:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @version V3.3.0
+   6:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @date    04/16/2010
+   7:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief   This file provides all the CAN firmware functions.
+   8:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   ******************************************************************************
+   9:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @copy
+  10:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *
+  11:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
+  12:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
+  13:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
+  14:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
+  15:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
+  16:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  17:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *
+  18:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * <h2><center>&copy; COPYRIGHT 2010 STMicroelectronics</center></h2>
+  19:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */ 
+  20:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  21:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /* Includes ------------------------------------------------------------------*/
+  22:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #include "stm32f10x_can.h"
+  23:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #include "stm32f10x_rcc.h"
+  24:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  25:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /** @addtogroup STM32F10x_StdPeriph_Driver
+  26:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @{
+  27:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+  28:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  29:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /** @defgroup CAN 
+  30:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief CAN driver modules
+  31:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @{
+  32:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */ 
+  33:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  34:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /** @defgroup CAN_Private_TypesDefinitions
+  35:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @{
+  36:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+  37:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  38:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+  39:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @}
+  40:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+  41:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  42:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /** @defgroup CAN_Private_Defines
+  43:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @{
+  44:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+  45:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  46:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /* CAN Master Control Register bits */
+  47:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MCR_INRQ     ((uint32_t)0x00000001) /* Initialization request */
+  48:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MCR_SLEEP    ((uint32_t)0x00000002) /* Sleep mode request */
+  49:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MCR_TXFP     ((uint32_t)0x00000004) /* Transmit FIFO priority */
+  50:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MCR_RFLM     ((uint32_t)0x00000008) /* Receive FIFO locked mode */
+  51:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MCR_NART     ((uint32_t)0x00000010) /* No automatic retransmission */
+  52:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MCR_AWUM     ((uint32_t)0x00000020) /* Automatic wake up mode */
+  53:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MCR_ABOM     ((uint32_t)0x00000040) /* Automatic bus-off management */
+  54:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MCR_TTCM     ((uint32_t)0x00000080) /* time triggered communication */
+  55:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MCR_RESET    ((uint32_t)0x00008000) /* time triggered communication */
+  56:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MCR_DBF      ((uint32_t)0x00010000) /* software master reset */
+  57:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  58:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /* CAN Master Status Register bits */
+  59:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MSR_INAK     ((uint32_t)0x00000001)    /* Initialization acknowledge */
+  60:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MSR_WKUI     ((uint32_t)0x00000008)    /* Wake-up interrupt */
+  61:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define MSR_SLAKI    ((uint32_t)0x00000010)    /* Sleep acknowledge interrupt */
+  62:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  63:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /* CAN Transmit Status Register bits */
+  64:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_RQCP0    ((uint32_t)0x00000001)    /* Request completed mailbox0 */
+  65:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_TXOK0    ((uint32_t)0x00000002)    /* Transmission OK of mailbox0 */
+  66:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_ABRQ0    ((uint32_t)0x00000080)    /* Abort request for mailbox0 */
+  67:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_RQCP1    ((uint32_t)0x00000100)    /* Request completed mailbox1 */
+  68:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_TXOK1    ((uint32_t)0x00000200)    /* Transmission OK of mailbox1 */
+  69:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_ABRQ1    ((uint32_t)0x00008000)    /* Abort request for mailbox1 */
+  70:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_RQCP2    ((uint32_t)0x00010000)    /* Request completed mailbox2 */
+  71:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_TXOK2    ((uint32_t)0x00020000)    /* Transmission OK of mailbox2 */
+  72:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_ABRQ2    ((uint32_t)0x00800000)    /* Abort request for mailbox2 */
+  73:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_TME0     ((uint32_t)0x04000000)    /* Transmit mailbox 0 empty */
+  74:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_TME1     ((uint32_t)0x08000000)    /* Transmit mailbox 1 empty */
+  75:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TSR_TME2     ((uint32_t)0x10000000)    /* Transmit mailbox 2 empty */
+  76:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  77:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /* CAN Receive FIFO 0 Register bits */
+  78:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define RF0R_FULL0   ((uint32_t)0x00000008)    /* FIFO 0 full */
+  79:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define RF0R_FOVR0   ((uint32_t)0x00000010)    /* FIFO 0 overrun */
+  80:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define RF0R_RFOM0   ((uint32_t)0x00000020)    /* Release FIFO 0 output mailbox */
+  81:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  82:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /* CAN Receive FIFO 1 Register bits */
+  83:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define RF1R_FULL1   ((uint32_t)0x00000008)    /* FIFO 1 full */
+  84:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define RF1R_FOVR1   ((uint32_t)0x00000010)    /* FIFO 1 overrun */
+  85:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define RF1R_RFOM1   ((uint32_t)0x00000020)    /* Release FIFO 1 output mailbox */
+  86:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  87:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /* CAN Error Status Register bits */
+  88:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define ESR_EWGF     ((uint32_t)0x00000001)    /* Error warning flag */
+  89:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define ESR_EPVF     ((uint32_t)0x00000002)    /* Error passive flag */
+  90:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define ESR_BOFF     ((uint32_t)0x00000004)    /* Bus-off flag */
+  91:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  92:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /* CAN Mailbox Transmit Request */
+  93:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define TMIDxR_TXRQ  ((uint32_t)0x00000001) /* Transmit mailbox request */
+  94:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  95:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /* CAN Filter Master Register bits */
+  96:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define FMR_FINIT    ((uint32_t)0x00000001) /* Filter init mode */
+  97:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+  98:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /* Time out for INAK bit */
+  99:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define INAK_TimeOut        ((uint32_t)0x0000FFFF)
+ 100:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 101:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /* Time out for SLAK bit */
+ 102:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** #define SLAK_TimeOut        ((uint32_t)0x0000FFFF)
+ 103:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 104:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 105:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @}
+ 106:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 107:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 108:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /** @defgroup CAN_Private_Macros
+ 109:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @{
+ 110:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 111:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 112:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 113:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @}
+ 114:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 115:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 116:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /** @defgroup CAN_Private_Variables
+ 117:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @{
+ 118:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 119:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 120:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 121:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @}
+ 122:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 123:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 124:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /** @defgroup CAN_Private_FunctionPrototypes
+ 125:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @{
+ 126:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 127:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 128:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** static ITStatus CheckITStatus(uint32_t CAN_Reg, uint32_t It_Bit);
+ 129:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 130:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 131:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @}
+ 132:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 133:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 134:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /** @defgroup CAN_Private_Functions
+ 135:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @{
+ 136:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 137:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 138:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 139:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Deinitializes the CAN peripheral registers to their default reset values.
+ 140:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to select the CAN peripheral.
+ 141:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval None.
+ 142:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 143:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** void CAN_DeInit(CAN_TypeDef* CANx)
+ 144:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 145:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 146:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 147:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****  
+ 148:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (CANx == CAN1)
+ 149:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 150:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Enable CAN1 reset state */
+ 151:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     RCC_APB1PeriphResetCmd(RCC_APB1Periph_CAN1, ENABLE);
+ 152:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Release CAN1 from reset state */
+ 153:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     RCC_APB1PeriphResetCmd(RCC_APB1Periph_CAN1, DISABLE);
+ 154:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 155:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else
+ 156:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {  
+ 157:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Enable CAN2 reset state */
+ 158:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     RCC_APB1PeriphResetCmd(RCC_APB1Periph_CAN2, ENABLE);
+ 159:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Release CAN2 from reset state */
+ 160:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     RCC_APB1PeriphResetCmd(RCC_APB1Periph_CAN2, DISABLE);
+ 161:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 162:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 163:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 164:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 165:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Initializes the CAN peripheral according to the specified
+ 166:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   parameters in the CAN_InitStruct.
+ 167:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 168:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CAN_InitStruct: pointer to a CAN_InitTypeDef structure that
+ 169:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   contains the configuration information for the CAN peripheral.
+ 170:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval Constant indicates initialization succeed which will be 
+ 171:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   CANINITFAILED or CANINITOK.
+ 172:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 173:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** uint8_t CAN_Init(CAN_TypeDef* CANx, CAN_InitTypeDef* CAN_InitStruct)
+ 174:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 18669              		.loc 1 174 0
+ 18670              		.cfi_startproc
+ 18671              		@ args = 0, pretend = 0, frame = 0
+ 18672              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18673              		@ link register save eliminated.
+ 18674              	.LVL0:
+ 175:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   uint8_t InitStatus = CANINITFAILED;
+ 176:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   uint32_t wait_ack = 0x00000000;
+ 177:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 178:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 179:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_FUNCTIONAL_STATE(CAN_InitStruct->CAN_TTCM));
+ 180:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_FUNCTIONAL_STATE(CAN_InitStruct->CAN_ABOM));
+ 181:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_FUNCTIONAL_STATE(CAN_InitStruct->CAN_AWUM));
+ 182:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_FUNCTIONAL_STATE(CAN_InitStruct->CAN_NART));
+ 183:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_FUNCTIONAL_STATE(CAN_InitStruct->CAN_RFLM));
+ 184:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_FUNCTIONAL_STATE(CAN_InitStruct->CAN_TXFP));
+ 185:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_MODE(CAN_InitStruct->CAN_Mode));
+ 186:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_SJW(CAN_InitStruct->CAN_SJW));
+ 187:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_BS1(CAN_InitStruct->CAN_BS1));
+ 188:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_BS2(CAN_InitStruct->CAN_BS2));
+ 189:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_PRESCALER(CAN_InitStruct->CAN_Prescaler));
+ 190:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 191:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* exit from sleep mode */
+ 192:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CANx->MCR &= ~MCR_SLEEP;
+ 18675              		.loc 1 192 0
+ 18676 0000 0368     		ldr	r3, [r0, #0]
+ 18677 0002 23F00203 		bic	r3, r3, #2
+ 18678 0006 0360     		str	r3, [r0, #0]
+ 193:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 194:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Request initialisation */
+ 195:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CANx->MCR |= MCR_INRQ ;
+ 18679              		.loc 1 195 0
+ 18680 0008 0368     		ldr	r3, [r0, #0]
+ 18681 000a 43F00103 		orr	r3, r3, #1
+ 18682 000e 0360     		str	r3, [r0, #0]
+ 196:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 197:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Wait the acknowledge */
+ 198:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   while (((CANx->MSR & MSR_INAK) != MSR_INAK) && (wait_ack != INAK_TimeOut))
+ 18683              		.loc 1 198 0
+ 18684 0010 4368     		ldr	r3, [r0, #4]
+ 18685 0012 13F0010F 		tst	r3, #1
+ 18686 0016 0BD1     		bne	.L2
+ 18687 0018 4FF00003 		mov	r3, #0
+ 18688              	.LVL1:
+ 18689 001c 4FF6FF7C 		movw	ip, #65535
+ 18690              	.L3:
+ 18691 0020 4268     		ldr	r2, [r0, #4]
+ 18692 0022 12F0010F 		tst	r2, #1
+ 18693 0026 03D1     		bne	.L2
+ 199:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 200:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     wait_ack++;
+ 18694              		.loc 1 200 0
+ 18695 0028 03F10103 		add	r3, r3, #1
+ 18696              		.loc 1 198 0
+ 18697 002c 6345     		cmp	r3, ip
+ 18698 002e F7D1     		bne	.L3
+ 18699              	.L2:
+ 201:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 202:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 203:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* ...and check acknowledged */
+ 204:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if ((CANx->MSR & MSR_INAK) != MSR_INAK)
+ 18700              		.loc 1 204 0
+ 18701 0030 4368     		ldr	r3, [r0, #4]
+ 18702              	.LVL2:
+ 18703 0032 13F0010F 		tst	r3, #1
+ 18704 0036 02D1     		bne	.L4
+ 18705 0038 4FF00000 		mov	r0, #0
+ 18706              	.LVL3:
+ 18707 003c 7047     		bx	lr
+ 18708              	.LVL4:
+ 18709              	.L4:
+ 205:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 206:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     InitStatus = CANINITFAILED;
+ 207:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 208:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else 
+ 209:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 210:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Set the time triggered communication mode */
+ 211:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     if (CAN_InitStruct->CAN_TTCM == ENABLE)
+ 18710              		.loc 1 211 0
+ 18711 003e 8B79     		ldrb	r3, [r1, #6]	@ zero_extendqisi2
+ 18712 0040 012B     		cmp	r3, #1
+ 212:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 213:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR |= MCR_TTCM;
+ 18713              		.loc 1 213 0
+ 18714 0042 0368     		ldr	r3, [r0, #0]
+ 18715 0044 0CBF     		ite	eq
+ 18716 0046 43F08003 		orreq	r3, r3, #128
+ 214:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 215:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     else
+ 216:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 217:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR &= ~MCR_TTCM;
+ 18717              		.loc 1 217 0
+ 18718 004a 23F08003 		bicne	r3, r3, #128
+ 18719 004e 0360     		str	r3, [r0, #0]
+ 218:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 219:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 220:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Set the automatic bus-off management */
+ 221:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     if (CAN_InitStruct->CAN_ABOM == ENABLE)
+ 18720              		.loc 1 221 0
+ 18721 0050 CB79     		ldrb	r3, [r1, #7]	@ zero_extendqisi2
+ 18722 0052 012B     		cmp	r3, #1
+ 222:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 223:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR |= MCR_ABOM;
+ 18723              		.loc 1 223 0
+ 18724 0054 0368     		ldr	r3, [r0, #0]
+ 18725 0056 0CBF     		ite	eq
+ 18726 0058 43F04003 		orreq	r3, r3, #64
+ 224:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 225:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     else
+ 226:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 227:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR &= ~MCR_ABOM;
+ 18727              		.loc 1 227 0
+ 18728 005c 23F04003 		bicne	r3, r3, #64
+ 18729 0060 0360     		str	r3, [r0, #0]
+ 228:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 229:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 230:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Set the automatic wake-up mode */
+ 231:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     if (CAN_InitStruct->CAN_AWUM == ENABLE)
+ 18730              		.loc 1 231 0
+ 18731 0062 0B7A     		ldrb	r3, [r1, #8]	@ zero_extendqisi2
+ 18732 0064 012B     		cmp	r3, #1
+ 232:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 233:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR |= MCR_AWUM;
+ 18733              		.loc 1 233 0
+ 18734 0066 0368     		ldr	r3, [r0, #0]
+ 18735 0068 0CBF     		ite	eq
+ 18736 006a 43F02003 		orreq	r3, r3, #32
+ 234:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 235:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     else
+ 236:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 237:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR &= ~MCR_AWUM;
+ 18737              		.loc 1 237 0
+ 18738 006e 23F02003 		bicne	r3, r3, #32
+ 18739 0072 0360     		str	r3, [r0, #0]
+ 238:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 239:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 240:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Set the no automatic retransmission */
+ 241:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     if (CAN_InitStruct->CAN_NART == ENABLE)
+ 18740              		.loc 1 241 0
+ 18741 0074 4B7A     		ldrb	r3, [r1, #9]	@ zero_extendqisi2
+ 18742 0076 012B     		cmp	r3, #1
+ 242:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 243:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR |= MCR_NART;
+ 18743              		.loc 1 243 0
+ 18744 0078 0368     		ldr	r3, [r0, #0]
+ 18745 007a 0CBF     		ite	eq
+ 18746 007c 43F01003 		orreq	r3, r3, #16
+ 244:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 245:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     else
+ 246:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 247:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR &= ~MCR_NART;
+ 18747              		.loc 1 247 0
+ 18748 0080 23F01003 		bicne	r3, r3, #16
+ 18749 0084 0360     		str	r3, [r0, #0]
+ 248:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 249:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 250:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Set the receive FIFO locked mode */
+ 251:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     if (CAN_InitStruct->CAN_RFLM == ENABLE)
+ 18750              		.loc 1 251 0
+ 18751 0086 8B7A     		ldrb	r3, [r1, #10]	@ zero_extendqisi2
+ 18752 0088 012B     		cmp	r3, #1
+ 252:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 253:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR |= MCR_RFLM;
+ 18753              		.loc 1 253 0
+ 18754 008a 0368     		ldr	r3, [r0, #0]
+ 18755 008c 0CBF     		ite	eq
+ 18756 008e 43F00803 		orreq	r3, r3, #8
+ 254:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 255:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     else
+ 256:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 257:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR &= ~MCR_RFLM;
+ 18757              		.loc 1 257 0
+ 18758 0092 23F00803 		bicne	r3, r3, #8
+ 18759 0096 0360     		str	r3, [r0, #0]
+ 258:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 259:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 260:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Set the transmit FIFO priority */
+ 261:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     if (CAN_InitStruct->CAN_TXFP == ENABLE)
+ 18760              		.loc 1 261 0
+ 18761 0098 CB7A     		ldrb	r3, [r1, #11]	@ zero_extendqisi2
+ 18762 009a 012B     		cmp	r3, #1
+ 262:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 263:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR |= MCR_TXFP;
+ 18763              		.loc 1 263 0
+ 18764 009c 0368     		ldr	r3, [r0, #0]
+ 18765 009e 0CBF     		ite	eq
+ 18766 00a0 43F00403 		orreq	r3, r3, #4
+ 264:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 265:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     else
+ 266:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 267:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MCR &= ~MCR_TXFP;
+ 18767              		.loc 1 267 0
+ 18768 00a4 23F00403 		bicne	r3, r3, #4
+ 18769 00a8 0360     		str	r3, [r0, #0]
+ 268:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 269:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 270:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Set the bit timing register */
+ 271:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->BTR = (uint32_t)((uint32_t)CAN_InitStruct->CAN_Mode << 30) | ((uint32_t)CAN_InitStruct->C
+ 18770              		.loc 1 271 0
+ 18771 00aa CA78     		ldrb	r2, [r1, #3]	@ zero_extendqisi2
+ 18772 00ac 8B78     		ldrb	r3, [r1, #2]	@ zero_extendqisi2
+ 18773 00ae 4FEA8373 		lsl	r3, r3, #30
+ 18774 00b2 43EA0263 		orr	r3, r3, r2, lsl #24
+ 18775 00b6 0A79     		ldrb	r2, [r1, #4]	@ zero_extendqisi2
+ 18776 00b8 43EA0243 		orr	r3, r3, r2, lsl #16
+ 18777 00bc 4A79     		ldrb	r2, [r1, #5]	@ zero_extendqisi2
+ 18778 00be 43EA0252 		orr	r2, r3, r2, lsl #20
+ 18779 00c2 0B88     		ldrh	r3, [r1, #0]
+ 18780 00c4 03F1FF33 		add	r3, r3, #-1
+ 18781 00c8 42EA0303 		orr	r3, r2, r3
+ 18782 00cc C361     		str	r3, [r0, #28]
+ 272:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****                ((uint32_t)CAN_InitStruct->CAN_BS1 << 16) | ((uint32_t)CAN_InitStruct->CAN_BS2 << 20
+ 273:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****                ((uint32_t)CAN_InitStruct->CAN_Prescaler - 1);
+ 274:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 275:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Request leave initialisation */
+ 276:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->MCR &= ~MCR_INRQ;
+ 18783              		.loc 1 276 0
+ 18784 00ce 0368     		ldr	r3, [r0, #0]
+ 18785 00d0 23F00103 		bic	r3, r3, #1
+ 18786 00d4 0360     		str	r3, [r0, #0]
+ 277:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 278:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****    /* Wait the acknowledge */
+ 279:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****    wait_ack = 0x00;
+ 280:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 281:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****    while (((CANx->MSR & MSR_INAK) == MSR_INAK) && (wait_ack != INAK_TimeOut))
+ 18787              		.loc 1 281 0
+ 18788 00d6 4368     		ldr	r3, [r0, #4]
+ 18789 00d8 13F0010F 		tst	r3, #1
+ 18790 00dc 0BD0     		beq	.L18
+ 18791 00de 4FF00003 		mov	r3, #0
+ 18792              	.LVL5:
+ 18793 00e2 4FF6FF71 		movw	r1, #65535
+ 18794              	.LVL6:
+ 18795              	.L19:
+ 18796 00e6 4268     		ldr	r2, [r0, #4]
+ 18797 00e8 12F0010F 		tst	r2, #1
+ 18798 00ec 03D0     		beq	.L18
+ 282:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****    {
+ 283:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****      wait_ack++;
+ 18799              		.loc 1 283 0
+ 18800 00ee 03F10103 		add	r3, r3, #1
+ 18801              		.loc 1 281 0
+ 18802 00f2 8B42     		cmp	r3, r1
+ 18803 00f4 F7D1     		bne	.L19
+ 18804              	.LVL7:
+ 18805              	.L18:
+ 284:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****    }
+ 285:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 286:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* ...and check acknowledged */
+ 287:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     if ((CANx->MSR & MSR_INAK) == MSR_INAK)
+ 18806              		.loc 1 287 0
+ 18807 00f6 4068     		ldr	r0, [r0, #4]
+ 18808              	.LVL8:
+ 18809 00f8 80F00100 		eor	r0, r0, #1
+ 18810 00fc 00F00100 		and	r0, r0, #1
+ 18811              	.LVL9:
+ 18812              	.LVL10:
+ 288:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 289:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       InitStatus = CANINITFAILED;
+ 290:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 291:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     else
+ 292:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 293:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       InitStatus = CANINITOK ;
+ 294:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 295:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 296:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 297:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* At this step, return the status of initialization */
+ 298:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   return InitStatus;
+ 299:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 18813              		.loc 1 299 0
+ 18814 0100 7047     		bx	lr
+ 18815              		.cfi_endproc
+ 18816              	.LFE30:
+ 18818 0102 00BF     		.section	.text.CAN_FilterInit,"ax",%progbits
+ 18819              		.align	2
+ 18820              		.global	CAN_FilterInit
+ 18821              		.thumb
+ 18822              		.thumb_func
+ 18824              	CAN_FilterInit:
+ 18825              	.LFB31:
+ 300:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 301:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 302:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Initializes the CAN peripheral according to the specified
+ 303:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   parameters in the CAN_FilterInitStruct.
+ 304:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CAN_FilterInitStruct: pointer to a CAN_FilterInitTypeDef
+ 305:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   structure that contains the configuration information.
+ 306:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval None.
+ 307:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 308:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** void CAN_FilterInit(CAN_FilterInitTypeDef* CAN_FilterInitStruct)
+ 309:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 18826              		.loc 1 309 0
+ 18827              		.cfi_startproc
+ 18828              		@ args = 0, pretend = 0, frame = 0
+ 18829              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18830              		@ link register save eliminated.
+ 18831              	.LVL11:
+ 18832 0000 30B4     		push	{r4, r5}
+ 18833              	.LCFI0:
+ 18834              		.cfi_def_cfa_offset 8
+ 310:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   uint32_t filter_number_bit_pos = 0;
+ 311:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 312:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_FILTER_NUMBER(CAN_FilterInitStruct->CAN_FilterNumber));
+ 313:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_FILTER_MODE(CAN_FilterInitStruct->CAN_FilterMode));
+ 314:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_FILTER_SCALE(CAN_FilterInitStruct->CAN_FilterScale));
+ 315:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_FILTER_FIFO(CAN_FilterInitStruct->CAN_FilterFIFOAssignment));
+ 316:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_FUNCTIONAL_STATE(CAN_FilterInitStruct->CAN_FilterActivation));
+ 317:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 318:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   filter_number_bit_pos = ((uint32_t)0x00000001) << CAN_FilterInitStruct->CAN_FilterNumber;
+ 18835              		.loc 1 318 0
+ 18836 0002 90F80AC0 		ldrb	ip, [r0, #10]	@ zero_extendqisi2
+ 18837 0006 4FF00101 		mov	r1, #1
+ 18838 000a 01FA0CF1 		lsl	r1, r1, ip
+ 18839              	.LVL12:
+ 319:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 320:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialisation mode for the filter */
+ 321:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN1->FMR |= FMR_FINIT;
+ 18840              		.loc 1 321 0
+ 18841 000e 46F20043 		movw	r3, #:lower16:1073767424
+ 18842 0012 C4F20003 		movt	r3, #:upper16:1073767424
+ 18843 0016 D3F80022 		ldr	r2, [r3, #512]
+ 18844 001a 42F00102 		orr	r2, r2, #1
+ 18845 001e C3F80022 		str	r2, [r3, #512]
+ 322:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 323:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Filter Deactivation */
+ 324:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN1->FA1R &= ~(uint32_t)filter_number_bit_pos;
+ 18846              		.loc 1 324 0
+ 18847 0022 D3F81C42 		ldr	r4, [r3, #540]
+ 18848              		.cfi_offset 5, -4
+ 18849              		.cfi_offset 4, -8
+ 18850 0026 6FEA0102 		mvn	r2, r1
+ 18851 002a 02EA0404 		and	r4, r2, r4
+ 18852 002e C3F81C42 		str	r4, [r3, #540]
+ 325:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 326:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Filter Scale */
+ 327:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (CAN_FilterInitStruct->CAN_FilterScale == CAN_FilterScale_16bit)
+ 18853              		.loc 1 327 0
+ 18854 0032 037B     		ldrb	r3, [r0, #12]	@ zero_extendqisi2
+ 18855 0034 CBB9     		cbnz	r3, .L24
+ 328:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 329:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* 16-bit scale for the filter */
+ 330:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CAN1->FS1R &= ~(uint32_t)filter_number_bit_pos;
+ 18856              		.loc 1 330 0
+ 18857 0036 46F20043 		movw	r3, #:lower16:1073767424
+ 18858 003a C4F20003 		movt	r3, #:upper16:1073767424
+ 18859 003e D3F80C42 		ldr	r4, [r3, #524]
+ 18860 0042 02EA0404 		and	r4, r2, r4
+ 18861 0046 C3F80C42 		str	r4, [r3, #524]
+ 331:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 332:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* First 16-bit identifier and First 16-bit mask */
+ 333:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Or First 16-bit identifier and Second 16-bit identifier */
+ 334:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CAN1->sFilterRegister[CAN_FilterInitStruct->CAN_FilterNumber].FR1 = 
+ 335:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     ((0x0000FFFF & (uint32_t)CAN_FilterInitStruct->CAN_FilterMaskIdLow) << 16) |
+ 18862              		.loc 1 335 0
+ 18863 004a C588     		ldrh	r5, [r0, #6]
+ 18864 004c 4488     		ldrh	r4, [r0, #2]
+ 18865 004e 44EA0544 		orr	r4, r4, r5, lsl #16
+ 18866              		.loc 1 334 0
+ 18867 0052 0CF1480C 		add	ip, ip, #72
+ 18868 0056 43F83C40 		str	r4, [r3, ip, lsl #3]
+ 336:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****         (0x0000FFFF & (uint32_t)CAN_FilterInitStruct->CAN_FilterIdLow);
+ 337:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 338:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Second 16-bit identifier and Second 16-bit mask */
+ 339:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Or Third 16-bit identifier and Fourth 16-bit identifier */
+ 340:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CAN1->sFilterRegister[CAN_FilterInitStruct->CAN_FilterNumber].FR2 = 
+ 341:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     ((0x0000FFFF & (uint32_t)CAN_FilterInitStruct->CAN_FilterMaskIdHigh) << 16) |
+ 18869              		.loc 1 341 0
+ 18870 005a 8588     		ldrh	r5, [r0, #4]
+ 18871 005c 0488     		ldrh	r4, [r0, #0]
+ 18872 005e 44EA0544 		orr	r4, r4, r5, lsl #16
+ 18873              		.loc 1 340 0
+ 18874 0062 03EBCC03 		add	r3, r3, ip, lsl #3
+ 18875 0066 5C60     		str	r4, [r3, #4]
+ 18876 0068 1AE0     		b	.L25
+ 18877              	.L24:
+ 342:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****         (0x0000FFFF & (uint32_t)CAN_FilterInitStruct->CAN_FilterIdHigh);
+ 343:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 344:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 345:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (CAN_FilterInitStruct->CAN_FilterScale == CAN_FilterScale_32bit)
+ 18878              		.loc 1 345 0
+ 18879 006a 012B     		cmp	r3, #1
+ 18880 006c 18D1     		bne	.L25
+ 346:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 347:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* 32-bit scale for the filter */
+ 348:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CAN1->FS1R |= filter_number_bit_pos;
+ 18881              		.loc 1 348 0
+ 18882 006e 46F20044 		movw	r4, #:lower16:1073767424
+ 18883 0072 C4F20004 		movt	r4, #:upper16:1073767424
+ 18884 0076 D4F80C32 		ldr	r3, [r4, #524]
+ 18885 007a 41EA0303 		orr	r3, r1, r3
+ 18886 007e C4F80C32 		str	r3, [r4, #524]
+ 349:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* 32-bit identifier or First 32-bit identifier */
+ 350:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CAN1->sFilterRegister[CAN_FilterInitStruct->CAN_FilterNumber].FR1 = 
+ 351:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     ((0x0000FFFF & (uint32_t)CAN_FilterInitStruct->CAN_FilterIdHigh) << 16) |
+ 18887              		.loc 1 351 0
+ 18888 0082 0588     		ldrh	r5, [r0, #0]
+ 18889 0084 4388     		ldrh	r3, [r0, #2]
+ 18890 0086 43EA0543 		orr	r3, r3, r5, lsl #16
+ 18891              		.loc 1 350 0
+ 18892 008a 0CF1480C 		add	ip, ip, #72
+ 18893 008e 44F83C30 		str	r3, [r4, ip, lsl #3]
+ 352:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****         (0x0000FFFF & (uint32_t)CAN_FilterInitStruct->CAN_FilterIdLow);
+ 353:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* 32-bit mask or Second 32-bit identifier */
+ 354:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CAN1->sFilterRegister[CAN_FilterInitStruct->CAN_FilterNumber].FR2 = 
+ 355:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     ((0x0000FFFF & (uint32_t)CAN_FilterInitStruct->CAN_FilterMaskIdHigh) << 16) |
+ 18894              		.loc 1 355 0
+ 18895 0092 8588     		ldrh	r5, [r0, #4]
+ 18896 0094 C388     		ldrh	r3, [r0, #6]
+ 18897 0096 43EA0543 		orr	r3, r3, r5, lsl #16
+ 18898              		.loc 1 354 0
+ 18899 009a 04EBCC04 		add	r4, r4, ip, lsl #3
+ 18900 009e 6360     		str	r3, [r4, #4]
+ 18901              	.L25:
+ 356:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****         (0x0000FFFF & (uint32_t)CAN_FilterInitStruct->CAN_FilterMaskIdLow);
+ 357:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 358:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 359:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Filter Mode */
+ 360:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (CAN_FilterInitStruct->CAN_FilterMode == CAN_FilterMode_IdMask)
+ 18902              		.loc 1 360 0
+ 18903 00a0 C37A     		ldrb	r3, [r0, #11]	@ zero_extendqisi2
+ 18904 00a2 53B9     		cbnz	r3, .L26
+ 361:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 362:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /*Id/Mask mode for the filter*/
+ 363:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CAN1->FM1R &= ~(uint32_t)filter_number_bit_pos;
+ 18905              		.loc 1 363 0
+ 18906 00a4 46F20043 		movw	r3, #:lower16:1073767424
+ 18907 00a8 C4F20003 		movt	r3, #:upper16:1073767424
+ 18908 00ac D3F80442 		ldr	r4, [r3, #516]
+ 18909 00b0 02EA0404 		and	r4, r2, r4
+ 18910 00b4 C3F80442 		str	r4, [r3, #516]
+ 18911 00b8 09E0     		b	.L27
+ 18912              	.L26:
+ 364:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 365:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else /* CAN_FilterInitStruct->CAN_FilterMode == CAN_FilterMode_IdList */
+ 366:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 367:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /*Identifier list mode for the filter*/
+ 368:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CAN1->FM1R |= (uint32_t)filter_number_bit_pos;
+ 18913              		.loc 1 368 0
+ 18914 00ba 46F20043 		movw	r3, #:lower16:1073767424
+ 18915 00be C4F20003 		movt	r3, #:upper16:1073767424
+ 18916 00c2 D3F80442 		ldr	r4, [r3, #516]
+ 18917 00c6 41EA0404 		orr	r4, r1, r4
+ 18918 00ca C3F80442 		str	r4, [r3, #516]
+ 18919              	.L27:
+ 369:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 370:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 371:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Filter FIFO assignment */
+ 372:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (CAN_FilterInitStruct->CAN_FilterFIFOAssignment == CAN_FilterFIFO0)
+ 18920              		.loc 1 372 0
+ 18921 00ce 0389     		ldrh	r3, [r0, #8]
+ 18922 00d0 53B9     		cbnz	r3, .L28
+ 373:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 374:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* FIFO 0 assignation for the filter */
+ 375:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CAN1->FFA1R &= ~(uint32_t)filter_number_bit_pos;
+ 18923              		.loc 1 375 0
+ 18924 00d2 46F20043 		movw	r3, #:lower16:1073767424
+ 18925 00d6 C4F20003 		movt	r3, #:upper16:1073767424
+ 18926 00da D3F81442 		ldr	r4, [r3, #532]
+ 18927 00de 02EA0402 		and	r2, r2, r4
+ 18928 00e2 C3F81422 		str	r2, [r3, #532]
+ 18929 00e6 0BE0     		b	.L29
+ 18930              	.L28:
+ 376:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 377:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 378:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (CAN_FilterInitStruct->CAN_FilterFIFOAssignment == CAN_FilterFIFO1)
+ 18931              		.loc 1 378 0
+ 18932 00e8 012B     		cmp	r3, #1
+ 379:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 380:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* FIFO 1 assignation for the filter */
+ 381:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CAN1->FFA1R |= (uint32_t)filter_number_bit_pos;
+ 18933              		.loc 1 381 0
+ 18934 00ea 01BF     		itttt	eq
+ 18935 00ec 46F20043 		movweq	r3, #:lower16:1073767424
+ 18936 00f0 C4F20003 		movteq	r3, #:upper16:1073767424
+ 18937 00f4 D3F81422 		ldreq	r2, [r3, #532]
+ 18938 00f8 0A43     		orreq	r2, r1, r2
+ 18939 00fa 08BF     		it	eq
+ 18940 00fc C3F81422 		streq	r2, [r3, #532]
+ 18941              	.L29:
+ 382:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 383:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   
+ 384:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Filter activation */
+ 385:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (CAN_FilterInitStruct->CAN_FilterActivation == ENABLE)
+ 18942              		.loc 1 385 0
+ 18943 0100 437B     		ldrb	r3, [r0, #13]	@ zero_extendqisi2
+ 18944 0102 012B     		cmp	r3, #1
+ 386:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 387:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CAN1->FA1R |= filter_number_bit_pos;
+ 18945              		.loc 1 387 0
+ 18946 0104 01BF     		itttt	eq
+ 18947 0106 46F20043 		movweq	r3, #:lower16:1073767424
+ 18948 010a C4F20003 		movteq	r3, #:upper16:1073767424
+ 18949 010e D3F81C22 		ldreq	r2, [r3, #540]
+ 18950 0112 1143     		orreq	r1, r1, r2
+ 18951              	.LVL13:
+ 18952 0114 08BF     		it	eq
+ 18953 0116 C3F81C12 		streq	r1, [r3, #540]
+ 388:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 389:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 390:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Leave the initialisation mode for the filter */
+ 391:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN1->FMR &= ~FMR_FINIT;
+ 18954              		.loc 1 391 0
+ 18955 011a 46F20043 		movw	r3, #:lower16:1073767424
+ 18956 011e C4F20003 		movt	r3, #:upper16:1073767424
+ 18957 0122 D3F80022 		ldr	r2, [r3, #512]
+ 18958 0126 22F00102 		bic	r2, r2, #1
+ 18959 012a C3F80022 		str	r2, [r3, #512]
+ 392:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 18960              		.loc 1 392 0
+ 18961 012e 30BC     		pop	{r4, r5}
+ 18962 0130 7047     		bx	lr
+ 18963              		.cfi_endproc
+ 18964              	.LFE31:
+ 18966 0132 00BF     		.section	.text.CAN_StructInit,"ax",%progbits
+ 18967              		.align	2
+ 18968              		.global	CAN_StructInit
+ 18969              		.thumb
+ 18970              		.thumb_func
+ 18972              	CAN_StructInit:
+ 18973              	.LFB32:
+ 393:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 394:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 395:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Fills each CAN_InitStruct member with its default value.
+ 396:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CAN_InitStruct: pointer to a CAN_InitTypeDef structure which
+ 397:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   will be initialized.
+ 398:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval None.
+ 399:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 400:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** void CAN_StructInit(CAN_InitTypeDef* CAN_InitStruct)
+ 401:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 18974              		.loc 1 401 0
+ 18975              		.cfi_startproc
+ 18976              		@ args = 0, pretend = 0, frame = 0
+ 18977              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18978              		@ link register save eliminated.
+ 18979              	.LVL14:
+ 402:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Reset CAN init structure parameters values */
+ 403:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialize the time triggered communication mode */
+ 404:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_InitStruct->CAN_TTCM = DISABLE;
+ 18980              		.loc 1 404 0
+ 18981 0000 4FF00003 		mov	r3, #0
+ 18982 0004 8371     		strb	r3, [r0, #6]
+ 405:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialize the automatic bus-off management */
+ 406:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_InitStruct->CAN_ABOM = DISABLE;
+ 18983              		.loc 1 406 0
+ 18984 0006 C371     		strb	r3, [r0, #7]
+ 407:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialize the automatic wake-up mode */
+ 408:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_InitStruct->CAN_AWUM = DISABLE;
+ 18985              		.loc 1 408 0
+ 18986 0008 0372     		strb	r3, [r0, #8]
+ 409:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialize the no automatic retransmission */
+ 410:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_InitStruct->CAN_NART = DISABLE;
+ 18987              		.loc 1 410 0
+ 18988 000a 4372     		strb	r3, [r0, #9]
+ 411:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialize the receive FIFO locked mode */
+ 412:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_InitStruct->CAN_RFLM = DISABLE;
+ 18989              		.loc 1 412 0
+ 18990 000c 8372     		strb	r3, [r0, #10]
+ 413:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialize the transmit FIFO priority */
+ 414:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_InitStruct->CAN_TXFP = DISABLE;
+ 18991              		.loc 1 414 0
+ 18992 000e C372     		strb	r3, [r0, #11]
+ 415:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialize the CAN_Mode member */
+ 416:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_InitStruct->CAN_Mode = CAN_Mode_Normal;
+ 18993              		.loc 1 416 0
+ 18994 0010 8370     		strb	r3, [r0, #2]
+ 417:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialize the CAN_SJW member */
+ 418:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_InitStruct->CAN_SJW = CAN_SJW_1tq;
+ 18995              		.loc 1 418 0
+ 18996 0012 C370     		strb	r3, [r0, #3]
+ 419:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialize the CAN_BS1 member */
+ 420:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_InitStruct->CAN_BS1 = CAN_BS1_4tq;
+ 18997              		.loc 1 420 0
+ 18998 0014 4FF00303 		mov	r3, #3
+ 18999 0018 0371     		strb	r3, [r0, #4]
+ 421:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialize the CAN_BS2 member */
+ 422:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_InitStruct->CAN_BS2 = CAN_BS2_3tq;
+ 19000              		.loc 1 422 0
+ 19001 001a 4FF00203 		mov	r3, #2
+ 19002 001e 4371     		strb	r3, [r0, #5]
+ 423:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Initialize the CAN_Prescaler member */
+ 424:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_InitStruct->CAN_Prescaler = 1;
+ 19003              		.loc 1 424 0
+ 19004 0020 4FF00103 		mov	r3, #1	@ movhi
+ 19005 0024 0380     		strh	r3, [r0, #0]	@ movhi
+ 425:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 19006              		.loc 1 425 0
+ 19007 0026 7047     		bx	lr
+ 19008              		.cfi_endproc
+ 19009              	.LFE32:
+ 19011              		.section	.text.CAN_SlaveStartBank,"ax",%progbits
+ 19012              		.align	2
+ 19013              		.global	CAN_SlaveStartBank
+ 19014              		.thumb
+ 19015              		.thumb_func
+ 19017              	CAN_SlaveStartBank:
+ 19018              	.LFB33:
+ 426:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 427:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 428:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Select the start bank filter for slave CAN.
+ 429:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @note   This function applies only to STM32 Connectivity line devices.
+ 430:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CAN_BankNumber: Select the start slave bank filter from 1..27.
+ 431:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval None.
+ 432:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 433:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** void CAN_SlaveStartBank(uint8_t CAN_BankNumber) 
+ 434:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19019              		.loc 1 434 0
+ 19020              		.cfi_startproc
+ 19021              		@ args = 0, pretend = 0, frame = 0
+ 19022              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19023              		@ link register save eliminated.
+ 19024              	.LVL15:
+ 435:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 436:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_BANKNUMBER(CAN_BankNumber));
+ 437:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* enter Initialisation mode for the filter */
+ 438:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN1->FMR |= FMR_FINIT;
+ 19025              		.loc 1 438 0
+ 19026 0000 46F20043 		movw	r3, #:lower16:1073767424
+ 19027 0004 C4F20003 		movt	r3, #:upper16:1073767424
+ 19028 0008 D3F80022 		ldr	r2, [r3, #512]
+ 19029 000c 42F00102 		orr	r2, r2, #1
+ 19030 0010 C3F80022 		str	r2, [r3, #512]
+ 439:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Select the start slave bank */
+ 440:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN1->FMR &= (uint32_t)0xFFFFC0F1 ;
+ 19031              		.loc 1 440 0
+ 19032 0014 D3F80022 		ldr	r2, [r3, #512]
+ 19033 0018 22F47C52 		bic	r2, r2, #16128
+ 19034 001c 22F00E02 		bic	r2, r2, #14
+ 19035 0020 C3F80022 		str	r2, [r3, #512]
+ 441:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN1->FMR |= (uint32_t)(CAN_BankNumber)<<8;
+ 19036              		.loc 1 441 0
+ 19037 0024 D3F80022 		ldr	r2, [r3, #512]
+ 19038 0028 42EA0022 		orr	r2, r2, r0, lsl #8
+ 19039 002c C3F80022 		str	r2, [r3, #512]
+ 442:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Leave Initialisation mode for the filter */
+ 443:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN1->FMR &= ~FMR_FINIT;
+ 19040              		.loc 1 443 0
+ 19041 0030 D3F80022 		ldr	r2, [r3, #512]
+ 19042 0034 22F00102 		bic	r2, r2, #1
+ 19043 0038 C3F80022 		str	r2, [r3, #512]
+ 444:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 19044              		.loc 1 444 0
+ 19045 003c 7047     		bx	lr
+ 19046              		.cfi_endproc
+ 19047              	.LFE33:
+ 19049 003e 00BF     		.section	.text.CAN_ITConfig,"ax",%progbits
+ 19050              		.align	2
+ 19051              		.global	CAN_ITConfig
+ 19052              		.thumb
+ 19053              		.thumb_func
+ 19055              	CAN_ITConfig:
+ 19056              	.LFB34:
+ 445:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 446:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 447:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Enables or disables the specified CAN interrupts.
+ 448:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 449:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CAN_IT: specifies the CAN interrupt sources to be enabled or disabled.
+ 450:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   This parameter can be: CAN_IT_TME, CAN_IT_FMP0, CAN_IT_FF0,
+ 451:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   CAN_IT_FOV0, CAN_IT_FMP1, CAN_IT_FF1,
+ 452:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   CAN_IT_FOV1, CAN_IT_EWG, CAN_IT_EPV,
+ 453:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   CAN_IT_LEC, CAN_IT_ERR, CAN_IT_WKU or
+ 454:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   CAN_IT_SLK.
+ 455:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  NewState: new state of the CAN interrupts.
+ 456:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   This parameter can be: ENABLE or DISABLE.
+ 457:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval None.
+ 458:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 459:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** void CAN_ITConfig(CAN_TypeDef* CANx, uint32_t CAN_IT, FunctionalState NewState)
+ 460:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19057              		.loc 1 460 0
+ 19058              		.cfi_startproc
+ 19059              		@ args = 0, pretend = 0, frame = 0
+ 19060              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19061              		@ link register save eliminated.
+ 19062              	.LVL16:
+ 461:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 462:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 463:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ITConfig(CAN_IT));
+ 464:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_FUNCTIONAL_STATE(NewState));
+ 465:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 466:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (NewState != DISABLE)
+ 19063              		.loc 1 466 0
+ 19064 0000 22B1     		cbz	r2, .L37
+ 467:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 468:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Enable the selected CAN interrupt */
+ 469:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->IER |= CAN_IT;
+ 19065              		.loc 1 469 0
+ 19066 0002 4369     		ldr	r3, [r0, #20]
+ 19067 0004 41EA0301 		orr	r1, r1, r3
+ 19068              	.LVL17:
+ 19069 0008 4161     		str	r1, [r0, #20]
+ 19070 000a 7047     		bx	lr
+ 19071              	.LVL18:
+ 19072              	.L37:
+ 470:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 471:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else
+ 472:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 473:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Disable the selected CAN interrupt */
+ 474:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->IER &= ~CAN_IT;
+ 19073              		.loc 1 474 0
+ 19074 000c 4369     		ldr	r3, [r0, #20]
+ 19075 000e 23EA0101 		bic	r1, r3, r1
+ 19076              	.LVL19:
+ 19077 0012 4161     		str	r1, [r0, #20]
+ 19078 0014 7047     		bx	lr
+ 19079              		.cfi_endproc
+ 19080              	.LFE34:
+ 19082 0016 00BF     		.section	.text.CAN_Transmit,"ax",%progbits
+ 19083              		.align	2
+ 19084              		.global	CAN_Transmit
+ 19085              		.thumb
+ 19086              		.thumb_func
+ 19088              	CAN_Transmit:
+ 19089              	.LFB35:
+ 475:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 476:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 477:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 478:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 479:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Initiates the transmission of a message.
+ 480:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 481:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  TxMessage: pointer to a structure which contains CAN Id, CAN
+ 482:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   DLC and CAN datas.
+ 483:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval The number of the mailbox that is used for transmission
+ 484:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   or CAN_NO_MB if there is no empty mailbox.
+ 485:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 486:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** uint8_t CAN_Transmit(CAN_TypeDef* CANx, CanTxMsg* TxMessage)
+ 487:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19090              		.loc 1 487 0
+ 19091              		.cfi_startproc
+ 19092              		@ args = 0, pretend = 0, frame = 0
+ 19093              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19094              		@ link register save eliminated.
+ 19095              	.LVL20:
+ 19096 0000 70B4     		push	{r4, r5, r6}
+ 19097              	.LCFI1:
+ 19098              		.cfi_def_cfa_offset 12
+ 19099 0002 0346     		mov	r3, r0
+ 488:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   uint8_t transmit_mailbox = 0;
+ 489:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 490:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 491:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_IDTYPE(TxMessage->IDE));
+ 492:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_RTR(TxMessage->RTR));
+ 493:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_DLC(TxMessage->DLC));
+ 494:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 495:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Select one empty transmit mailbox */
+ 496:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if ((CANx->TSR&TSR_TME0) == TSR_TME0)
+ 19100              		.loc 1 496 0
+ 19101 0004 8268     		ldr	r2, [r0, #8]
+ 19102 0006 12F0806F 		tst	r2, #67108864
+ 19103 000a 18BF     		it	ne
+ 19104 000c 0020     		movne	r0, #0
+ 19105              	.LVL21:
+ 19106 000e 0DD1     		bne	.L42
+ 19107              		.cfi_offset 6, -4
+ 19108              		.cfi_offset 5, -8
+ 19109              		.cfi_offset 4, -12
+ 497:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 498:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     transmit_mailbox = 0;
+ 499:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 500:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else if ((CANx->TSR&TSR_TME1) == TSR_TME1)
+ 19110              		.loc 1 500 0
+ 19111 0010 9A68     		ldr	r2, [r3, #8]
+ 19112 0012 12F0006F 		tst	r2, #134217728
+ 19113 0016 18BF     		it	ne
+ 19114 0018 0120     		movne	r0, #1
+ 19115              	.LVL22:
+ 19116 001a 07D1     		bne	.L42
+ 501:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 502:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     transmit_mailbox = 1;
+ 503:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 504:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else if ((CANx->TSR&TSR_TME2) == TSR_TME2)
+ 19117              		.loc 1 504 0
+ 19118 001c 9A68     		ldr	r2, [r3, #8]
+ 19119 001e 12F0805F 		tst	r2, #268435456
+ 19120 0022 08BF     		it	eq
+ 19121 0024 0420     		moveq	r0, #4
+ 19122              	.LVL23:
+ 19123 0026 60D0     		beq	.L45
+ 19124 0028 4FF00200 		mov	r0, #2
+ 19125              	.LVL24:
+ 19126              	.L42:
+ 505:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 506:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     transmit_mailbox = 2;
+ 507:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 508:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else
+ 509:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 510:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     transmit_mailbox = CAN_NO_MB;
+ 511:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 512:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 513:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (transmit_mailbox != CAN_NO_MB)
+ 514:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 515:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Set up the Id */
+ 516:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->sTxMailBox[transmit_mailbox].TIR &= TMIDxR_TXRQ;
+ 19127              		.loc 1 516 0
+ 19128 002c 8446     		mov	ip, r0
+ 19129 002e 00F11802 		add	r2, r0, #24
+ 19130 0032 03EB0212 		add	r2, r3, r2, lsl #4
+ 19131 0036 1468     		ldr	r4, [r2, #0]
+ 19132 0038 04F00104 		and	r4, r4, #1
+ 19133 003c 1460     		str	r4, [r2, #0]
+ 517:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     if (TxMessage->IDE == CAN_ID_STD)
+ 19134              		.loc 1 517 0
+ 19135 003e 0A7A     		ldrb	r2, [r1, #8]	@ zero_extendqisi2
+ 19136 0040 62B9     		cbnz	r2, .L46
+ 518:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 519:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       assert_param(IS_CAN_STDID(TxMessage->StdId));  
+ 520:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->sTxMailBox[transmit_mailbox].TIR |= ((TxMessage->StdId << 21) | TxMessage->RTR);
+ 19137              		.loc 1 520 0
+ 19138 0042 00F11802 		add	r2, r0, #24
+ 19139              	.LVL25:
+ 19140 0046 03EB0212 		add	r2, r3, r2, lsl #4
+ 19141 004a 1568     		ldr	r5, [r2, #0]
+ 19142 004c 0E68     		ldr	r6, [r1, #0]
+ 19143 004e 4C7A     		ldrb	r4, [r1, #9]	@ zero_extendqisi2
+ 19144 0050 44EA4654 		orr	r4, r4, r6, lsl #21
+ 19145 0054 44EA0504 		orr	r4, r4, r5
+ 19146 0058 1460     		str	r4, [r2, #0]
+ 19147 005a 0DE0     		b	.L47
+ 19148              	.LVL26:
+ 19149              	.L46:
+ 521:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 522:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     else
+ 523:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     {
+ 524:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       assert_param(IS_CAN_EXTID(TxMessage->ExtId));
+ 525:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->sTxMailBox[transmit_mailbox].TIR |= ((TxMessage->ExtId<<3) | TxMessage->IDE | 
+ 19150              		.loc 1 525 0
+ 19151 005c 00F11804 		add	r4, r0, #24
+ 19152              	.LVL27:
+ 19153 0060 03EB0414 		add	r4, r3, r4, lsl #4
+ 19154 0064 2568     		ldr	r5, [r4, #0]
+ 19155 0066 4E68     		ldr	r6, [r1, #4]
+ 19156 0068 42EAC602 		orr	r2, r2, r6, lsl #3
+ 19157 006c 42EA0502 		orr	r2, r2, r5
+ 19158 0070 4D7A     		ldrb	r5, [r1, #9]	@ zero_extendqisi2
+ 19159 0072 42EA0502 		orr	r2, r2, r5
+ 19160 0076 2260     		str	r2, [r4, #0]
+ 19161              	.L47:
+ 526:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****                                                TxMessage->RTR);
+ 527:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     }
+ 528:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     
+ 529:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 530:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Set up the DLC */
+ 531:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     TxMessage->DLC &= (uint8_t)0x0000000F;
+ 19162              		.loc 1 531 0
+ 19163 0078 8A7A     		ldrb	r2, [r1, #10]	@ zero_extendqisi2
+ 19164 007a 02F00F02 		and	r2, r2, #15
+ 19165 007e 8A72     		strb	r2, [r1, #10]
+ 532:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->sTxMailBox[transmit_mailbox].TDTR &= (uint32_t)0xFFFFFFF0;
+ 19166              		.loc 1 532 0
+ 19167 0080 0CF11804 		add	r4, ip, #24
+ 19168 0084 03EB0414 		add	r4, r3, r4, lsl #4
+ 19169 0088 2246     		mov	r2, r4
+ 19170 008a 52F8045F 		ldr	r5, [r2, #4]!
+ 19171 008e 25F00F05 		bic	r5, r5, #15
+ 19172 0092 1560     		str	r5, [r2, #0]
+ 533:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->sTxMailBox[transmit_mailbox].TDTR |= TxMessage->DLC;
+ 19173              		.loc 1 533 0
+ 19174 0094 1568     		ldr	r5, [r2, #0]
+ 19175 0096 8E7A     		ldrb	r6, [r1, #10]	@ zero_extendqisi2
+ 19176 0098 46EA0505 		orr	r5, r6, r5
+ 19177 009c 1560     		str	r5, [r2, #0]
+ 534:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 535:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Set up the data field */
+ 536:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->sTxMailBox[transmit_mailbox].TDLR = (((uint32_t)TxMessage->Data[3] << 24) | 
+ 19178              		.loc 1 536 0
+ 19179 009e 8A7B     		ldrb	r2, [r1, #14]	@ zero_extendqisi2
+ 19180 00a0 4D7B     		ldrb	r5, [r1, #13]	@ zero_extendqisi2
+ 19181 00a2 4FEA0545 		lsl	r5, r5, #16
+ 19182 00a6 45EA0265 		orr	r5, r5, r2, lsl #24
+ 19183 00aa CA7A     		ldrb	r2, [r1, #11]	@ zero_extendqisi2
+ 19184 00ac 45EA0205 		orr	r5, r5, r2
+ 19185 00b0 0A7B     		ldrb	r2, [r1, #12]	@ zero_extendqisi2
+ 19186 00b2 45EA0225 		orr	r5, r5, r2, lsl #8
+ 19187 00b6 03EB0C13 		add	r3, r3, ip, lsl #4
+ 19188              	.LVL28:
+ 19189 00ba 03F5C472 		add	r2, r3, #392
+ 19190 00be 1560     		str	r5, [r2, #0]
+ 537:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****                                              ((uint32_t)TxMessage->Data[2] << 16) |
+ 538:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****                                              ((uint32_t)TxMessage->Data[1] << 8) | 
+ 539:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****                                              ((uint32_t)TxMessage->Data[0]));
+ 540:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->sTxMailBox[transmit_mailbox].TDHR = (((uint32_t)TxMessage->Data[7] << 24) | 
+ 19191              		.loc 1 540 0
+ 19192 00c0 91F812C0 		ldrb	ip, [r1, #18]	@ zero_extendqisi2
+ 19193 00c4 4A7C     		ldrb	r2, [r1, #17]	@ zero_extendqisi2
+ 19194 00c6 4FEA0242 		lsl	r2, r2, #16
+ 19195 00ca 42EA0C62 		orr	r2, r2, ip, lsl #24
+ 19196 00ce 91F80FC0 		ldrb	ip, [r1, #15]	@ zero_extendqisi2
+ 19197 00d2 42EA0C02 		orr	r2, r2, ip
+ 19198 00d6 097C     		ldrb	r1, [r1, #16]	@ zero_extendqisi2
+ 19199              	.LVL29:
+ 19200 00d8 42EA0122 		orr	r2, r2, r1, lsl #8
+ 19201 00dc 03F5C673 		add	r3, r3, #396
+ 19202 00e0 1A60     		str	r2, [r3, #0]
+ 541:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****                                              ((uint32_t)TxMessage->Data[6] << 16) |
+ 542:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****                                              ((uint32_t)TxMessage->Data[5] << 8) |
+ 543:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****                                              ((uint32_t)TxMessage->Data[4]));
+ 544:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Request transmission */
+ 545:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->sTxMailBox[transmit_mailbox].TIR |= TMIDxR_TXRQ;
+ 19203              		.loc 1 545 0
+ 19204 00e2 2368     		ldr	r3, [r4, #0]
+ 19205 00e4 43F00103 		orr	r3, r3, #1
+ 19206 00e8 2360     		str	r3, [r4, #0]
+ 19207              	.LVL30:
+ 19208              	.L45:
+ 19209              	.LVL31:
+ 546:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 547:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   return transmit_mailbox;
+ 548:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 19210              		.loc 1 548 0
+ 19211 00ea 70BC     		pop	{r4, r5, r6}
+ 19212 00ec 7047     		bx	lr
+ 19213              		.cfi_endproc
+ 19214              	.LFE35:
+ 19216 00ee 00BF     		.section	.text.CAN_TransmitStatus,"ax",%progbits
+ 19217              		.align	2
+ 19218              		.global	CAN_TransmitStatus
+ 19219              		.thumb
+ 19220              		.thumb_func
+ 19222              	CAN_TransmitStatus:
+ 19223              	.LFB36:
+ 549:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 550:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 551:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Checks the transmission of a message.
+ 552:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 553:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  TransmitMailbox: the number of the mailbox that is used for transmission.
+ 554:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval CANTXOK if the CAN driver transmits the message, CANTXFAILED in an other case.
+ 555:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 556:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** uint8_t CAN_TransmitStatus(CAN_TypeDef* CANx, uint8_t TransmitMailbox)
+ 557:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19224              		.loc 1 557 0
+ 19225              		.cfi_startproc
+ 19226              		@ args = 0, pretend = 0, frame = 0
+ 19227              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19228              		@ link register save eliminated.
+ 19229              	.LVL32:
+ 558:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* RQCP, TXOK and TME bits */
+ 559:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   uint8_t state = 0;
+ 560:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 561:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 562:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_TRANSMITMAILBOX(TransmitMailbox));
+ 563:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   switch (TransmitMailbox)
+ 19230              		.loc 1 563 0
+ 19231 0000 0129     		cmp	r1, #1
+ 19232 0002 14D0     		beq	.L52
+ 19233 0004 21B1     		cbz	r1, .L51
+ 19234 0006 0229     		cmp	r1, #2
+ 19235 0008 18BF     		it	ne
+ 19236 000a 0020     		movne	r0, #0
+ 19237              	.LVL33:
+ 19238 000c 30D1     		bne	.L54
+ 19239 000e 1FE0     		b	.L60
+ 19240              	.LVL34:
+ 19241              	.L51:
+ 564:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 565:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case (0): state |= (uint8_t)((CANx->TSR & TSR_RQCP0) << 2);
+ 19242              		.loc 1 565 0
+ 19243 0010 8268     		ldr	r2, [r0, #8]
+ 566:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       state |= (uint8_t)((CANx->TSR & TSR_TXOK0) >> 0);
+ 19244              		.loc 1 566 0
+ 19245 0012 8368     		ldr	r3, [r0, #8]
+ 19246 0014 02F00102 		and	r2, r2, #1
+ 19247 0018 03F00203 		and	r3, r3, #2
+ 19248 001c 43EA8202 		orr	r2, r3, r2, lsl #2
+ 19249 0020 D2B2     		uxtb	r2, r2
+ 19250              	.LVL35:
+ 567:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       state |= (uint8_t)((CANx->TSR & TSR_TME0) >> 26);
+ 19251              		.loc 1 567 0
+ 19252 0022 8368     		ldr	r3, [r0, #8]
+ 19253 0024 C3F38063 		ubfx	r3, r3, #26, #1
+ 19254 0028 42EA0300 		orr	r0, r2, r3
+ 19255              	.LVL36:
+ 568:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19256              		.loc 1 568 0
+ 19257 002c 20E0     		b	.L54
+ 19258              	.LVL37:
+ 19259              	.L52:
+ 569:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case (1): state |= (uint8_t)((CANx->TSR & TSR_RQCP1) >> 6);
+ 19260              		.loc 1 569 0
+ 19261 002e 8368     		ldr	r3, [r0, #8]
+ 570:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       state |= (uint8_t)((CANx->TSR & TSR_TXOK1) >> 8);
+ 19262              		.loc 1 570 0
+ 19263 0030 8268     		ldr	r2, [r0, #8]
+ 19264 0032 02F40072 		and	r2, r2, #512
+ 19265 0036 03F48073 		and	r3, r3, #256
+ 19266 003a 4FEA9313 		lsr	r3, r3, #6
+ 19267 003e 43EA1222 		orr	r2, r3, r2, lsr #8
+ 19268 0042 D2B2     		uxtb	r2, r2
+ 19269              	.LVL38:
+ 571:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       state |= (uint8_t)((CANx->TSR & TSR_TME1) >> 27);
+ 19270              		.loc 1 571 0
+ 19271 0044 8368     		ldr	r3, [r0, #8]
+ 19272 0046 C3F3C063 		ubfx	r3, r3, #27, #1
+ 19273 004a 42EA0300 		orr	r0, r2, r3
+ 19274              	.LVL39:
+ 572:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19275              		.loc 1 572 0
+ 19276 004e 0FE0     		b	.L54
+ 19277              	.L60:
+ 573:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case (2): state |= (uint8_t)((CANx->TSR & TSR_RQCP2) >> 14);
+ 19278              		.loc 1 573 0
+ 19279 0050 8368     		ldr	r3, [r0, #8]
+ 19280              	.LVL40:
+ 574:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       state |= (uint8_t)((CANx->TSR & TSR_TXOK2) >> 16);
+ 19281              		.loc 1 574 0
+ 19282 0052 8268     		ldr	r2, [r0, #8]
+ 19283 0054 02F40032 		and	r2, r2, #131072
+ 19284 0058 03F48033 		and	r3, r3, #65536
+ 19285 005c 4FEA9333 		lsr	r3, r3, #14
+ 19286 0060 43EA1242 		orr	r2, r3, r2, lsr #16
+ 19287 0064 D2B2     		uxtb	r2, r2
+ 19288              	.LVL41:
+ 575:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       state |= (uint8_t)((CANx->TSR & TSR_TME2) >> 28);
+ 19289              		.loc 1 575 0
+ 19290 0066 8368     		ldr	r3, [r0, #8]
+ 19291 0068 C3F30073 		ubfx	r3, r3, #28, #1
+ 19292 006c 42EA0300 		orr	r0, r2, r3
+ 19293              	.LVL42:
+ 19294              	.L54:
+ 576:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 577:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     default:
+ 578:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       state = CANTXFAILED;
+ 579:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 580:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 581:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   switch (state)
+ 19295              		.loc 1 581 0
+ 19296 0070 20B1     		cbz	r0, .L56
+ 19297 0072 0728     		cmp	r0, #7
+ 19298 0074 14BF     		ite	ne
+ 19299 0076 0020     		movne	r0, #0
+ 19300 0078 0120     		moveq	r0, #1
+ 19301              	.LVL43:
+ 19302 007a 7047     		bx	lr
+ 19303              	.L56:
+ 19304 007c 4FF00200 		mov	r0, #2
+ 19305              	.LVL44:
+ 19306              	.LVL45:
+ 582:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 583:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       /* transmit pending  */
+ 584:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case (0x0): state = CANTXPENDING;
+ 585:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 586:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       /* transmit failed  */
+ 587:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case (0x5): state = CANTXFAILED;
+ 588:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 589:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       /* transmit succedeed  */
+ 590:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case (0x7): state = CANTXOK;
+ 591:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 592:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     default:
+ 593:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       state = CANTXFAILED;
+ 594:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 595:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 596:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   return state;
+ 597:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 19307              		.loc 1 597 0
+ 19308 0080 7047     		bx	lr
+ 19309              		.cfi_endproc
+ 19310              	.LFE36:
+ 19312 0082 00BF     		.section	.text.CAN_CancelTransmit,"ax",%progbits
+ 19313              		.align	2
+ 19314              		.global	CAN_CancelTransmit
+ 19315              		.thumb
+ 19316              		.thumb_func
+ 19318              	CAN_CancelTransmit:
+ 19319              	.LFB37:
+ 598:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 599:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 600:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Cancels a transmit request.
+ 601:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral. 
+ 602:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  Mailbox: Mailbox number.
+ 603:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval None.
+ 604:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 605:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** void CAN_CancelTransmit(CAN_TypeDef* CANx, uint8_t Mailbox)
+ 606:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19320              		.loc 1 606 0
+ 19321              		.cfi_startproc
+ 19322              		@ args = 0, pretend = 0, frame = 0
+ 19323              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19324              		@ link register save eliminated.
+ 19325              	.LVL46:
+ 607:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 608:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 609:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_TRANSMITMAILBOX(Mailbox));
+ 610:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* abort transmission */
+ 611:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   switch (Mailbox)
+ 19326              		.loc 1 611 0
+ 19327 0000 0129     		cmp	r1, #1
+ 19328 0002 08D0     		beq	.L64
+ 19329 0004 11B1     		cbz	r1, .L63
+ 19330 0006 0229     		cmp	r1, #2
+ 19331 0008 0ED1     		bne	.L66
+ 19332 000a 09E0     		b	.L67
+ 19333              	.L63:
+ 612:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 613:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case (0): CANx->TSR |= TSR_ABRQ0;
+ 19334              		.loc 1 613 0
+ 19335 000c 8368     		ldr	r3, [r0, #8]
+ 19336 000e 43F08003 		orr	r3, r3, #128
+ 19337 0012 8360     		str	r3, [r0, #8]
+ 614:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19338              		.loc 1 614 0
+ 19339 0014 7047     		bx	lr
+ 19340              	.L64:
+ 615:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case (1): CANx->TSR |= TSR_ABRQ1;
+ 19341              		.loc 1 615 0
+ 19342 0016 8368     		ldr	r3, [r0, #8]
+ 19343 0018 43F40043 		orr	r3, r3, #32768
+ 19344 001c 8360     		str	r3, [r0, #8]
+ 616:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19345              		.loc 1 616 0
+ 19346 001e 7047     		bx	lr
+ 19347              	.L67:
+ 617:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case (2): CANx->TSR |= TSR_ABRQ2;
+ 19348              		.loc 1 617 0
+ 19349 0020 8368     		ldr	r3, [r0, #8]
+ 19350 0022 43F40003 		orr	r3, r3, #8388608
+ 19351 0026 8360     		str	r3, [r0, #8]
+ 19352              	.L66:
+ 19353 0028 7047     		bx	lr
+ 19354              		.cfi_endproc
+ 19355              	.LFE37:
+ 19357              		.section	.text.CAN_FIFORelease,"ax",%progbits
+ 19358              		.align	2
+ 19359              		.global	CAN_FIFORelease
+ 19360              		.thumb
+ 19361              		.thumb_func
+ 19363              	CAN_FIFORelease:
+ 19364              	.LFB38:
+ 618:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 619:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     default:
+ 620:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 621:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 622:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 623:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 624:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 625:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Releases a FIFO.
+ 626:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral. 
+ 627:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  FIFONumber: FIFO to release, CAN_FIFO0 or CAN_FIFO1.
+ 628:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval None.
+ 629:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 630:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** void CAN_FIFORelease(CAN_TypeDef* CANx, uint8_t FIFONumber)
+ 631:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19365              		.loc 1 631 0
+ 19366              		.cfi_startproc
+ 19367              		@ args = 0, pretend = 0, frame = 0
+ 19368              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19369              		@ link register save eliminated.
+ 19370              	.LVL47:
+ 632:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 633:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 634:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_FIFO(FIFONumber));
+ 635:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Release FIFO0 */
+ 636:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (FIFONumber == CAN_FIFO0)
+ 19371              		.loc 1 636 0
+ 19372 0000 19B9     		cbnz	r1, .L69
+ 637:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 638:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->RF0R = RF0R_RFOM0;
+ 19373              		.loc 1 638 0
+ 19374 0002 4FF02003 		mov	r3, #32
+ 19375 0006 C360     		str	r3, [r0, #12]
+ 19376 0008 7047     		bx	lr
+ 19377              	.L69:
+ 639:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 640:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Release FIFO1 */
+ 641:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else /* FIFONumber == CAN_FIFO1 */
+ 642:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 643:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->RF1R = RF1R_RFOM1;
+ 19378              		.loc 1 643 0
+ 19379 000a 4FF02003 		mov	r3, #32
+ 19380 000e 0361     		str	r3, [r0, #16]
+ 19381 0010 7047     		bx	lr
+ 19382              		.cfi_endproc
+ 19383              	.LFE38:
+ 19385 0012 00BF     		.section	.text.CAN_MessagePending,"ax",%progbits
+ 19386              		.align	2
+ 19387              		.global	CAN_MessagePending
+ 19388              		.thumb
+ 19389              		.thumb_func
+ 19391              	CAN_MessagePending:
+ 19392              	.LFB39:
+ 644:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 645:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 646:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 647:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 648:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Returns the number of pending messages.
+ 649:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 650:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  FIFONumber: Receive FIFO number, CAN_FIFO0 or CAN_FIFO1.
+ 651:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval NbMessage which is the number of pending message.
+ 652:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 653:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** uint8_t CAN_MessagePending(CAN_TypeDef* CANx, uint8_t FIFONumber)
+ 654:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19393              		.loc 1 654 0
+ 19394              		.cfi_startproc
+ 19395              		@ args = 0, pretend = 0, frame = 0
+ 19396              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19397              		@ link register save eliminated.
+ 19398              	.LVL48:
+ 655:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   uint8_t message_pending=0;
+ 656:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 657:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 658:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_FIFO(FIFONumber));
+ 659:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (FIFONumber == CAN_FIFO0)
+ 19399              		.loc 1 659 0
+ 19400 0000 19B9     		cbnz	r1, .L73
+ 660:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 661:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     message_pending = (uint8_t)(CANx->RF0R&(uint32_t)0x03);
+ 19401              		.loc 1 661 0
+ 19402 0002 C068     		ldr	r0, [r0, #12]
+ 19403              	.LVL49:
+ 19404 0004 00F00300 		and	r0, r0, #3
+ 19405              	.LVL50:
+ 19406 0008 7047     		bx	lr
+ 19407              	.LVL51:
+ 19408              	.L73:
+ 662:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 663:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else if (FIFONumber == CAN_FIFO1)
+ 19409              		.loc 1 663 0
+ 19410 000a 0129     		cmp	r1, #1
+ 19411 000c 12BF     		itee	ne
+ 19412 000e 0020     		movne	r0, #0
+ 19413              	.LVL52:
+ 664:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 665:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     message_pending = (uint8_t)(CANx->RF1R&(uint32_t)0x03);
+ 19414              		.loc 1 665 0
+ 19415 0010 0069     		ldreq	r0, [r0, #16]
+ 19416              	.LVL53:
+ 19417 0012 00F00300 		andeq	r0, r0, #3
+ 19418              	.LVL54:
+ 19419              	.LVL55:
+ 666:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 667:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else
+ 668:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 669:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     message_pending = 0;
+ 670:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 671:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   return message_pending;
+ 672:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 19420              		.loc 1 672 0
+ 19421 0016 7047     		bx	lr
+ 19422              		.cfi_endproc
+ 19423              	.LFE39:
+ 19425              		.section	.text.CAN_Receive,"ax",%progbits
+ 19426              		.align	2
+ 19427              		.global	CAN_Receive
+ 19428              		.thumb
+ 19429              		.thumb_func
+ 19431              	CAN_Receive:
+ 19432              	.LFB40:
+ 673:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 674:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 675:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Receives a message.
+ 676:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 677:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  FIFONumber: Receive FIFO number, CAN_FIFO0 or CAN_FIFO1.
+ 678:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  RxMessage: pointer to a structure receive message which 
+ 679:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   contains CAN Id, CAN DLC, CAN datas and FMI number.
+ 680:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval None.
+ 681:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 682:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** void CAN_Receive(CAN_TypeDef* CANx, uint8_t FIFONumber, CanRxMsg* RxMessage)
+ 683:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19433              		.loc 1 683 0
+ 19434              		.cfi_startproc
+ 19435              		@ args = 0, pretend = 0, frame = 0
+ 19436              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19437              	.LVL56:
+ 19438 0000 38B5     		push	{r3, r4, r5, lr}
+ 19439              	.LCFI2:
+ 19440              		.cfi_def_cfa_offset 16
+ 684:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 685:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 686:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_FIFO(FIFONumber));
+ 687:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Get the Id */
+ 688:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->IDE = (uint8_t)0x04 & CANx->sFIFOMailBox[FIFONumber].RIR;
+ 19441              		.loc 1 688 0
+ 19442 0002 0B46     		mov	r3, r1
+ 19443              		.cfi_offset 14, -4
+ 19444              		.cfi_offset 5, -8
+ 19445              		.cfi_offset 4, -12
+ 19446              		.cfi_offset 3, -16
+ 19447 0004 01F11B04 		add	r4, r1, #27
+ 19448 0008 00EB0414 		add	r4, r0, r4, lsl #4
+ 19449 000c 2468     		ldr	r4, [r4, #0]
+ 19450 000e 04F00404 		and	r4, r4, #4
+ 19451 0012 1472     		strb	r4, [r2, #8]
+ 689:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (RxMessage->IDE == CAN_ID_STD)
+ 19452              		.loc 1 689 0
+ 19453 0014 44B9     		cbnz	r4, .L78
+ 690:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 691:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     RxMessage->StdId = (uint32_t)0x000007FF & (CANx->sFIFOMailBox[FIFONumber].RIR >> 21);
+ 19454              		.loc 1 691 0
+ 19455 0016 01F11B04 		add	r4, r1, #27
+ 19456              	.LVL57:
+ 19457 001a 00EB0414 		add	r4, r0, r4, lsl #4
+ 19458 001e 2468     		ldr	r4, [r4, #0]
+ 19459 0020 4FEA5454 		lsr	r4, r4, #21
+ 19460 0024 1460     		str	r4, [r2, #0]
+ 19461 0026 07E0     		b	.L79
+ 19462              	.LVL58:
+ 19463              	.L78:
+ 692:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 693:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else
+ 694:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 695:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     RxMessage->ExtId = (uint32_t)0x1FFFFFFF & (CANx->sFIFOMailBox[FIFONumber].RIR >> 3);
+ 19464              		.loc 1 695 0
+ 19465 0028 01F11B04 		add	r4, r1, #27
+ 19466              	.LVL59:
+ 19467 002c 00EB0414 		add	r4, r0, r4, lsl #4
+ 19468 0030 2468     		ldr	r4, [r4, #0]
+ 19469 0032 4FEAD404 		lsr	r4, r4, #3
+ 19470 0036 5460     		str	r4, [r2, #4]
+ 19471              	.L79:
+ 696:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 697:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   
+ 698:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->RTR = (uint8_t)0x02 & CANx->sFIFOMailBox[FIFONumber].RIR;
+ 19472              		.loc 1 698 0
+ 19473 0038 03F11B04 		add	r4, r3, #27
+ 19474 003c 00EB0414 		add	r4, r0, r4, lsl #4
+ 19475 0040 2568     		ldr	r5, [r4, #0]
+ 19476 0042 05F0020C 		and	ip, r5, #2
+ 19477 0046 82F809C0 		strb	ip, [r2, #9]
+ 699:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Get the DLC */
+ 700:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->DLC = (uint8_t)0x0F & CANx->sFIFOMailBox[FIFONumber].RDTR;
+ 19478              		.loc 1 700 0
+ 19479 004a 54F8045F 		ldr	r5, [r4, #4]!
+ 19480 004e 05F00F0C 		and	ip, r5, #15
+ 19481 0052 82F80AC0 		strb	ip, [r2, #10]
+ 701:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Get the FMI */
+ 702:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->FMI = (uint8_t)0xFF & (CANx->sFIFOMailBox[FIFONumber].RDTR >> 8);
+ 19482              		.loc 1 702 0
+ 19483 0056 2468     		ldr	r4, [r4, #0]
+ 19484 0058 4FEA142C 		lsr	ip, r4, #8
+ 19485 005c 82F813C0 		strb	ip, [r2, #19]
+ 703:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Get the data field */
+ 704:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->Data[0] = (uint8_t)0xFF & CANx->sFIFOMailBox[FIFONumber].RDLR;
+ 19486              		.loc 1 704 0
+ 19487 0060 00EB0313 		add	r3, r0, r3, lsl #4
+ 19488 0064 03F5DC74 		add	r4, r3, #440
+ 19489 0068 2568     		ldr	r5, [r4, #0]
+ 19490 006a D572     		strb	r5, [r2, #11]
+ 705:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->Data[1] = (uint8_t)0xFF & (CANx->sFIFOMailBox[FIFONumber].RDLR >> 8);
+ 19491              		.loc 1 705 0
+ 19492 006c 2568     		ldr	r5, [r4, #0]
+ 19493 006e 4FEA152C 		lsr	ip, r5, #8
+ 19494 0072 82F80CC0 		strb	ip, [r2, #12]
+ 706:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->Data[2] = (uint8_t)0xFF & (CANx->sFIFOMailBox[FIFONumber].RDLR >> 16);
+ 19495              		.loc 1 706 0
+ 19496 0076 2568     		ldr	r5, [r4, #0]
+ 19497 0078 4FEA154C 		lsr	ip, r5, #16
+ 19498 007c 82F80DC0 		strb	ip, [r2, #13]
+ 707:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->Data[3] = (uint8_t)0xFF & (CANx->sFIFOMailBox[FIFONumber].RDLR >> 24);
+ 19499              		.loc 1 707 0
+ 19500 0080 2468     		ldr	r4, [r4, #0]
+ 19501 0082 4FEA146C 		lsr	ip, r4, #24
+ 19502 0086 82F80EC0 		strb	ip, [r2, #14]
+ 708:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->Data[4] = (uint8_t)0xFF & CANx->sFIFOMailBox[FIFONumber].RDHR;
+ 19503              		.loc 1 708 0
+ 19504 008a 03F5DE73 		add	r3, r3, #444
+ 19505 008e 1C68     		ldr	r4, [r3, #0]
+ 19506 0090 D473     		strb	r4, [r2, #15]
+ 709:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->Data[5] = (uint8_t)0xFF & (CANx->sFIFOMailBox[FIFONumber].RDHR >> 8);
+ 19507              		.loc 1 709 0
+ 19508 0092 1C68     		ldr	r4, [r3, #0]
+ 19509 0094 4FEA142C 		lsr	ip, r4, #8
+ 19510 0098 82F810C0 		strb	ip, [r2, #16]
+ 710:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->Data[6] = (uint8_t)0xFF & (CANx->sFIFOMailBox[FIFONumber].RDHR >> 16);
+ 19511              		.loc 1 710 0
+ 19512 009c 1C68     		ldr	r4, [r3, #0]
+ 19513 009e 4FEA144C 		lsr	ip, r4, #16
+ 19514 00a2 82F811C0 		strb	ip, [r2, #17]
+ 711:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   RxMessage->Data[7] = (uint8_t)0xFF & (CANx->sFIFOMailBox[FIFONumber].RDHR >> 24);
+ 19515              		.loc 1 711 0
+ 19516 00a6 1B68     		ldr	r3, [r3, #0]
+ 19517 00a8 4FEA1363 		lsr	r3, r3, #24
+ 19518 00ac 9374     		strb	r3, [r2, #18]
+ 712:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Release the FIFO */
+ 713:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CAN_FIFORelease(CANx, FIFONumber);
+ 19519              		.loc 1 713 0
+ 19520 00ae FFF7FEFF 		bl	CAN_FIFORelease
+ 19521              	.LVL60:
+ 714:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 19522              		.loc 1 714 0
+ 19523 00b2 38BD     		pop	{r3, r4, r5, pc}
+ 19524              		.cfi_endproc
+ 19525              	.LFE40:
+ 19527              		.section	.text.CAN_DBGFreeze,"ax",%progbits
+ 19528              		.align	2
+ 19529              		.global	CAN_DBGFreeze
+ 19530              		.thumb
+ 19531              		.thumb_func
+ 19533              	CAN_DBGFreeze:
+ 19534              	.LFB41:
+ 715:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 716:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 717:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Enables or disables the DBG Freeze for CAN.
+ 718:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 719:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  NewState: new state of the CAN peripheral.
+ 720:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   This parameter can be: ENABLE or DISABLE.
+ 721:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval None.
+ 722:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 723:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** void CAN_DBGFreeze(CAN_TypeDef* CANx, FunctionalState NewState)
+ 724:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19535              		.loc 1 724 0
+ 19536              		.cfi_startproc
+ 19537              		@ args = 0, pretend = 0, frame = 0
+ 19538              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19539              		@ link register save eliminated.
+ 19540              	.LVL61:
+ 725:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 726:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 727:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_FUNCTIONAL_STATE(NewState));
+ 728:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   
+ 729:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if (NewState != DISABLE)
+ 19541              		.loc 1 729 0
+ 19542 0000 21B1     		cbz	r1, .L82
+ 730:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 731:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Enable Debug Freeze  */
+ 732:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->MCR |= MCR_DBF;
+ 19543              		.loc 1 732 0
+ 19544 0002 0368     		ldr	r3, [r0, #0]
+ 19545 0004 43F48033 		orr	r3, r3, #65536
+ 19546 0008 0360     		str	r3, [r0, #0]
+ 19547 000a 7047     		bx	lr
+ 19548              	.L82:
+ 733:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 734:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else
+ 735:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 736:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Disable Debug Freeze */
+ 737:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     CANx->MCR &= ~MCR_DBF;
+ 19549              		.loc 1 737 0
+ 19550 000c 0368     		ldr	r3, [r0, #0]
+ 19551 000e 23F48033 		bic	r3, r3, #65536
+ 19552 0012 0360     		str	r3, [r0, #0]
+ 19553 0014 7047     		bx	lr
+ 19554              		.cfi_endproc
+ 19555              	.LFE41:
+ 19557 0016 00BF     		.section	.text.CAN_Sleep,"ax",%progbits
+ 19558              		.align	2
+ 19559              		.global	CAN_Sleep
+ 19560              		.thumb
+ 19561              		.thumb_func
+ 19563              	CAN_Sleep:
+ 19564              	.LFB42:
+ 738:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 739:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 740:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 741:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 742:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Enters the low power mode.
+ 743:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 744:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval CANSLEEPOK if sleep entered, CANSLEEPFAILED in an other case.
+ 745:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 746:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** uint8_t CAN_Sleep(CAN_TypeDef* CANx)
+ 747:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19565              		.loc 1 747 0
+ 19566              		.cfi_startproc
+ 19567              		@ args = 0, pretend = 0, frame = 0
+ 19568              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19569              		@ link register save eliminated.
+ 19570              	.LVL62:
+ 748:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   uint8_t sleepstatus = CANSLEEPFAILED;
+ 749:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   
+ 750:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 751:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 752:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     
+ 753:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Request Sleep mode */
+ 754:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****    CANx->MCR = (((CANx->MCR) & (uint32_t)(~MCR_INRQ)) | MCR_SLEEP);
+ 19571              		.loc 1 754 0
+ 19572 0000 0368     		ldr	r3, [r0, #0]
+ 19573 0002 23F00303 		bic	r3, r3, #3
+ 19574 0006 43F00203 		orr	r3, r3, #2
+ 19575 000a 0360     		str	r3, [r0, #0]
+ 755:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****    
+ 756:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Sleep mode status */
+ 757:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if ((CANx->MSR & (CAN_MSR_SLAK|CAN_MSR_INAK)) == CAN_MSR_SLAK)
+ 19576              		.loc 1 757 0
+ 19577 000c 4068     		ldr	r0, [r0, #4]
+ 19578              	.LVL63:
+ 19579 000e 00F00300 		and	r0, r0, #3
+ 758:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 759:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* Sleep mode not entered */
+ 760:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     sleepstatus =  CANSLEEPOK;
+ 761:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 762:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* At this step, sleep mode status */
+ 763:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****    return (uint8_t)sleepstatus;
+ 764:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 19580              		.loc 1 764 0
+ 19581 0012 0228     		cmp	r0, #2
+ 19582 0014 14BF     		ite	ne
+ 19583 0016 0020     		movne	r0, #0
+ 19584 0018 0120     		moveq	r0, #1
+ 19585 001a 7047     		bx	lr
+ 19586              		.cfi_endproc
+ 19587              	.LFE42:
+ 19589              		.section	.text.CAN_WakeUp,"ax",%progbits
+ 19590              		.align	2
+ 19591              		.global	CAN_WakeUp
+ 19592              		.thumb
+ 19593              		.thumb_func
+ 19595              	CAN_WakeUp:
+ 19596              	.LFB43:
+ 765:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 766:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 767:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Wakes the CAN up.
+ 768:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 769:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval CANWAKEUPOK if sleep mode left, CANWAKEUPFAILED in an other case.
+ 770:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 771:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** uint8_t CAN_WakeUp(CAN_TypeDef* CANx)
+ 772:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19597              		.loc 1 772 0
+ 19598              		.cfi_startproc
+ 19599              		@ args = 0, pretend = 0, frame = 0
+ 19600              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19601              		@ link register save eliminated.
+ 19602              	.LVL64:
+ 773:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   uint32_t wait_slak = SLAK_TimeOut	;
+ 774:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   uint8_t wakeupstatus = CANWAKEUPFAILED;
+ 775:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   
+ 776:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 777:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 778:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     
+ 779:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Wake up request */
+ 780:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CANx->MCR &= ~MCR_SLEEP;
+ 19603              		.loc 1 780 0
+ 19604 0000 0368     		ldr	r3, [r0, #0]
+ 19605 0002 23F00203 		bic	r3, r3, #2
+ 19606 0006 0360     		str	r3, [r0, #0]
+ 781:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     
+ 782:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Sleep mode status */
+ 783:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   while(((CANx->MSR & CAN_MSR_SLAK) == CAN_MSR_SLAK)&&(wait_slak!=0x00))
+ 19607              		.loc 1 783 0
+ 19608 0008 4368     		ldr	r3, [r0, #4]
+ 19609 000a 13F0020F 		tst	r3, #2
+ 19610 000e 07D0     		beq	.L88
+ 19611 0010 4FF6FF73 		movw	r3, #65535
+ 19612              	.LVL65:
+ 19613              	.L89:
+ 19614 0014 4268     		ldr	r2, [r0, #4]
+ 19615 0016 12F0020F 		tst	r2, #2
+ 19616 001a 01D0     		beq	.L88
+ 19617 001c 013B     		subs	r3, r3, #1
+ 19618 001e F9D1     		bne	.L89
+ 19619              	.L88:
+ 784:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 785:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****    wait_slak--;
+ 786:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 787:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if((CANx->MSR & CAN_MSR_SLAK) != CAN_MSR_SLAK)
+ 19620              		.loc 1 787 0
+ 19621 0020 4068     		ldr	r0, [r0, #4]
+ 19622              	.LVL66:
+ 19623 0022 80F00200 		eor	r0, r0, #2
+ 788:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 789:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****    /* Sleep mode exited */
+ 790:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     wakeupstatus = CANWAKEUPOK;
+ 791:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 792:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* At this step, sleep mode status */
+ 793:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   return (uint8_t)wakeupstatus;
+ 794:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 19624              		.loc 1 794 0
+ 19625 0026 C0F34000 		ubfx	r0, r0, #1, #1
+ 19626 002a 7047     		bx	lr
+ 19627              		.cfi_endproc
+ 19628              	.LFE43:
+ 19630              		.section	.text.CAN_GetFlagStatus,"ax",%progbits
+ 19631              		.align	2
+ 19632              		.global	CAN_GetFlagStatus
+ 19633              		.thumb
+ 19634              		.thumb_func
+ 19636              	CAN_GetFlagStatus:
+ 19637              	.LFB44:
+ 795:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 796:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 797:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Checks whether the specified CAN flag is set or not.
+ 798:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 799:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CAN_FLAG: specifies the flag to check.
+ 800:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   This parameter can be: CAN_FLAG_EWG, CAN_FLAG_EPV or CAN_FLAG_BOF.
+ 801:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval The new state of CAN_FLAG (SET or RESET).
+ 802:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 803:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** FlagStatus CAN_GetFlagStatus(CAN_TypeDef* CANx, uint32_t CAN_FLAG)
+ 804:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19638              		.loc 1 804 0
+ 19639              		.cfi_startproc
+ 19640              		@ args = 0, pretend = 0, frame = 0
+ 19641              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19642              		@ link register save eliminated.
+ 19643              	.LVL67:
+ 805:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   FlagStatus bitstatus = RESET;
+ 806:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 807:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 808:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_FLAG(CAN_FLAG));
+ 809:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the status of the specified CAN flag */
+ 810:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if ((CANx->ESR & CAN_FLAG) != (uint32_t)RESET)
+ 19644              		.loc 1 810 0
+ 19645 0000 8369     		ldr	r3, [r0, #24]
+ 19646 0002 1942     		tst	r1, r3
+ 811:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 812:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* CAN_FLAG is set */
+ 813:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     bitstatus = SET;
+ 814:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 815:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else
+ 816:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 817:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* CAN_FLAG is reset */
+ 818:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     bitstatus = RESET;
+ 819:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 820:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Return the CAN_FLAG status */
+ 821:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   return  bitstatus;
+ 822:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 19647              		.loc 1 822 0
+ 19648 0004 0CBF     		ite	eq
+ 19649 0006 0020     		moveq	r0, #0
+ 19650 0008 0120     		movne	r0, #1
+ 19651              	.LVL68:
+ 19652 000a 7047     		bx	lr
+ 19653              		.cfi_endproc
+ 19654              	.LFE44:
+ 19656              		.section	.text.CAN_ClearFlag,"ax",%progbits
+ 19657              		.align	2
+ 19658              		.global	CAN_ClearFlag
+ 19659              		.thumb
+ 19660              		.thumb_func
+ 19662              	CAN_ClearFlag:
+ 19663              	.LFB45:
+ 823:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 824:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 825:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Clears the CAN's pending flags.
+ 826:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 827:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CAN_FLAG: specifies the flag to clear.
+ 828:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval None.
+ 829:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 830:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** void CAN_ClearFlag(CAN_TypeDef* CANx, uint32_t CAN_FLAG)
+ 831:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19664              		.loc 1 831 0
+ 19665              		.cfi_startproc
+ 19666              		@ args = 0, pretend = 0, frame = 0
+ 19667              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19668              		@ link register save eliminated.
+ 19669              	.LVL69:
+ 832:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 833:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 834:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_FLAG(CAN_FLAG));
+ 835:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Clear the selected CAN flags */
+ 836:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   CANx->ESR &= ~CAN_FLAG;
+ 19670              		.loc 1 836 0
+ 19671 0000 8369     		ldr	r3, [r0, #24]
+ 19672 0002 23EA0103 		bic	r3, r3, r1
+ 19673 0006 8361     		str	r3, [r0, #24]
+ 837:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 19674              		.loc 1 837 0
+ 19675 0008 7047     		bx	lr
+ 19676              		.cfi_endproc
+ 19677              	.LFE45:
+ 19679 000a 00BF     		.section	.text.CAN_ClearITPendingBit,"ax",%progbits
+ 19680              		.align	2
+ 19681              		.global	CAN_ClearITPendingBit
+ 19682              		.thumb
+ 19683              		.thumb_func
+ 19685              	CAN_ClearITPendingBit:
+ 19686              	.LFB47:
+ 838:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 839:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 840:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Checks whether the specified CAN interrupt has occurred or not.
+ 841:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 842:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CAN_IT: specifies the CAN interrupt source to check.
+ 843:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   This parameter can be: CAN_IT_RQCP0, CAN_IT_RQCP1, CAN_IT_RQCP2,
+ 844:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   CAN_IT_FF0, CAN_IT_FOV0, CAN_IT_FF1,
+ 845:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   CAN_IT_FOV1, CAN_IT_EWG, CAN_IT_EPV, 
+ 846:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   *   CAN_IT_BOF, CAN_IT_WKU or CAN_IT_SLK.
+ 847:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval The new state of CAN_IT (SET or RESET).
+ 848:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 849:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** ITStatus CAN_GetITStatus(CAN_TypeDef* CANx, uint32_t CAN_IT)
+ 850:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 851:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   ITStatus pendingbitstatus = RESET;
+ 852:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 853:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 854:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ITStatus(CAN_IT));
+ 855:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   switch (CAN_IT)
+ 856:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 857:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_RQCP0:
+ 858:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->TSR, TSR_RQCP0);
+ 859:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 860:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_RQCP1:
+ 861:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->TSR, TSR_RQCP1);
+ 862:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 863:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_RQCP2:
+ 864:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->TSR, TSR_RQCP2);
+ 865:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 866:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_FF0:
+ 867:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->RF0R, RF0R_FULL0);
+ 868:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 869:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_FOV0:
+ 870:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->RF0R, RF0R_FOVR0);
+ 871:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 872:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_FF1:
+ 873:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->RF1R, RF1R_FULL1);
+ 874:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 875:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_FOV1:
+ 876:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->RF1R, RF1R_FOVR1);
+ 877:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 878:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_EWG:
+ 879:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->ESR, ESR_EWGF);
+ 880:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 881:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_EPV:
+ 882:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->ESR, ESR_EPVF);
+ 883:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 884:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_BOF:
+ 885:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->ESR, ESR_BOFF);
+ 886:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 887:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_SLK:
+ 888:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->MSR, MSR_SLAKI);
+ 889:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 890:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_WKU:
+ 891:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = CheckITStatus(CANx->MSR, MSR_WKUI);
+ 892:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 893:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     default :
+ 894:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       pendingbitstatus = RESET;
+ 895:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 896:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 897:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Return the CAN_IT status */
+ 898:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   return  pendingbitstatus;
+ 899:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 900:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 901:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 902:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Clears the CAN’s interrupt pending bits.
+ 903:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CANx: where x can be 1 or 2 to to select the CAN peripheral.
+ 904:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CAN_IT: specifies the interrupt pending bit to clear.
+ 905:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval None.
+ 906:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 907:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** void CAN_ClearITPendingBit(CAN_TypeDef* CANx, uint32_t CAN_IT)
+ 908:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19687              		.loc 1 908 0
+ 19688              		.cfi_startproc
+ 19689              		@ args = 0, pretend = 0, frame = 0
+ 19690              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19691              		@ link register save eliminated.
+ 19692              	.LVL70:
+ 909:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   /* Check the parameters */
+ 910:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ALL_PERIPH(CANx));
+ 911:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   assert_param(IS_CAN_ITStatus(CAN_IT));
+ 912:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   switch (CAN_IT)
+ 19693              		.loc 1 912 0
+ 19694 0000 2029     		cmp	r1, #32
+ 19695 0002 35D0     		beq	.L103
+ 19696 0004 0CD8     		bhi	.L110
+ 19697 0006 0629     		cmp	r1, #6
+ 19698 0008 22D0     		beq	.L100
+ 19699 000a 04D8     		bhi	.L111
+ 19700 000c 0429     		cmp	r1, #4
+ 19701 000e 27D0     		beq	.L98
+ 19702 0010 0529     		cmp	r1, #5
+ 19703 0012 4BD1     		bne	.L113
+ 19704 0014 18E0     		b	.L114
+ 19705              	.L111:
+ 19706 0016 0729     		cmp	r1, #7
+ 19707 0018 1ED0     		beq	.L101
+ 19708 001a 0829     		cmp	r1, #8
+ 19709 001c 46D1     		bne	.L113
+ 19710 001e 23E0     		b	.L115
+ 19711              	.L110:
+ 19712 0020 B1F5007F 		cmp	r1, #512
+ 19713 0024 31D0     		beq	.L106
+ 19714 0026 05D8     		bhi	.L112
+ 19715 0028 4029     		cmp	r1, #64
+ 19716 002a 25D0     		beq	.L104
+ 19717 002c B1F5807F 		cmp	r1, #256
+ 19718 0030 3CD1     		bne	.L113
+ 19719 0032 25E0     		b	.L116
+ 19720              	.L112:
+ 19721 0034 B1F5803F 		cmp	r1, #65536
+ 19722 0038 31D0     		beq	.L108
+ 19723 003a B1F5003F 		cmp	r1, #131072
+ 19724 003e 32D0     		beq	.L109
+ 19725 0040 B1F5806F 		cmp	r1, #1024
+ 19726 0044 32D1     		bne	.L113
+ 19727 0046 25E0     		b	.L117
+ 19728              	.L114:
+ 913:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 914:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_RQCP0:
+ 915:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->TSR = TSR_RQCP0; /* rc_w1*/
+ 19729              		.loc 1 915 0
+ 19730 0048 4FF00103 		mov	r3, #1
+ 19731 004c 8360     		str	r3, [r0, #8]
+ 916:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19732              		.loc 1 916 0
+ 19733 004e 7047     		bx	lr
+ 19734              	.L100:
+ 917:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_RQCP1:
+ 918:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->TSR = TSR_RQCP1; /* rc_w1*/
+ 19735              		.loc 1 918 0
+ 19736 0050 4FF48073 		mov	r3, #256
+ 19737 0054 8360     		str	r3, [r0, #8]
+ 919:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19738              		.loc 1 919 0
+ 19739 0056 7047     		bx	lr
+ 19740              	.L101:
+ 920:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_RQCP2:
+ 921:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->TSR = TSR_RQCP2; /* rc_w1*/
+ 19741              		.loc 1 921 0
+ 19742 0058 4FF48033 		mov	r3, #65536
+ 19743 005c 8360     		str	r3, [r0, #8]
+ 922:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19744              		.loc 1 922 0
+ 19745 005e 7047     		bx	lr
+ 19746              	.L98:
+ 923:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_FF0:
+ 924:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->RF0R = RF0R_FULL0; /* rc_w1*/
+ 19747              		.loc 1 924 0
+ 19748 0060 4FF00803 		mov	r3, #8
+ 19749 0064 C360     		str	r3, [r0, #12]
+ 925:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19750              		.loc 1 925 0
+ 19751 0066 7047     		bx	lr
+ 19752              	.L115:
+ 926:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_FOV0:
+ 927:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->RF0R = RF0R_FOVR0; /* rc_w1*/
+ 19753              		.loc 1 927 0
+ 19754 0068 4FF01003 		mov	r3, #16
+ 19755 006c C360     		str	r3, [r0, #12]
+ 928:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19756              		.loc 1 928 0
+ 19757 006e 7047     		bx	lr
+ 19758              	.L103:
+ 929:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_FF1:
+ 930:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->RF1R = RF1R_FULL1; /* rc_w1*/
+ 19759              		.loc 1 930 0
+ 19760 0070 4FF00803 		mov	r3, #8
+ 19761 0074 0361     		str	r3, [r0, #16]
+ 931:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19762              		.loc 1 931 0
+ 19763 0076 7047     		bx	lr
+ 19764              	.L104:
+ 932:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_FOV1:
+ 933:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->RF1R = RF1R_FOVR1; /* rc_w1*/
+ 19765              		.loc 1 933 0
+ 19766 0078 4FF01003 		mov	r3, #16
+ 19767 007c 0361     		str	r3, [r0, #16]
+ 934:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19768              		.loc 1 934 0
+ 19769 007e 7047     		bx	lr
+ 19770              	.L116:
+ 935:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_EWG:
+ 936:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->ESR &= ~ ESR_EWGF; /* rw */
+ 19771              		.loc 1 936 0
+ 19772 0080 8369     		ldr	r3, [r0, #24]
+ 19773 0082 23F00103 		bic	r3, r3, #1
+ 19774 0086 8361     		str	r3, [r0, #24]
+ 937:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19775              		.loc 1 937 0
+ 19776 0088 7047     		bx	lr
+ 19777              	.L106:
+ 938:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_EPV:
+ 939:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->ESR &= ~ ESR_EPVF; /* rw */
+ 19778              		.loc 1 939 0
+ 19779 008a 8369     		ldr	r3, [r0, #24]
+ 19780 008c 23F00203 		bic	r3, r3, #2
+ 19781 0090 8361     		str	r3, [r0, #24]
+ 940:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19782              		.loc 1 940 0
+ 19783 0092 7047     		bx	lr
+ 19784              	.L117:
+ 941:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_BOF:
+ 942:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->ESR &= ~ ESR_BOFF; /* rw */
+ 19785              		.loc 1 942 0
+ 19786 0094 8369     		ldr	r3, [r0, #24]
+ 19787 0096 23F00403 		bic	r3, r3, #4
+ 19788 009a 8361     		str	r3, [r0, #24]
+ 943:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19789              		.loc 1 943 0
+ 19790 009c 7047     		bx	lr
+ 19791              	.L108:
+ 944:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_WKU:
+ 945:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MSR = MSR_WKUI;  /* rc_w1*/
+ 19792              		.loc 1 945 0
+ 19793 009e 4FF00803 		mov	r3, #8
+ 19794 00a2 4360     		str	r3, [r0, #4]
+ 946:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 19795              		.loc 1 946 0
+ 19796 00a4 7047     		bx	lr
+ 19797              	.L109:
+ 947:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     case CAN_IT_SLK:
+ 948:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       CANx->MSR = MSR_SLAKI;  /* rc_w1*/
+ 19798              		.loc 1 948 0
+ 19799 00a6 4FF01003 		mov	r3, #16
+ 19800 00aa 4360     		str	r3, [r0, #4]
+ 19801              	.L113:
+ 19802 00ac 7047     		bx	lr
+ 19803              		.cfi_endproc
+ 19804              	.LFE47:
+ 19806              		.section	.text.CheckITStatus,"ax",%progbits
+ 19807              		.align	2
+ 19808              		.thumb
+ 19809              		.thumb_func
+ 19811              	CheckITStatus:
+ 19812              	.LFB48:
+ 949:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 950:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     default :
+ 951:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****       break;
+ 952:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 953:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 954:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** 
+ 955:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** /**
+ 956:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @brief  Checks whether the CAN interrupt has occurred or not.
+ 957:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  CAN_Reg: specifies the CAN interrupt register to check.
+ 958:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @param  It_Bit: specifies the interrupt source bit to check.
+ 959:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   * @retval The new state of the CAN Interrupt (SET or RESET).
+ 960:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   */
+ 961:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** static ITStatus CheckITStatus(uint32_t CAN_Reg, uint32_t It_Bit)
+ 962:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** {
+ 19813              		.loc 1 962 0
+ 19814              		.cfi_startproc
+ 19815              		@ args = 0, pretend = 0, frame = 0
+ 19816              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19817              		@ link register save eliminated.
+ 19818              	.LVL71:
+ 19819              		.loc 1 962 0
+ 19820 0000 0142     		tst	r1, r0
+ 963:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   ITStatus pendingbitstatus = RESET;
+ 964:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   
+ 965:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   if ((CAN_Reg & It_Bit) != (uint32_t)RESET)
+ 966:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 967:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* CAN_IT is set */
+ 968:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     pendingbitstatus = SET;
+ 969:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 970:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   else
+ 971:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   {
+ 972:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     /* CAN_IT is reset */
+ 973:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****     pendingbitstatus = RESET;
+ 974:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   }
+ 975:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c ****   return pendingbitstatus;
+ 976:../Library/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c **** }
+ 19821              		.loc 1 976 0
+ 19822 0002 0CBF     		ite	eq
+ 19823 0004 0020     		moveq	r0, #0
+ 19824 0006 0120     		movne	r0, #1
+ 19825              	.LVL72:
+ 19826 0008 7047     		bx	lr
+ 19827              		.cfi_endproc
+ 19828              	.LFE48:
+ 19830              		.section	.text.CAN_GetITStatus,"ax",%progbits
+ 19831              		.align	2
+ 19832              		.global	CAN_GetITStatus
+ 19833              		.thumb
+ 19834              		.thumb_func
+ 19836              	CAN_GetITStatus:
+ 19837              	.LFB46:
+ 19838              		.loc 1 850 0
+ 19839              		.cfi_startproc
+ 19840              		@ args = 0, pretend = 0, frame = 0
+ 19841              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19842              	.LVL73:
+ 19843 0000 08B5     		push	{r3, lr}
+ 19844              	.LCFI3:
+ 19845              		.cfi_def_cfa_offset 8
+ 19846              		.loc 1 855 0
+ 19847 0002 2029     		cmp	r1, #32
+ 19848 0004 41D0     		beq	.L127
+ 19849              		.cfi_offset 14, -4
+ 19850              		.cfi_offset 3, -8
+ 19851 0006 0CD8     		bhi	.L134
+ 19852 0008 0629     		cmp	r1, #6
+ 19853 000a 26D0     		beq	.L124
+ 19854 000c 04D8     		bhi	.L135
+ 19855 000e 0429     		cmp	r1, #4
+ 19856 0010 2FD0     		beq	.L122
+ 19857 0012 0529     		cmp	r1, #5
+ 19858 0014 18D1     		bne	.L121
+ 19859 0016 1AE0     		b	.L139
+ 19860              	.L135:
+ 19861 0018 0729     		cmp	r1, #7
+ 19862 001a 24D0     		beq	.L125
+ 19863 001c 0829     		cmp	r1, #8
+ 19864 001e 13D1     		bne	.L121
+ 19865 0020 2DE0     		b	.L140
+ 19866              	.L134:
+ 19867 0022 B1F5007F 		cmp	r1, #512
+ 19868 0026 42D0     		beq	.L130
+ 19869 0028 05D8     		bhi	.L136
+ 19870 002a 4029     		cmp	r1, #64
+ 19871 002c 33D0     		beq	.L128
+ 19872 002e B1F5807F 		cmp	r1, #256
+ 19873 0032 09D1     		bne	.L121
+ 19874 0034 35E0     		b	.L141
+ 19875              	.L136:
+ 19876 0036 B1F5803F 		cmp	r1, #65536
+ 19877 003a 4AD0     		beq	.L132
+ 19878 003c B1F5003F 		cmp	r1, #131072
+ 19879 0040 41D0     		beq	.L133
+ 19880 0042 B1F5806F 		cmp	r1, #1024
+ 19881 0046 38D0     		beq	.L131
+ 19882              	.L121:
+ 19883 0048 4FF00000 		mov	r0, #0
+ 19884              	.LVL74:
+ 19885 004c 08BD     		pop	{r3, pc}
+ 19886              	.LVL75:
+ 19887              	.L139:
+ 19888              		.loc 1 858 0
+ 19889 004e 8068     		ldr	r0, [r0, #8]
+ 19890              	.LVL76:
+ 19891 0050 4FF00101 		mov	r1, #1
+ 19892              	.LVL77:
+ 19893 0054 FFF7FEFF 		bl	CheckITStatus
+ 19894              		.loc 1 859 0
+ 19895 0058 08BD     		pop	{r3, pc}
+ 19896              	.LVL78:
+ 19897              	.L124:
+ 19898              		.loc 1 861 0
+ 19899 005a 8068     		ldr	r0, [r0, #8]
+ 19900              	.LVL79:
+ 19901 005c 4FF48071 		mov	r1, #256
+ 19902              	.LVL80:
+ 19903 0060 FFF7FEFF 		bl	CheckITStatus
+ 19904              		.loc 1 862 0
+ 19905 0064 08BD     		pop	{r3, pc}
+ 19906              	.LVL81:
+ 19907              	.L125:
+ 19908              		.loc 1 864 0
+ 19909 0066 8068     		ldr	r0, [r0, #8]
+ 19910              	.LVL82:
+ 19911 0068 4FF48031 		mov	r1, #65536
+ 19912              	.LVL83:
+ 19913 006c FFF7FEFF 		bl	CheckITStatus
+ 19914              		.loc 1 865 0
+ 19915 0070 08BD     		pop	{r3, pc}
+ 19916              	.LVL84:
+ 19917              	.L122:
+ 19918              		.loc 1 867 0
+ 19919 0072 C068     		ldr	r0, [r0, #12]
+ 19920              	.LVL85:
+ 19921 0074 4FF00801 		mov	r1, #8
+ 19922              	.LVL86:
+ 19923 0078 FFF7FEFF 		bl	CheckITStatus
+ 19924              		.loc 1 868 0
+ 19925 007c 08BD     		pop	{r3, pc}
+ 19926              	.LVL87:
+ 19927              	.L140:
+ 19928              		.loc 1 870 0
+ 19929 007e C068     		ldr	r0, [r0, #12]
+ 19930              	.LVL88:
+ 19931 0080 4FF01001 		mov	r1, #16
+ 19932              	.LVL89:
+ 19933 0084 FFF7FEFF 		bl	CheckITStatus
+ 19934              		.loc 1 871 0
+ 19935 0088 08BD     		pop	{r3, pc}
+ 19936              	.LVL90:
+ 19937              	.L127:
+ 19938              		.loc 1 873 0
+ 19939 008a 0069     		ldr	r0, [r0, #16]
+ 19940              	.LVL91:
+ 19941 008c 4FF00801 		mov	r1, #8
+ 19942              	.LVL92:
+ 19943 0090 FFF7FEFF 		bl	CheckITStatus
+ 19944              		.loc 1 874 0
+ 19945 0094 08BD     		pop	{r3, pc}
+ 19946              	.LVL93:
+ 19947              	.L128:
+ 19948              		.loc 1 876 0
+ 19949 0096 0069     		ldr	r0, [r0, #16]
+ 19950              	.LVL94:
+ 19951 0098 4FF01001 		mov	r1, #16
+ 19952              	.LVL95:
+ 19953 009c FFF7FEFF 		bl	CheckITStatus
+ 19954              		.loc 1 877 0
+ 19955 00a0 08BD     		pop	{r3, pc}
+ 19956              	.LVL96:
+ 19957              	.L141:
+ 19958              		.loc 1 879 0
+ 19959 00a2 8069     		ldr	r0, [r0, #24]
+ 19960              	.LVL97:
+ 19961 00a4 4FF00101 		mov	r1, #1
+ 19962              	.LVL98:
+ 19963 00a8 FFF7FEFF 		bl	CheckITStatus
+ 19964              		.loc 1 880 0
+ 19965 00ac 08BD     		pop	{r3, pc}
+ 19966              	.LVL99:
+ 19967              	.L130:
+ 19968              		.loc 1 882 0
+ 19969 00ae 8069     		ldr	r0, [r0, #24]
+ 19970              	.LVL100:
+ 19971 00b0 4FF00201 		mov	r1, #2
+ 19972              	.LVL101:
+ 19973 00b4 FFF7FEFF 		bl	CheckITStatus
+ 19974              		.loc 1 883 0
+ 19975 00b8 08BD     		pop	{r3, pc}
+ 19976              	.LVL102:
+ 19977              	.L131:
+ 19978              		.loc 1 885 0
+ 19979 00ba 8069     		ldr	r0, [r0, #24]
+ 19980              	.LVL103:
+ 19981 00bc 4FF00401 		mov	r1, #4
+ 19982              	.LVL104:
+ 19983 00c0 FFF7FEFF 		bl	CheckITStatus
+ 19984              		.loc 1 886 0
+ 19985 00c4 08BD     		pop	{r3, pc}
+ 19986              	.LVL105:
+ 19987              	.L133:
+ 19988              		.loc 1 888 0
+ 19989 00c6 4068     		ldr	r0, [r0, #4]
+ 19990              	.LVL106:
+ 19991 00c8 4FF01001 		mov	r1, #16
+ 19992              	.LVL107:
+ 19993 00cc FFF7FEFF 		bl	CheckITStatus
+ 19994              		.loc 1 889 0
+ 19995 00d0 08BD     		pop	{r3, pc}
+ 19996              	.LVL108:
+ 19997              	.L132:
+ 19998              		.loc 1 891 0
+ 19999 00d2 4068     		ldr	r0, [r0, #4]
+ 20000              	.LVL109:
+ 20001 00d4 4FF00801 		mov	r1, #8
+ 20002              	.LVL110:
+ 20003 00d8 FFF7FEFF 		bl	CheckITStatus
+ 20004              		.loc 1 899 0
+ 20005 00dc 08BD     		pop	{r3, pc}
+ 20006              		.cfi_endproc
+ 20007              	.LFE46:
+ 20009 00de 00BF     		.section	.text.CAN_DeInit,"ax",%progbits
+ 20010              		.align	2
+ 20011              		.global	CAN_DeInit
+ 20012              		.thumb
+ 20013              		.thumb_func
+ 20015              	CAN_DeInit:
+ 20016              	.LFB29:
+ 20017              		.loc 1 144 0
+ 20018              		.cfi_startproc
+ 20019              		@ args = 0, pretend = 0, frame = 0
+ 20020              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20021              	.LVL111:
+ 20022 0000 08B5     		push	{r3, lr}
+ 20023              	.LCFI4:
+ 20024              		.cfi_def_cfa_offset 8
+ 20025              		.loc 1 148 0
+ 20026 0002 46F20043 		movw	r3, #:lower16:1073767424
+ 20027              		.cfi_offset 14, -4
+ 20028              		.cfi_offset 3, -8
+ 20029 0006 C4F20003 		movt	r3, #:upper16:1073767424
+ 20030 000a 9842     		cmp	r0, r3
+ 20031 000c 0CD1     		bne	.L143
+ 20032              		.loc 1 151 0
+ 20033 000e 4FF00070 		mov	r0, #33554432
+ 20034              	.LVL112:
+ 20035 0012 4FF00101 		mov	r1, #1
+ 20036 0016 FFF7FEFF 		bl	RCC_APB1PeriphResetCmd
+ 20037              		.loc 1 153 0
+ 20038 001a 4FF00070 		mov	r0, #33554432
+ 20039 001e 4FF00001 		mov	r1, #0
+ 20040 0022 FFF7FEFF 		bl	RCC_APB1PeriphResetCmd
+ 20041 0026 08BD     		pop	{r3, pc}
+ 20042              	.LVL113:
+ 20043              	.L143:
+ 20044              		.loc 1 158 0
+ 20045 0028 4FF08060 		mov	r0, #67108864
+ 20046              	.LVL114:
+ 20047 002c 4FF00101 		mov	r1, #1
+ 20048 0030 FFF7FEFF 		bl	RCC_APB1PeriphResetCmd
+ 20049              		.loc 1 160 0
+ 20050 0034 4FF08060 		mov	r0, #67108864
+ 20051 0038 4FF00001 		mov	r1, #0
+ 20052 003c FFF7FEFF 		bl	RCC_APB1PeriphResetCmd
+ 20053 0040 08BD     		pop	{r3, pc}
+ 20054              		.cfi_endproc
+ 20055              	.LFE29:
+ 20057 0042 00BF     		.text
+ 20058              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 stm32f10x_can.c
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:18662  .text.CAN_Init:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:18667  .text.CAN_Init:00000000 CAN_Init
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:18819  .text.CAN_FilterInit:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:18824  .text.CAN_FilterInit:00000000 CAN_FilterInit
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:18967  .text.CAN_StructInit:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:18972  .text.CAN_StructInit:00000000 CAN_StructInit
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19012  .text.CAN_SlaveStartBank:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19017  .text.CAN_SlaveStartBank:00000000 CAN_SlaveStartBank
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19050  .text.CAN_ITConfig:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19055  .text.CAN_ITConfig:00000000 CAN_ITConfig
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19083  .text.CAN_Transmit:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19088  .text.CAN_Transmit:00000000 CAN_Transmit
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19217  .text.CAN_TransmitStatus:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19222  .text.CAN_TransmitStatus:00000000 CAN_TransmitStatus
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19313  .text.CAN_CancelTransmit:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19318  .text.CAN_CancelTransmit:00000000 CAN_CancelTransmit
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19358  .text.CAN_FIFORelease:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19363  .text.CAN_FIFORelease:00000000 CAN_FIFORelease
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19386  .text.CAN_MessagePending:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19391  .text.CAN_MessagePending:00000000 CAN_MessagePending
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19426  .text.CAN_Receive:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19431  .text.CAN_Receive:00000000 CAN_Receive
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19528  .text.CAN_DBGFreeze:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19533  .text.CAN_DBGFreeze:00000000 CAN_DBGFreeze
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19558  .text.CAN_Sleep:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19563  .text.CAN_Sleep:00000000 CAN_Sleep
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19590  .text.CAN_WakeUp:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19595  .text.CAN_WakeUp:00000000 CAN_WakeUp
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19631  .text.CAN_GetFlagStatus:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19636  .text.CAN_GetFlagStatus:00000000 CAN_GetFlagStatus
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19657  .text.CAN_ClearFlag:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19662  .text.CAN_ClearFlag:00000000 CAN_ClearFlag
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19680  .text.CAN_ClearITPendingBit:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19685  .text.CAN_ClearITPendingBit:00000000 CAN_ClearITPendingBit
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19807  .text.CheckITStatus:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19811  .text.CheckITStatus:00000000 CheckITStatus
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19831  .text.CAN_GetITStatus:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:19836  .text.CAN_GetITStatus:00000000 CAN_GetITStatus
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:20010  .text.CAN_DeInit:00000000 $t
+C:\Users\user\AppData\Local\Temp\cczKjQqE.s:20015  .text.CAN_DeInit:00000000 CAN_DeInit
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+RCC_APB1PeriphResetCmd

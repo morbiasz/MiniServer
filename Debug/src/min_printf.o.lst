@@ -1,0 +1,213 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"min_printf.c"
+  23              	.Ltext0:
+  24              		.file 1 "../src/min_printf.c"
+ 18798              		.align	2
+ 18799              		.global	min_printf
+ 18800              		.thumb
+ 18801              		.thumb_func
+ 18803              	min_printf:
+ 18804              	.LFB29:
+   1:../src/min_printf.c **** #include "min_printf.h"
+   2:../src/min_printf.c **** #include <stdarg.h>
+   3:../src/min_printf.c **** #include "conversion.h"
+   4:../src/min_printf.c **** 
+   5:../src/min_printf.c **** void min_printf(char *fmt, ...)
+   6:../src/min_printf.c **** {
+ 18805              		.loc 1 6 0
+ 18806              		.cfi_startproc
+ 18807              		@ args = 4, pretend = 16, frame = 16
+ 18808              		@ frame_needed = 0, uses_anonymous_args = 1
+ 18809              	.LVL0:
+ 18810 0000 0FB4     		push	{r0, r1, r2, r3}
+ 18811              	.LCFI0:
+ 18812              		.cfi_def_cfa_offset 16
+ 18813 0002 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 18814              	.LCFI1:
+ 18815              		.cfi_def_cfa_offset 40
+ 18816 0006 84B0     		sub	sp, sp, #16
+ 18817              	.LCFI2:
+ 18818              		.cfi_def_cfa_offset 56
+ 18819 0008 0AAB     		add	r3, sp, #40
+ 18820              		.cfi_offset 14, -20
+ 18821              		.cfi_offset 8, -24
+ 18822              		.cfi_offset 7, -28
+ 18823              		.cfi_offset 6, -32
+ 18824              		.cfi_offset 5, -36
+ 18825              		.cfi_offset 4, -40
+ 18826              		.cfi_offset 3, -4
+ 18827              		.cfi_offset 2, -8
+ 18828              		.cfi_offset 1, -12
+ 18829              		.cfi_offset 0, -16
+ 18830 000a 53F8044B 		ldr	r4, [r3], #4
+   7:../src/min_printf.c **** 	    va_list ap;
+   8:../src/min_printf.c **** 	    char *p, *sval;
+   9:../src/min_printf.c **** 	    int ival = 0;
+  10:../src/min_printf.c **** 	    char temp[5];
+  11:../src/min_printf.c **** 
+  12:../src/min_printf.c **** 	    va_start(ap, fmt);
+ 18831              		.loc 1 12 0
+ 18832 000e 0393     		str	r3, [sp, #12]
+  13:../src/min_printf.c **** 	    for (p=fmt;*p;p++)
+ 18833              		.loc 1 13 0
+ 18834 0010 2078     		ldrb	r0, [r4, #0]	@ zero_extendqisi2
+ 18835 0012 0028     		cmp	r0, #0
+ 18836 0014 43D0     		beq	.L11
+ 18837              	.LVL1:
+  14:../src/min_printf.c **** 	    {
+  15:../src/min_printf.c **** 	        if(*p!='%')
+  16:../src/min_printf.c **** 	        {
+  17:../src/min_printf.c **** 	        	SendChar(*p);
+  18:../src/min_printf.c **** 	            continue;
+  19:../src/min_printf.c **** 	        }
+  20:../src/min_printf.c **** 
+  21:../src/min_printf.c **** 	        switch(*++p)
+  22:../src/min_printf.c **** 	        {
+  23:../src/min_printf.c **** 	            case 'd':
+  24:../src/min_printf.c **** 	                ival = va_arg(ap, int);
+  25:../src/min_printf.c **** 	                itoa(ival, temp, 10);
+  26:../src/min_printf.c **** 	                usart_printf(temp);
+  27:../src/min_printf.c **** 	                break;
+  28:../src/min_printf.c **** 	            case 's':
+  29:../src/min_printf.c **** 	                for (sval= va_arg(ap, char *);*sval;sval++)
+  30:../src/min_printf.c **** 	                {
+  31:../src/min_printf.c **** 	                	SendChar(*sval);
+  32:../src/min_printf.c **** 
+  33:../src/min_printf.c **** 	                }
+  34:../src/min_printf.c **** 	                break;
+  35:../src/min_printf.c **** 	            case 'x':
+  36:../src/min_printf.c **** 	                ival =va_arg(ap, int);
+  37:../src/min_printf.c **** 	                usart_printf("0x");
+ 18838              		.loc 1 37 0
+ 18839 0016 40F20006 		movw	r6, #:lower16:.LC0
+ 18840 001a C0F20006 		movt	r6, #:upper16:.LC0
+ 18841              		.loc 1 25 0
+ 18842 001e 01AF     		add	r7, sp, #4
+ 18843 0020 4FF00A08 		mov	r8, #10
+ 18844              	.LVL2:
+ 18845              	.L10:
+ 18846              		.loc 1 15 0
+ 18847 0024 2528     		cmp	r0, #37
+ 18848 0026 03D0     		beq	.L3
+ 18849              		.loc 1 17 0
+ 18850 0028 40B2     		sxtb	r0, r0
+ 18851 002a FFF7FEFF 		bl	SendChar
+ 18852              		.loc 1 18 0
+ 18853 002e 32E0     		b	.L4
+ 18854              	.L3:
+ 18855              		.loc 1 21 0
+ 18856 0030 14F8010F 		ldrb	r0, [r4, #1]!	@ zero_extendqisi2
+ 18857 0034 7328     		cmp	r0, #115
+ 18858 0036 10D0     		beq	.L7
+ 18859 0038 7828     		cmp	r0, #120
+ 18860 003a 1DD0     		beq	.L8
+ 18861 003c 6428     		cmp	r0, #100
+ 18862 003e 27D1     		bne	.L14
+ 18863              		.loc 1 24 0
+ 18864 0040 039B     		ldr	r3, [sp, #12]
+ 18865 0042 03F10402 		add	r2, r3, #4
+ 18866 0046 0392     		str	r2, [sp, #12]
+ 18867              		.loc 1 25 0
+ 18868 0048 1868     		ldr	r0, [r3, #0]
+ 18869 004a 3946     		mov	r1, r7
+ 18870 004c 4246     		mov	r2, r8
+ 18871 004e FFF7FEFF 		bl	itoa
+ 18872              		.loc 1 26 0
+ 18873 0052 3846     		mov	r0, r7
+ 18874 0054 FFF7FEFF 		bl	usart_printf
+ 18875              		.loc 1 27 0
+ 18876 0058 1DE0     		b	.L4
+ 18877              	.L7:
+ 18878              		.loc 1 29 0
+ 18879 005a 039B     		ldr	r3, [sp, #12]
+ 18880 005c 03F10402 		add	r2, r3, #4
+ 18881 0060 0392     		str	r2, [sp, #12]
+ 18882 0062 1D68     		ldr	r5, [r3, #0]
+ 18883              	.LVL3:
+ 18884 0064 2878     		ldrb	r0, [r5, #0]	@ zero_extendqisi2
+ 18885 0066 B0B1     		cbz	r0, .L4
+ 18886              	.L9:
+ 18887              		.loc 1 31 0
+ 18888 0068 40B2     		sxtb	r0, r0
+ 18889 006a FFF7FEFF 		bl	SendChar
+ 18890              		.loc 1 29 0
+ 18891 006e 15F8010F 		ldrb	r0, [r5, #1]!	@ zero_extendqisi2
+ 18892              	.LVL4:
+ 18893 0072 0028     		cmp	r0, #0
+ 18894 0074 F8D1     		bne	.L9
+ 18895 0076 0EE0     		b	.L4
+ 18896              	.LVL5:
+ 18897              	.L8:
+ 18898              		.loc 1 36 0
+ 18899 0078 039B     		ldr	r3, [sp, #12]
+ 18900 007a 03F10402 		add	r2, r3, #4
+ 18901 007e 0392     		str	r2, [sp, #12]
+ 18902 0080 1D68     		ldr	r5, [r3, #0]
+ 18903              	.LVL6:
+ 18904              		.loc 1 37 0
+ 18905 0082 3046     		mov	r0, r6
+ 18906 0084 FFF7FEFF 		bl	usart_printf
+  38:../src/min_printf.c **** 	                dec2hex(ival);
+ 18907              		.loc 1 38 0
+ 18908 0088 2846     		mov	r0, r5
+ 18909 008a FFF7FEFF 		bl	dec2hex
+  39:../src/min_printf.c **** 	                break;
+ 18910              		.loc 1 39 0
+ 18911 008e 02E0     		b	.L4
+ 18912              	.LVL7:
+ 18913              	.L14:
+  40:../src/min_printf.c **** 	            default:
+  41:../src/min_printf.c **** 	            	SendChar(*p);
+ 18914              		.loc 1 41 0
+ 18915 0090 40B2     		sxtb	r0, r0
+ 18916 0092 FFF7FEFF 		bl	SendChar
+ 18917              	.L4:
+ 18918              		.loc 1 13 0
+ 18919 0096 14F8010F 		ldrb	r0, [r4, #1]!	@ zero_extendqisi2
+ 18920 009a 0028     		cmp	r0, #0
+ 18921 009c C2D1     		bne	.L10
+ 18922              	.L11:
+  42:../src/min_printf.c **** 	                break;
+  43:../src/min_printf.c **** 
+  44:../src/min_printf.c **** 	        }
+  45:../src/min_printf.c **** 	    }
+  46:../src/min_printf.c **** 	    va_end(ap);
+  47:../src/min_printf.c **** 
+  48:../src/min_printf.c **** }
+ 18923              		.loc 1 48 0
+ 18924 009e 04B0     		add	sp, sp, #16
+ 18925 00a0 BDE8F041 		pop	{r4, r5, r6, r7, r8, lr}
+ 18926 00a4 04B0     		add	sp, sp, #16
+ 18927 00a6 7047     		bx	lr
+ 18928              		.cfi_endproc
+ 18929              	.LFE29:
+ 18931              		.section	.rodata.str1.4,"aMS",%progbits,1
+ 18932              		.align	2
+ 18933              	.LC0:
+ 18934 0000 307800   		.ascii	"0x\000"
+ 18935 0003 00       		.text
+ 18936              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 min_printf.c
+C:\Users\user\AppData\Local\Temp\ccKVTdGu.s:18798  .text.min_printf:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccKVTdGu.s:18803  .text.min_printf:00000000 min_printf
+C:\Users\user\AppData\Local\Temp\ccKVTdGu.s:18933  .rodata.str1.4:00000000 .LC0
+C:\Users\user\AppData\Local\Temp\ccKVTdGu.s:18932  .rodata.str1.4:00000000 $d
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+SendChar
+itoa
+usart_printf
+dec2hex

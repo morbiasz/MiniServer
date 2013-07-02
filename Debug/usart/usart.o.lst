@@ -1,0 +1,599 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"usart.c"
+  23              	.Ltext0:
+  24              		.file 1 "../usart/usart.c"
+ 19105              		.align	2
+ 19106              		.global	SendChar
+ 19107              		.thumb
+ 19108              		.thumb_func
+ 19110              	SendChar:
+ 19111              	.LFB29:
+   1:../usart/usart.c **** #include "usart.h"
+   2:../usart/usart.c **** #include "string.h"
+   3:../usart/usart.c **** 
+   4:../usart/usart.c **** void SendChar (signed char ch)  {
+ 19112              		.loc 1 4 0
+ 19113              		.cfi_startproc
+ 19114              		@ args = 0, pretend = 0, frame = 0
+ 19115              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19116              		@ link register save eliminated.
+ 19117              	.LVL0:
+   5:../usart/usart.c **** 
+   6:../usart/usart.c ****     USART1->DR = ( ch & 0x1FF);
+ 19118              		.loc 1 6 0
+ 19119 0000 4FEAC050 		lsl	r0, r0, #23
+ 19120              	.LVL1:
+ 19121 0004 4FEAD050 		lsr	r0, r0, #23
+ 19122 0008 43F60003 		movw	r3, #:lower16:1073821696
+ 19123 000c C4F20103 		movt	r3, #:upper16:1073821696
+ 19124 0010 9880     		strh	r0, [r3, #4]	@ movhi
+   7:../usart/usart.c ****     while (!(USART1->SR & USART_FLAG_TXE));
+ 19125              		.loc 1 7 0
+ 19126 0012 1A46     		mov	r2, r3
+ 19127              	.L2:
+ 19128 0014 1388     		ldrh	r3, [r2, #0]
+ 19129 0016 13F0800F 		tst	r3, #128
+ 19130 001a FBD0     		beq	.L2
+   8:../usart/usart.c **** 
+   9:../usart/usart.c **** }
+ 19131              		.loc 1 9 0
+ 19132 001c 7047     		bx	lr
+ 19133              		.cfi_endproc
+ 19134              	.LFE29:
+ 19136 001e 00BF     		.section	.text.GetKey,"ax",%progbits
+ 19137              		.align	2
+ 19138              		.global	GetKey
+ 19139              		.thumb
+ 19140              		.thumb_func
+ 19142              	GetKey:
+ 19143              	.LFB30:
+  10:../usart/usart.c **** 
+  11:../usart/usart.c **** int GetKey (void)  {
+ 19144              		.loc 1 11 0
+ 19145              		.cfi_startproc
+ 19146              		@ args = 0, pretend = 0, frame = 0
+ 19147              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19148              		@ link register save eliminated.
+  12:../usart/usart.c **** 
+  13:../usart/usart.c ****   while (!(USART1->SR & USART_FLAG_RXNE));
+ 19149              		.loc 1 13 0
+ 19150 0000 43F60002 		movw	r2, #:lower16:1073821696
+ 19151 0004 C4F20102 		movt	r2, #:upper16:1073821696
+ 19152              	.L6:
+ 19153 0008 1388     		ldrh	r3, [r2, #0]
+ 19154 000a 13F0200F 		tst	r3, #32
+ 19155 000e FBD0     		beq	.L6
+  14:../usart/usart.c **** 
+  15:../usart/usart.c ****   return ((int)(USART1->DR & 0x1FF));
+ 19156              		.loc 1 15 0
+ 19157 0010 43F60003 		movw	r3, #:lower16:1073821696
+ 19158 0014 C4F20103 		movt	r3, #:upper16:1073821696
+ 19159 0018 9888     		ldrh	r0, [r3, #4]
+  16:../usart/usart.c **** }
+ 19160              		.loc 1 16 0
+ 19161 001a 4FEAC050 		lsl	r0, r0, #23
+ 19162 001e 4FEAD050 		lsr	r0, r0, #23
+ 19163 0022 7047     		bx	lr
+ 19164              		.cfi_endproc
+ 19165              	.LFE30:
+ 19167              		.section	.text.get_line,"ax",%progbits
+ 19168              		.align	2
+ 19169              		.global	get_line
+ 19170              		.thumb
+ 19171              		.thumb_func
+ 19173              	get_line:
+ 19174              	.LFB33:
+  17:../usart/usart.c **** 
+  18:../usart/usart.c **** void usart_printf(char *tablica) {
+  19:../usart/usart.c **** int i=0;
+  20:../usart/usart.c **** 
+  21:../usart/usart.c **** 	for(i=0;i<strlen(tablica); i++)
+  22:../usart/usart.c **** 	{
+  23:../usart/usart.c **** 		USART1->DR = ( tablica[i] & 0x1FF);
+  24:../usart/usart.c **** 		while (!(USART1->SR & USART_FLAG_TXE));
+  25:../usart/usart.c **** 	}
+  26:../usart/usart.c **** 
+  27:../usart/usart.c **** }
+  28:../usart/usart.c **** 
+  29:../usart/usart.c **** void usart_const_printf(const char *tablica) {
+  30:../usart/usart.c **** int i=0;
+  31:../usart/usart.c **** 
+  32:../usart/usart.c **** 	for(i=0;i<strlen(tablica); i++)
+  33:../usart/usart.c **** 	{
+  34:../usart/usart.c **** 		USART1->DR = ( tablica[i] & 0x1FF);
+  35:../usart/usart.c **** 		while (!(USART1->SR & USART_FLAG_TXE));
+  36:../usart/usart.c **** 	}
+  37:../usart/usart.c **** 
+  38:../usart/usart.c **** }
+  39:../usart/usart.c **** 
+  40:../usart/usart.c **** 
+  41:../usart/usart.c **** 
+  42:../usart/usart.c **** 
+  43:../usart/usart.c **** void get_line (char *buff, uint8_t len)
+  44:../usart/usart.c **** {
+ 19175              		.loc 1 44 0
+ 19176              		.cfi_startproc
+ 19177              		@ args = 0, pretend = 0, frame = 0
+ 19178              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19179              	.LVL2:
+ 19180 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 19181              	.LCFI0:
+ 19182              		.cfi_def_cfa_offset 24
+ 19183 0002 0746     		mov	r7, r0
+ 19184              		.cfi_offset 14, -4
+ 19185              		.cfi_offset 7, -8
+ 19186              		.cfi_offset 6, -12
+ 19187              		.cfi_offset 5, -16
+ 19188              		.cfi_offset 4, -20
+ 19189              		.cfi_offset 3, -24
+ 19190              		.loc 1 44 0
+ 19191 0004 4FF00005 		mov	r5, #0
+ 19192              	.LVL3:
+  45:../usart/usart.c **** 	uint8_t i;
+  46:../usart/usart.c **** 	char c;
+  47:../usart/usart.c ****  
+  48:../usart/usart.c **** 	i = 0;
+  49:../usart/usart.c **** 	for (;;) {
+  50:../usart/usart.c **** 		c = GetKey();
+  51:../usart/usart.c **** 		SendChar(c);
+  52:../usart/usart.c **** 		if (c == '\r') break;
+  53:../usart/usart.c **** 		if ((c == '\b') && i) i--;
+  54:../usart/usart.c **** 		if ((c >= ' ') && (i < len - 1))
+ 19193              		.loc 1 54 0
+ 19194 0008 01F1FF36 		add	r6, r1, #-1
+ 19195              	.LVL4:
+ 19196              	.L14:
+ 19197              		.loc 1 50 0
+ 19198 000c FFF7FEFF 		bl	GetKey
+ 19199              	.LVL5:
+ 19200 0010 C4B2     		uxtb	r4, r0
+ 19201              		.loc 1 51 0
+ 19202 0012 60B2     		sxtb	r0, r4
+ 19203 0014 FFF7FEFF 		bl	SendChar
+ 19204              		.loc 1 52 0
+ 19205 0018 0D2C     		cmp	r4, #13
+ 19206 001a 13D0     		beq	.L10
+ 19207              		.loc 1 53 0
+ 19208 001c 2B1E     		subs	r3, r5, #0
+ 19209 001e 18BF     		it	ne
+ 19210 0020 0123     		movne	r3, #1
+ 19211 0022 082C     		cmp	r4, #8
+ 19212 0024 14BF     		ite	ne
+ 19213 0026 0023     		movne	r3, #0
+ 19214 0028 03F00103 		andeq	r3, r3, #1
+ 19215 002c 13B1     		cbz	r3, .L11
+ 19216 002e 05F1FF35 		add	r5, r5, #-1
+ 19217              	.LVL6:
+ 19218 0032 EDB2     		uxtb	r5, r5
+ 19219              	.LVL7:
+ 19220              	.L11:
+ 19221              		.loc 1 54 0
+ 19222 0034 1F2C     		cmp	r4, #31
+ 19223 0036 E9D9     		bls	.L14
+ 19224 0038 B542     		cmp	r5, r6
+  55:../usart/usart.c **** 				buff[i++] = c;
+ 19225              		.loc 1 55 0
+ 19226 003a BEBF     		ittt	lt
+ 19227 003c 7C55     		strblt	r4, [r7, r5]
+ 19228 003e 0135     		addlt	r5, r5, #1
+ 19229              	.LVL8:
+ 19230 0040 EDB2     		uxtblt	r5, r5
+ 19231              	.LVL9:
+ 19232 0042 E3E7     		b	.L14
+ 19233              	.L10:
+  56:../usart/usart.c **** 	}
+  57:../usart/usart.c **** 	buff[i] = 0;
+ 19234              		.loc 1 57 0
+ 19235 0044 4FF00003 		mov	r3, #0
+ 19236 0048 7B55     		strb	r3, [r7, r5]
+  58:../usart/usart.c **** }
+ 19237              		.loc 1 58 0
+ 19238 004a F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 19239              		.cfi_endproc
+ 19240              	.LFE33:
+ 19242              		.section	.text.usartSetup,"ax",%progbits
+ 19243              		.align	2
+ 19244              		.global	usartSetup
+ 19245              		.thumb
+ 19246              		.thumb_func
+ 19248              	usartSetup:
+ 19249              	.LFB35:
+  59:../usart/usart.c **** 
+  60:../usart/usart.c **** u8 USART_Scanf(u32 value)
+  61:../usart/usart.c **** {
+  62:../usart/usart.c ****   u32 index;
+  63:../usart/usart.c ****   u32 tmp[2] = {0, 0};
+  64:../usart/usart.c ****   do {
+  65:../usart/usart.c **** 	  index=0;
+  66:../usart/usart.c **** 
+  67:../usart/usart.c **** 	  while (index < 2)
+  68:../usart/usart.c **** 	  {
+  69:../usart/usart.c **** 
+  70:../usart/usart.c **** 	  	while (USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET) ;		// Loop until data has been re
+  71:../usart/usart.c **** 
+  72:../usart/usart.c ****     	tmp[index++] = (uint16_t)(USART1->DR & (uint16_t)0x01FF);
+  73:../usart/usart.c **** 
+  74:../usart/usart.c ****     	SendChar(tmp[index - 1]);											//make visible
+  75:../usart/usart.c **** 
+  76:../usart/usart.c ****     	if((tmp[index - 1])=='\n' || (tmp[index - 1])=='\r')
+  77:../usart/usart.c ****     	{
+  78:../usart/usart.c ****       		index = 5;
+  79:../usart/usart.c ****     		break;
+  80:../usart/usart.c ****     	}
+  81:../usart/usart.c **** 
+  82:../usart/usart.c ****     	if ((tmp[index - 1] < 0x30) || (tmp[index - 1] > 0x39))
+  83:../usart/usart.c ****     	{
+  84:../usart/usart.c ****     		//usart_printf("\n\rErrror! Type again: ");
+  85:../usart/usart.c ****     		SendChar((char) 0x8);
+  86:../usart/usart.c ****     		index--;
+  87:../usart/usart.c ****     	}
+  88:../usart/usart.c ****   	  }
+  89:../usart/usart.c **** 
+  90:../usart/usart.c ****   	  // Calculate the Corresponding value
+  91:../usart/usart.c ****   	  if (index == 5)
+  92:../usart/usart.c ****   		  index = tmp[0] - 0x30;
+  93:../usart/usart.c ****   	  else
+  94:../usart/usart.c ****   		  index = (tmp[1] - 0x30) + ((tmp[0] - 0x30) * 10);
+  95:../usart/usart.c ****   	  /* Checks */
+  96:../usart/usart.c ****   	  if (index > value)
+  97:../usart/usart.c ****   	  {
+  98:../usart/usart.c ****   		  //usart_printf("\n\rIncorrect value, try again\r\n");
+  99:../usart/usart.c ****   		  index = 3;
+ 100:../usart/usart.c ****   	  }
+ 101:../usart/usart.c ****   }while(index==3);
+ 102:../usart/usart.c **** 
+ 103:../usart/usart.c ****   //usart_printf("\n\rSet!");
+ 104:../usart/usart.c ****   return index;
+ 105:../usart/usart.c **** }
+ 106:../usart/usart.c **** 
+ 107:../usart/usart.c **** void usartSetup (void) {
+ 19250              		.loc 1 107 0
+ 19251              		.cfi_startproc
+ 19252              		@ args = 0, pretend = 0, frame = 24
+ 19253              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19254 0000 70B5     		push	{r4, r5, r6, lr}
+ 19255              	.LCFI1:
+ 19256              		.cfi_def_cfa_offset 16
+ 19257 0002 86B0     		sub	sp, sp, #24
+ 19258              	.LCFI2:
+ 19259              		.cfi_def_cfa_offset 40
+ 108:../usart/usart.c **** 	   USART_InitTypeDef USART_InitStructure;
+ 109:../usart/usart.c **** 	   GPIO_InitTypeDef GPIO_InitStructure;
+ 110:../usart/usart.c **** 
+ 111:../usart/usart.c **** 	   USART_InitStructure.USART_BaudRate = 9600;
+ 19260              		.loc 1 111 0
+ 19261 0004 4FF41653 		mov	r3, #9600
+ 19262 0008 0293     		str	r3, [sp, #8]
+ 112:../usart/usart.c **** 	   USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+ 19263              		.loc 1 112 0
+ 19264 000a 4FF00003 		mov	r3, #0
+ 19265 000e ADF80C30 		strh	r3, [sp, #12]	@ movhi
+ 113:../usart/usart.c **** 	   USART_InitStructure.USART_StopBits = USART_StopBits_1;
+ 19266              		.loc 1 113 0
+ 19267 0012 ADF80E30 		strh	r3, [sp, #14]	@ movhi
+ 114:../usart/usart.c **** 	   USART_InitStructure.USART_Parity = USART_Parity_No ;
+ 19268              		.loc 1 114 0
+ 19269 0016 ADF81030 		strh	r3, [sp, #16]	@ movhi
+ 115:../usart/usart.c **** 	   USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+ 19270              		.loc 1 115 0
+ 19271 001a ADF81430 		strh	r3, [sp, #20]	@ movhi
+ 116:../usart/usart.c **** 	   USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+ 19272              		.loc 1 116 0
+ 19273 001e 4FF00C03 		mov	r3, #12	@ movhi
+ 19274 0022 ADF81230 		strh	r3, [sp, #18]	@ movhi
+ 117:../usart/usart.c **** 
+ 118:../usart/usart.c **** 	   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9; // UART1 Tx PA.9
+ 19275              		.loc 1 118 0
+ 19276 0026 4FF40073 		mov	r3, #512	@ movhi
+ 19277 002a ADF80430 		strh	r3, [sp, #4]	@ movhi
+ 119:../usart/usart.c **** 	   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+ 19278              		.loc 1 119 0
+ 19279 002e 4FF01803 		mov	r3, #24
+ 19280 0032 8DF80730 		strb	r3, [sp, #7]
+ 120:../usart/usart.c **** 	   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
+ 19281              		.loc 1 120 0
+ 19282 0036 4FF00105 		mov	r5, #1
+ 19283              		.cfi_offset 14, -4
+ 19284              		.cfi_offset 6, -8
+ 19285              		.cfi_offset 5, -12
+ 19286              		.cfi_offset 4, -16
+ 19287 003a 8DF80650 		strb	r5, [sp, #6]
+ 121:../usart/usart.c **** 	   GPIO_Init(GPIOA, &GPIO_InitStructure);
+ 19288              		.loc 1 121 0
+ 19289 003e 40F60004 		movw	r4, #:lower16:1073809408
+ 19290 0042 C4F20104 		movt	r4, #:upper16:1073809408
+ 19291 0046 01AE     		add	r6, sp, #4
+ 19292 0048 2046     		mov	r0, r4
+ 19293 004a 3146     		mov	r1, r6
+ 19294 004c FFF7FEFF 		bl	GPIO_Init
+ 122:../usart/usart.c **** 
+ 123:../usart/usart.c **** 	   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10; // UART1 Rx PA.10
+ 19295              		.loc 1 123 0
+ 19296 0050 4FF48063 		mov	r3, #1024	@ movhi
+ 19297 0054 ADF80430 		strh	r3, [sp, #4]	@ movhi
+ 124:../usart/usart.c **** 		 GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
+ 19298              		.loc 1 124 0
+ 19299 0058 8DF80650 		strb	r5, [sp, #6]
+ 125:../usart/usart.c **** 	   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+ 19300              		.loc 1 125 0
+ 19301 005c 4FF00403 		mov	r3, #4
+ 19302 0060 8DF80730 		strb	r3, [sp, #7]
+ 126:../usart/usart.c **** 	   GPIO_Init(GPIOA, &GPIO_InitStructure);
+ 19303              		.loc 1 126 0
+ 19304 0064 2046     		mov	r0, r4
+ 19305 0066 3146     		mov	r1, r6
+ 19306 0068 FFF7FEFF 		bl	GPIO_Init
+ 127:../usart/usart.c **** 
+ 128:../usart/usart.c **** 	   USART_Init(USART1, &USART_InitStructure);
+ 19307              		.loc 1 128 0
+ 19308 006c 43F60004 		movw	r4, #:lower16:1073821696
+ 19309 0070 C4F20104 		movt	r4, #:upper16:1073821696
+ 19310 0074 2046     		mov	r0, r4
+ 19311 0076 02A9     		add	r1, sp, #8
+ 19312 0078 FFF7FEFF 		bl	USART_Init
+ 129:../usart/usart.c **** 	   USART_Cmd(USART1, ENABLE);
+ 19313              		.loc 1 129 0
+ 19314 007c 2046     		mov	r0, r4
+ 19315 007e 2946     		mov	r1, r5
+ 19316 0080 FFF7FEFF 		bl	USART_Cmd
+ 130:../usart/usart.c **** 		
+ 131:../usart/usart.c ****   }
+ 19317              		.loc 1 131 0
+ 19318 0084 06B0     		add	sp, sp, #24
+ 19319 0086 70BD     		pop	{r4, r5, r6, pc}
+ 19320              		.cfi_endproc
+ 19321              	.LFE35:
+ 19323              		.section	.text.USART_Scanf,"ax",%progbits
+ 19324              		.align	2
+ 19325              		.global	USART_Scanf
+ 19326              		.thumb
+ 19327              		.thumb_func
+ 19329              	USART_Scanf:
+ 19330              	.LFB34:
+ 19331              		.loc 1 61 0
+ 19332              		.cfi_startproc
+ 19333              		@ args = 0, pretend = 0, frame = 8
+ 19334              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19335              	.LVL10:
+ 19336 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 19337              	.LCFI3:
+ 19338              		.cfi_def_cfa_offset 36
+ 19339 0004 83B0     		sub	sp, sp, #12
+ 19340              	.LCFI4:
+ 19341              		.cfi_def_cfa_offset 48
+ 19342 0006 8046     		mov	r8, r0
+ 19343              		.cfi_offset 14, -4
+ 19344              		.cfi_offset 11, -8
+ 19345              		.cfi_offset 10, -12
+ 19346              		.cfi_offset 9, -16
+ 19347              		.cfi_offset 8, -20
+ 19348              		.cfi_offset 7, -24
+ 19349              		.cfi_offset 6, -28
+ 19350              		.cfi_offset 5, -32
+ 19351              		.cfi_offset 4, -36
+ 19352              		.loc 1 63 0
+ 19353 0008 4FF00004 		mov	r4, #0
+ 19354 000c 0094     		str	r4, [sp, #0]
+ 19355 000e 0194     		str	r4, [sp, #4]
+ 19356              		.loc 1 70 0
+ 19357 0010 43F6000B 		movw	fp, #:lower16:1073821696
+ 19358 0014 C4F2010B 		movt	fp, #:upper16:1073821696
+ 19359 0018 4FF02006 		mov	r6, #32
+ 19360 001c 5F46     		mov	r7, fp
+ 19361              		.loc 1 94 0
+ 19362 001e 4FF6F059 		movw	r9, #:lower16:-528
+ 19363 0022 CFF6FF79 		movt	r9, #:upper16:-528
+ 19364              		.loc 1 85 0
+ 19365 0026 A246     		mov	sl, r4
+ 19366              	.LVL11:
+ 19367 0028 28E0     		b	.L28
+ 19368              	.LVL12:
+ 19369              	.L26:
+ 19370              		.loc 1 70 0
+ 19371 002a 3846     		mov	r0, r7
+ 19372 002c 3146     		mov	r1, r6
+ 19373 002e FFF7FEFF 		bl	USART_GetFlagStatus
+ 19374 0032 0028     		cmp	r0, #0
+ 19375 0034 F9D0     		beq	.L26
+ 19376              		.loc 1 72 0
+ 19377 0036 BBF80450 		ldrh	r5, [fp, #4]
+ 19378 003a 4FEAC555 		lsl	r5, r5, #23
+ 19379 003e 4FEAD555 		lsr	r5, r5, #23
+ 19380 0042 02AA     		add	r2, sp, #8
+ 19381 0044 02EB8403 		add	r3, r2, r4, lsl #2
+ 19382 0048 43F8085C 		str	r5, [r3, #-8]
+ 19383              		.loc 1 74 0
+ 19384 004c 68B2     		sxtb	r0, r5
+ 19385 004e FFF7FEFF 		bl	SendChar
+ 19386              		.loc 1 76 0
+ 19387 0052 0D2D     		cmp	r5, #13
+ 19388 0054 14BF     		ite	ne
+ 19389 0056 0023     		movne	r3, #0
+ 19390 0058 0123     		moveq	r3, #1
+ 19391 005a 0A2D     		cmp	r5, #10
+ 19392 005c 08BF     		it	eq
+ 19393 005e 43F00103 		orreq	r3, r3, #1
+ 19394 0062 7BB9     		cbnz	r3, .L20
+ 19395              		.loc 1 82 0
+ 19396 0064 A5F13005 		sub	r5, r5, #48
+ 19397 0068 092D     		cmp	r5, #9
+ 19398              		.loc 1 72 0
+ 19399 006a 98BF     		it	ls
+ 19400 006c 0134     		addls	r4, r4, #1
+ 19401              		.loc 1 82 0
+ 19402 006e 05D9     		bls	.L28
+ 19403              		.loc 1 85 0
+ 19404 0070 4FF00800 		mov	r0, #8
+ 19405 0074 FFF7FEFF 		bl	SendChar
+ 19406 0078 00E0     		b	.L28
+ 19407              	.LVL13:
+ 19408              	.L24:
+ 19409 007a 5446     		mov	r4, sl
+ 19410              	.LVL14:
+ 19411              	.L28:
+ 19412              		.loc 1 67 0
+ 19413 007c 012C     		cmp	r4, #1
+ 19414 007e D4D9     		bls	.L26
+ 19415              		.loc 1 91 0
+ 19416 0080 052C     		cmp	r4, #5
+ 19417 0082 03D1     		bne	.L22
+ 19418              	.L20:
+ 19419              		.loc 1 92 0
+ 19420 0084 0098     		ldr	r0, [sp, #0]
+ 19421 0086 A0F13000 		sub	r0, r0, #48
+ 19422              	.LVL15:
+ 19423 008a 06E0     		b	.L23
+ 19424              	.LVL16:
+ 19425              	.L22:
+ 19426              		.loc 1 94 0
+ 19427 008c 019A     		ldr	r2, [sp, #4]
+ 19428 008e 4A44     		add	r2, r9, r2
+ 19429 0090 009B     		ldr	r3, [sp, #0]
+ 19430 0092 03EB8303 		add	r3, r3, r3, lsl #2
+ 19431 0096 02EB4300 		add	r0, r2, r3, lsl #1
+ 19432              	.LVL17:
+ 19433              	.L23:
+ 19434              		.loc 1 96 0
+ 19435 009a 4045     		cmp	r0, r8
+ 19436 009c EDD8     		bhi	.L24
+ 19437              		.loc 1 101 0
+ 19438 009e 0328     		cmp	r0, #3
+ 19439 00a0 EBD0     		beq	.L24
+ 19440              		.loc 1 105 0
+ 19441 00a2 C0B2     		uxtb	r0, r0
+ 19442              	.LVL18:
+ 19443 00a4 03B0     		add	sp, sp, #12
+ 19444 00a6 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, sl, fp, pc}
+ 19445              		.cfi_endproc
+ 19446              	.LFE34:
+ 19448 00aa 00BF     		.section	.text.usart_const_printf,"ax",%progbits
+ 19449              		.align	2
+ 19450              		.global	usart_const_printf
+ 19451              		.thumb
+ 19452              		.thumb_func
+ 19454              	usart_const_printf:
+ 19455              	.LFB32:
+ 19456              		.loc 1 29 0
+ 19457              		.cfi_startproc
+ 19458              		@ args = 0, pretend = 0, frame = 0
+ 19459              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19460              	.LVL19:
+ 19461 0000 10B5     		push	{r4, lr}
+ 19462              	.LCFI5:
+ 19463              		.cfi_def_cfa_offset 8
+ 19464 0002 0446     		mov	r4, r0
+ 19465              		.cfi_offset 14, -4
+ 19466              		.cfi_offset 4, -8
+ 19467              		.loc 1 32 0
+ 19468 0004 FFF7FEFF 		bl	strlen
+ 19469              	.LVL20:
+ 19470 0008 4FF00001 		mov	r1, #0
+ 19471              	.LVL21:
+ 19472              		.loc 1 34 0
+ 19473 000c 43F60002 		movw	r2, #:lower16:1073821696
+ 19474 0010 C4F20102 		movt	r2, #:upper16:1073821696
+ 19475              		.loc 1 32 0
+ 19476 0014 07E0     		b	.L30
+ 19477              	.L32:
+ 19478              		.loc 1 34 0
+ 19479 0016 E35C     		ldrb	r3, [r4, r3]	@ zero_extendqisi2
+ 19480 0018 9380     		strh	r3, [r2, #4]	@ movhi
+ 19481              	.L31:
+ 19482              		.loc 1 35 0
+ 19483 001a 1388     		ldrh	r3, [r2, #0]
+ 19484 001c 13F0800F 		tst	r3, #128
+ 19485 0020 FBD0     		beq	.L31
+ 19486              		.loc 1 32 0
+ 19487 0022 01F10101 		add	r1, r1, #1
+ 19488              	.L30:
+ 19489 0026 0B46     		mov	r3, r1
+ 19490 0028 8842     		cmp	r0, r1
+ 19491 002a F4D8     		bhi	.L32
+ 19492              		.loc 1 38 0
+ 19493 002c 10BD     		pop	{r4, pc}
+ 19494              		.cfi_endproc
+ 19495              	.LFE32:
+ 19497 002e 00BF     		.section	.text.usart_printf,"ax",%progbits
+ 19498              		.align	2
+ 19499              		.global	usart_printf
+ 19500              		.thumb
+ 19501              		.thumb_func
+ 19503              	usart_printf:
+ 19504              	.LFB31:
+ 19505              		.loc 1 18 0
+ 19506              		.cfi_startproc
+ 19507              		@ args = 0, pretend = 0, frame = 0
+ 19508              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19509              	.LVL22:
+ 19510 0000 10B5     		push	{r4, lr}
+ 19511              	.LCFI6:
+ 19512              		.cfi_def_cfa_offset 8
+ 19513 0002 0446     		mov	r4, r0
+ 19514              		.cfi_offset 14, -4
+ 19515              		.cfi_offset 4, -8
+ 19516              		.loc 1 21 0
+ 19517 0004 FFF7FEFF 		bl	strlen
+ 19518              	.LVL23:
+ 19519 0008 4FF00001 		mov	r1, #0
+ 19520              	.LVL24:
+ 19521              		.loc 1 23 0
+ 19522 000c 43F60002 		movw	r2, #:lower16:1073821696
+ 19523 0010 C4F20102 		movt	r2, #:upper16:1073821696
+ 19524              		.loc 1 21 0
+ 19525 0014 07E0     		b	.L36
+ 19526              	.L38:
+ 19527              		.loc 1 23 0
+ 19528 0016 E35C     		ldrb	r3, [r4, r3]	@ zero_extendqisi2
+ 19529 0018 9380     		strh	r3, [r2, #4]	@ movhi
+ 19530              	.L37:
+ 19531              		.loc 1 24 0
+ 19532 001a 1388     		ldrh	r3, [r2, #0]
+ 19533 001c 13F0800F 		tst	r3, #128
+ 19534 0020 FBD0     		beq	.L37
+ 19535              		.loc 1 21 0
+ 19536 0022 01F10101 		add	r1, r1, #1
+ 19537              	.L36:
+ 19538 0026 0B46     		mov	r3, r1
+ 19539 0028 8842     		cmp	r0, r1
+ 19540 002a F4D8     		bhi	.L38
+ 19541              		.loc 1 27 0
+ 19542 002c 10BD     		pop	{r4, pc}
+ 19543              		.cfi_endproc
+ 19544              	.LFE31:
+ 19546 002e 00BF     		.text
+ 19547              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 usart.c
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19105  .text.SendChar:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19110  .text.SendChar:00000000 SendChar
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19137  .text.GetKey:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19142  .text.GetKey:00000000 GetKey
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19168  .text.get_line:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19173  .text.get_line:00000000 get_line
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19243  .text.usartSetup:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19248  .text.usartSetup:00000000 usartSetup
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19324  .text.USART_Scanf:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19329  .text.USART_Scanf:00000000 USART_Scanf
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19449  .text.usart_const_printf:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19454  .text.usart_const_printf:00000000 usart_const_printf
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19498  .text.usart_printf:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccCvs7tk.s:19503  .text.usart_printf:00000000 usart_printf
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+GPIO_Init
+USART_Init
+USART_Cmd
+USART_GetFlagStatus
+strlen

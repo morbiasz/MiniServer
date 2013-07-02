@@ -1,0 +1,251 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"spi.c"
+  23              	.Ltext0:
+  24              		.file 1 "../enc28j60/spi.c"
+ 18230              		.align	2
+ 18231              		.global	SPI1_ReadWrite
+ 18232              		.thumb
+ 18233              		.thumb_func
+ 18235              	SPI1_ReadWrite:
+ 18236              	.LFB30:
+   1:../enc28j60/spi.c **** //#include "includes.h"
+   2:../enc28j60/spi.c **** #include <stm32f10x_spi.h>
+   3:../enc28j60/spi.c **** #include <stm32f10x_gpio.h>
+   4:../enc28j60/spi.c **** #include <stm32f10x_rcc.h>
+   5:../enc28j60/spi.c **** 
+   6:../enc28j60/spi.c **** 
+   7:../enc28j60/spi.c **** void	SPI1_Init(void)
+   8:../enc28j60/spi.c **** 	{
+   9:../enc28j60/spi.c **** 	SPI_InitTypeDef  SPI_InitStructure;
+  10:../enc28j60/spi.c **** 	GPIO_InitTypeDef GPIO_InitStructure;
+  11:../enc28j60/spi.c **** 
+  12:../enc28j60/spi.c **** 	/* Enable SPI1 and GPIOA clocks */
+  13:../enc28j60/spi.c **** 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
+  14:../enc28j60/spi.c **** 
+  15:../enc28j60/spi.c **** 	/* Configure SPI1 pins: NSS, SCK, MISO and MOSI */
+  16:../enc28j60/spi.c **** 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7;
+  17:../enc28j60/spi.c **** 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  18:../enc28j60/spi.c **** 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  19:../enc28j60/spi.c **** 	GPIO_Init(GPIOA, &GPIO_InitStructure);
+  20:../enc28j60/spi.c **** 
+  21:../enc28j60/spi.c **** 	//CS for ENC28j60
+  22:../enc28j60/spi.c **** 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
+  23:../enc28j60/spi.c **** 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  24:../enc28j60/spi.c **** 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  25:../enc28j60/spi.c **** 	GPIO_Init(GPIOA, &GPIO_InitStructure);
+  26:../enc28j60/spi.c **** 
+  27:../enc28j60/spi.c **** 	//CS for SD card
+  28:../enc28j60/spi.c **** 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+  29:../enc28j60/spi.c **** 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  30:../enc28j60/spi.c **** 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  31:../enc28j60/spi.c **** 	GPIO_Init(GPIOA, &GPIO_InitStructure);
+  32:../enc28j60/spi.c **** 
+  33:../enc28j60/spi.c **** 	/* SPI1 configuration */
+  34:../enc28j60/spi.c **** 	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
+  35:../enc28j60/spi.c **** 	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+  36:../enc28j60/spi.c **** 	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
+  37:../enc28j60/spi.c **** 	SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
+  38:../enc28j60/spi.c **** 	SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
+  39:../enc28j60/spi.c **** 	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+  40:../enc28j60/spi.c **** 	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_2;
+  41:../enc28j60/spi.c **** 	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+  42:../enc28j60/spi.c **** 	SPI_InitStructure.SPI_CRCPolynomial = 7;
+  43:../enc28j60/spi.c **** 	SPI_Init(SPI1, &SPI_InitStructure);
+  44:../enc28j60/spi.c **** 
+  45:../enc28j60/spi.c **** 	/* Enable SPI1  */
+  46:../enc28j60/spi.c **** 	SPI_Cmd(SPI1, ENABLE);
+  47:../enc28j60/spi.c **** 	}
+  48:../enc28j60/spi.c **** 
+  49:../enc28j60/spi.c **** 
+  50:../enc28j60/spi.c **** unsigned char	SPI1_ReadWrite(unsigned char writedat)
+  51:../enc28j60/spi.c **** 	{
+ 18237              		.loc 1 51 0
+ 18238              		.cfi_startproc
+ 18239              		@ args = 0, pretend = 0, frame = 0
+ 18240              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18241              	.LVL0:
+ 18242 0000 70B5     		push	{r4, r5, r6, lr}
+ 18243              	.LCFI0:
+ 18244              		.cfi_def_cfa_offset 16
+ 18245 0002 0646     		mov	r6, r0
+ 18246              		.cfi_offset 14, -4
+ 18247              		.cfi_offset 6, -8
+ 18248              		.cfi_offset 5, -12
+ 18249              		.cfi_offset 4, -16
+  52:../enc28j60/spi.c **** 	/* Loop while DR register in not emplty */
+  53:../enc28j60/spi.c **** 	while(SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE) == RESET);
+ 18250              		.loc 1 53 0
+ 18251 0004 43F20005 		movw	r5, #:lower16:1073819648
+ 18252 0008 C4F20105 		movt	r5, #:upper16:1073819648
+ 18253 000c 4FF00204 		mov	r4, #2
+ 18254              	.LVL1:
+ 18255              	.L2:
+ 18256 0010 2846     		mov	r0, r5
+ 18257 0012 2146     		mov	r1, r4
+ 18258 0014 FFF7FEFF 		bl	SPI_I2S_GetFlagStatus
+ 18259 0018 0028     		cmp	r0, #0
+ 18260 001a F9D0     		beq	.L2
+  54:../enc28j60/spi.c **** 
+  55:../enc28j60/spi.c **** 	/* Send byte through the SPI1 peripheral */
+  56:../enc28j60/spi.c **** 	SPI_I2S_SendData(SPI1, writedat);
+ 18261              		.loc 1 56 0
+ 18262 001c 43F20000 		movw	r0, #:lower16:1073819648
+ 18263 0020 C4F20100 		movt	r0, #:upper16:1073819648
+ 18264 0024 3146     		mov	r1, r6
+ 18265 0026 FFF7FEFF 		bl	SPI_I2S_SendData
+  57:../enc28j60/spi.c **** 
+  58:../enc28j60/spi.c **** 	/* Wait to receive a byte */
+  59:../enc28j60/spi.c **** 	while(SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE) == RESET);
+ 18266              		.loc 1 59 0
+ 18267 002a 43F20005 		movw	r5, #:lower16:1073819648
+ 18268 002e C4F20105 		movt	r5, #:upper16:1073819648
+ 18269 0032 4FF00104 		mov	r4, #1
+ 18270              	.L3:
+ 18271 0036 2846     		mov	r0, r5
+ 18272 0038 2146     		mov	r1, r4
+ 18273 003a FFF7FEFF 		bl	SPI_I2S_GetFlagStatus
+ 18274 003e 0028     		cmp	r0, #0
+ 18275 0040 F9D0     		beq	.L3
+  60:../enc28j60/spi.c **** 
+  61:../enc28j60/spi.c **** 	/* Return the byte read from the SPI bus */
+  62:../enc28j60/spi.c **** 	return SPI_I2S_ReceiveData(SPI1);
+ 18276              		.loc 1 62 0
+ 18277 0042 43F20000 		movw	r0, #:lower16:1073819648
+ 18278 0046 C4F20100 		movt	r0, #:upper16:1073819648
+ 18279 004a FFF7FEFF 		bl	SPI_I2S_ReceiveData
+  63:../enc28j60/spi.c **** 	}
+ 18280              		.loc 1 63 0
+ 18281 004e C0B2     		uxtb	r0, r0
+ 18282 0050 70BD     		pop	{r4, r5, r6, pc}
+ 18283              		.cfi_endproc
+ 18284              	.LFE30:
+ 18286 0052 00BF     		.section	.text.SPI1_Init,"ax",%progbits
+ 18287              		.align	2
+ 18288              		.global	SPI1_Init
+ 18289              		.thumb
+ 18290              		.thumb_func
+ 18292              	SPI1_Init:
+ 18293              	.LFB29:
+ 18294              		.loc 1 8 0
+ 18295              		.cfi_startproc
+ 18296              		@ args = 0, pretend = 0, frame = 24
+ 18297              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18298 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+ 18299              	.LCFI1:
+ 18300              		.cfi_def_cfa_offset 20
+ 18301 0002 87B0     		sub	sp, sp, #28
+ 18302              	.LCFI2:
+ 18303              		.cfi_def_cfa_offset 48
+ 18304              		.loc 1 13 0
+ 18305 0004 4FF48050 		mov	r0, #4096
+ 18306 0008 4FF00101 		mov	r1, #1
+ 18307              		.cfi_offset 14, -4
+ 18308              		.cfi_offset 7, -8
+ 18309              		.cfi_offset 6, -12
+ 18310              		.cfi_offset 5, -16
+ 18311              		.cfi_offset 4, -20
+ 18312 000c FFF7FEFF 		bl	RCC_APB2PeriphClockCmd
+ 18313              		.loc 1 16 0
+ 18314 0010 4FF0E002 		mov	r2, #224	@ movhi
+ 18315 0014 ADF80020 		strh	r2, [sp, #0]	@ movhi
+ 18316              		.loc 1 17 0
+ 18317 0018 4FF00305 		mov	r5, #3
+ 18318 001c 8DF80250 		strb	r5, [sp, #2]
+ 18319              		.loc 1 18 0
+ 18320 0020 4FF01803 		mov	r3, #24
+ 18321 0024 8DF80330 		strb	r3, [sp, #3]
+ 18322              		.loc 1 19 0
+ 18323 0028 40F60004 		movw	r4, #:lower16:1073809408
+ 18324 002c C4F20104 		movt	r4, #:upper16:1073809408
+ 18325 0030 6F46     		mov	r7, sp
+ 18326 0032 2046     		mov	r0, r4
+ 18327 0034 6946     		mov	r1, sp
+ 18328 0036 FFF7FEFF 		bl	GPIO_Init
+ 18329              		.loc 1 22 0
+ 18330 003a 4FF01006 		mov	r6, #16
+ 18331 003e ADF80060 		strh	r6, [sp, #0]	@ movhi
+ 18332              		.loc 1 23 0
+ 18333 0042 8DF80250 		strb	r5, [sp, #2]
+ 18334              		.loc 1 24 0
+ 18335 0046 8DF80360 		strb	r6, [sp, #3]
+ 18336              		.loc 1 25 0
+ 18337 004a 2046     		mov	r0, r4
+ 18338 004c 6946     		mov	r1, sp
+ 18339 004e FFF7FEFF 		bl	GPIO_Init
+ 18340              		.loc 1 28 0
+ 18341 0052 4FF00803 		mov	r3, #8	@ movhi
+ 18342 0056 ADF80030 		strh	r3, [sp, #0]	@ movhi
+ 18343              		.loc 1 29 0
+ 18344 005a 8DF80250 		strb	r5, [sp, #2]
+ 18345              		.loc 1 30 0
+ 18346 005e 8DF80360 		strb	r6, [sp, #3]
+ 18347              		.loc 1 31 0
+ 18348 0062 2046     		mov	r0, r4
+ 18349 0064 6946     		mov	r1, sp
+ 18350 0066 FFF7FEFF 		bl	GPIO_Init
+ 18351              		.loc 1 34 0
+ 18352 006a 4FF00003 		mov	r3, #0
+ 18353 006e ADF80430 		strh	r3, [sp, #4]	@ movhi
+ 18354              		.loc 1 35 0
+ 18355 0072 4FF48272 		mov	r2, #260	@ movhi
+ 18356 0076 ADF80620 		strh	r2, [sp, #6]	@ movhi
+ 18357              		.loc 1 36 0
+ 18358 007a ADF80830 		strh	r3, [sp, #8]	@ movhi
+ 18359              		.loc 1 37 0
+ 18360 007e ADF80A30 		strh	r3, [sp, #10]	@ movhi
+ 18361              		.loc 1 38 0
+ 18362 0082 ADF80C30 		strh	r3, [sp, #12]	@ movhi
+ 18363              		.loc 1 39 0
+ 18364 0086 4FF40072 		mov	r2, #512	@ movhi
+ 18365 008a ADF80E20 		strh	r2, [sp, #14]	@ movhi
+ 18366              		.loc 1 40 0
+ 18367 008e ADF81030 		strh	r3, [sp, #16]	@ movhi
+ 18368              		.loc 1 41 0
+ 18369 0092 ADF81230 		strh	r3, [sp, #18]	@ movhi
+ 18370              		.loc 1 42 0
+ 18371 0096 4FF00703 		mov	r3, #7	@ movhi
+ 18372 009a ADF81430 		strh	r3, [sp, #20]	@ movhi
+ 18373              		.loc 1 43 0
+ 18374 009e 43F20004 		movw	r4, #:lower16:1073819648
+ 18375 00a2 C4F20104 		movt	r4, #:upper16:1073819648
+ 18376 00a6 2046     		mov	r0, r4
+ 18377 00a8 01A9     		add	r1, sp, #4
+ 18378 00aa FFF7FEFF 		bl	SPI_Init
+ 18379              		.loc 1 46 0
+ 18380 00ae 2046     		mov	r0, r4
+ 18381 00b0 4FF00101 		mov	r1, #1
+ 18382 00b4 FFF7FEFF 		bl	SPI_Cmd
+ 18383              		.loc 1 47 0
+ 18384 00b8 07B0     		add	sp, sp, #28
+ 18385 00ba F0BD     		pop	{r4, r5, r6, r7, pc}
+ 18386              		.cfi_endproc
+ 18387              	.LFE29:
+ 18389              		.text
+ 18390              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 spi.c
+C:\Users\user\AppData\Local\Temp\ccr44vLo.s:18230  .text.SPI1_ReadWrite:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccr44vLo.s:18235  .text.SPI1_ReadWrite:00000000 SPI1_ReadWrite
+C:\Users\user\AppData\Local\Temp\ccr44vLo.s:18287  .text.SPI1_Init:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccr44vLo.s:18292  .text.SPI1_Init:00000000 SPI1_Init
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+SPI_I2S_GetFlagStatus
+SPI_I2S_SendData
+SPI_I2S_ReceiveData
+RCC_APB2PeriphClockCmd
+GPIO_Init
+SPI_Init
+SPI_Cmd

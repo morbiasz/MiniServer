@@ -1,0 +1,431 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"main.c"
+  23              	.Ltext0:
+  24              		.file 1 "../main.c"
+ 22605              		.align	2
+ 22606              		.global	Blink
+ 22607              		.thumb
+ 22608              		.thumb_func
+ 22610              	Blink:
+ 22611              	.LFB29:
+   1:../main.c     **** /* ToDo:
+   2:../main.c     ****  *
+   3:../main.c     ****  *	Drobne:
+   4:../main.c     ****  *	- obs³uga ADC i odczytywanie wartoci
+   5:../main.c     ****  *	- zapis tej wartosci do jakiejs zmiennej globalnej
+   6:../main.c     ****  *	- wyswietlenie wartosci w HTML
+   7:../main.c     ****  *
+   8:../main.c     ****  *	Du¿e:
+   9:../main.c     ****  *	- Konfiguracja przez HTML:
+  10:../main.c     ****  *		/ ustawianie czasu poprzez: 									time HH:MM:SS (uproszczone ale efektywny sposób)
+  11:../main.c     ****  *		/ ustawianie czestotliwosci odczytywania temperatury: 			setTempRate XX
+  12:../main.c     ****  *		/ ustawianie adresu bramy (gw_ip):								setGWIP 192.168.1.1
+  13:../main.c     ****  *		/ ustawianie adresu IP ( rowniez w konsoli dla bezpieczenstwa ) setIP 192.168.2.2
+  14:../main.c     ****  *
+  15:../main.c     ****  *	- Konfiguracja przez konsole:
+  16:../main.c     ****  *		+ ustawianie czestotliwosci odczytywanie temperatury
+  17:../main.c     ****  *
+  18:../main.c     ****  *	- Zbieranie danych
+  19:../main.c     ****  *		- najlepiej na serwerze ( skrypt PHP )
+  20:../main.c     ****  *		- prezentacja w PHP lub HTML5
+  21:../main.c     ****  *		- ew. polaczenie z baza danych
+  22:../main.c     ****  *		- log poleceñ na kartê SD
+  23:../main.c     ****  *
+  24:../main.c     ****  *
+  25:../main.c     ****  *
+  26:../main.c     ****  *
+  27:../main.c     ****  */
+  28:../main.c     **** 
+  29:../main.c     **** #include <stdio.h>
+  30:../main.c     **** 
+  31:../main.c     **** #include "src/init_func.h"
+  32:../main.c     **** #include "usart/usart.h"
+  33:../main.c     **** #include "src/delay.h"
+  34:../main.c     **** #include "src/min_printf.h"
+  35:../main.c     **** #include "rtc/rtc.h"
+  36:../main.c     **** 
+  37:../main.c     **** // Konfiguracja urzadzenia
+  38:../main.c     **** #include "server_config.h"
+  39:../main.c     **** 
+  40:../main.c     **** // Stos TCP/IP
+  41:../main.c     **** #include "../SERVER/websrv_help_functions.h"
+  42:../main.c     **** #include "../src/conversion.h"
+  43:../main.c     **** #include "../src/ringbuffer.h"
+  44:../main.c     **** #include "SERVER/tcpip/net.h"
+  45:../main.c     **** #include "SERVER/serverWWW.h"
+  46:../main.c     **** #include "enc28j60/enc28j60.h"
+  47:../main.c     **** #include "SERVER/tcpip/ip_arp_udp_tcp.h"
+  48:../main.c     **** #include "enc28j60/spi.h"
+  49:../main.c     **** 
+  50:../main.c     **** #if TEMP_READ
+  51:../main.c     **** 
+  52:../main.c     **** 	#include "../1wire/temp_read.h"
+  53:../main.c     **** 
+  54:../main.c     **** #endif
+  55:../main.c     **** 
+  56:../main.c     **** // zmienne uzywane przez przerwania:
+  57:../main.c     **** #if CMD_LINE
+  58:../main.c     **** 
+  59:../main.c     **** 	#include "../CMD/cmd.h"
+  60:../main.c     **** 
+  61:../main.c     **** #endif
+  62:../main.c     **** 
+  63:../main.c     **** #if RC5_CONTROL
+  64:../main.c     **** 
+  65:../main.c     **** 	#include "../rc5/rc5.h"
+  66:../main.c     **** 
+  67:../main.c     **** #endif
+  68:../main.c     **** 
+  69:../main.c     **** #if SD_CARD
+  70:../main.c     **** 
+  71:../main.c     **** 	#include "sd_card/fatfs/ff.h"
+  72:../main.c     **** 	#include "sd_card/fatfs/ff_diskio.h"
+  73:../main.c     **** 	FATFS Fs;
+  74:../main.c     **** 
+  75:../main.c     **** #endif
+  76:../main.c     **** 
+  77:../main.c     **** void static HardwareSetup( void );
+  78:../main.c     **** 
+  79:../main.c     **** inline void Blink(void)
+  80:../main.c     **** {
+ 22612              		.loc 1 80 0
+ 22613              		.cfi_startproc
+ 22614              		@ args = 0, pretend = 0, frame = 0
+ 22615              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22616 0000 38B5     		push	{r3, r4, r5, lr}
+ 22617              	.LCFI0:
+ 22618              		.cfi_def_cfa_offset 16
+  81:../main.c     **** 		GPIOC->BSRR = GPIO_Pin_9; 	Delay(200);
+ 22619              		.loc 1 81 0
+ 22620 0002 41F20004 		movw	r4, #:lower16:1073811456
+ 22621              		.cfi_offset 14, -4
+ 22622              		.cfi_offset 5, -8
+ 22623              		.cfi_offset 4, -12
+ 22624              		.cfi_offset 3, -16
+ 22625 0006 C4F20104 		movt	r4, #:upper16:1073811456
+ 22626 000a 4FF40075 		mov	r5, #512
+ 22627 000e 2561     		str	r5, [r4, #16]
+ 22628 0010 4FF0C800 		mov	r0, #200
+ 22629 0014 FFF7FEFF 		bl	Delay
+  82:../main.c     **** 		GPIOC->BRR = GPIO_Pin_9; 	Delay(200);
+ 22630              		.loc 1 82 0
+ 22631 0018 6561     		str	r5, [r4, #20]
+ 22632 001a 4FF0C800 		mov	r0, #200
+ 22633 001e FFF7FEFF 		bl	Delay
+  83:../main.c     **** 		GPIOC->BSRR = GPIO_Pin_9; 	Delay(200);
+ 22634              		.loc 1 83 0
+ 22635 0022 2561     		str	r5, [r4, #16]
+ 22636 0024 4FF0C800 		mov	r0, #200
+ 22637 0028 FFF7FEFF 		bl	Delay
+  84:../main.c     **** 		GPIOC->BRR = GPIO_Pin_9;
+ 22638              		.loc 1 84 0
+ 22639 002c 6561     		str	r5, [r4, #20]
+  85:../main.c     **** }
+ 22640              		.loc 1 85 0
+ 22641 002e 38BD     		pop	{r3, r4, r5, pc}
+ 22642              		.cfi_endproc
+ 22643              	.LFE29:
+ 22645              		.section	.text.main,"ax",%progbits
+ 22646              		.align	2
+ 22647              		.global	main
+ 22648              		.thumb
+ 22649              		.thumb_func
+ 22651              	main:
+ 22652              	.LFB30:
+  86:../main.c     **** 
+  87:../main.c     **** int main (void)
+  88:../main.c     **** {
+ 22653              		.loc 1 88 0
+ 22654              		.cfi_startproc
+ 22655              		@ args = 0, pretend = 0, frame = 600
+ 22656              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22657 0000 00B5     		push	{lr}
+ 22658              	.LCFI1:
+ 22659              		.cfi_def_cfa_offset 4
+ 22660 0002 ADF5177D 		sub	sp, sp, #604
+ 22661              	.LCFI2:
+ 22662              		.cfi_def_cfa_offset 608
+ 22663              	.LBB4:
+ 22664              	.LBB5:
+  89:../main.c     **** #if SD_CARD
+  90:../main.c     **** 	DSTATUS driveStatus;
+  91:../main.c     **** 	FATFS fatSystem;
+  92:../main.c     **** 	FIL file;
+  93:../main.c     **** #endif
+  94:../main.c     **** 
+  95:../main.c     **** 	HardwareSetup();
+  96:../main.c     **** 
+  97:../main.c     **** 	Delay(1000); //to make sure power supply is quiescient
+  98:../main.c     **** 	InitServer();
+  99:../main.c     **** 
+ 100:../main.c     **** 	RTC_Config();
+ 101:../main.c     **** 
+ 102:../main.c     **** #if SD_CARD
+ 103:../main.c     **** 
+ 104:../main.c     **** 	if (f_mount(0, &fatSystem) == FR_OK) {
+ 105:../main.c     **** 
+ 106:../main.c     **** 		driveStatus = disk_initialize(0);
+ 107:../main.c     **** 
+ 108:../main.c     **** 		if (driveStatus & STA_NOINIT || driveStatus & STA_NODISK || driveStatus
+ 109:../main.c     **** 				& STA_PROTECT) {
+ 110:../main.c     **** 
+ 111:../main.c     **** #if UART_DEBUG
+ 112:../main.c     **** 			min_printf("Blad inicjalizacji\r\n");
+ 113:../main.c     **** #endif
+ 114:../main.c     **** 
+ 115:../main.c     **** 		} else {
+ 116:../main.c     **** 
+ 117:../main.c     **** #if UART_DEBUG
+ 118:../main.c     **** 			usart_printf("Zamontowano karte SD\r\n");
+ 119:../main.c     **** #endif
+ 120:../main.c     **** 
+ 121:../main.c     **** 			if (f_open(&file, "/temp.txt", FA_READ | FA_WRITE | FA_OPEN_ALWAYS) == FR_OK)
+ 122:../main.c     **** 			{
+ 123:../main.c     **** 
+ 124:../main.c     **** #if UART_DEBUG
+ 125:../main.c     **** 				usart_printf("Otwarto plik 'temp.txt'\r\n");
+ 126:../main.c     **** #endif
+ 127:../main.c     **** 				Blink();
+ 128:../main.c     **** 
+ 129:../main.c     **** 			}
+ 130:../main.c     **** 
+ 131:../main.c     **** 			f_close(&file);
+ 132:../main.c     **** 		}
+ 133:../main.c     **** 	} else {
+ 134:../main.c     **** #if UART_DEBUG
+ 135:../main.c     **** 		min_printf("Blad montowania\r\n");
+ 136:../main.c     **** #endif
+ 137:../main.c     **** 
+ 138:../main.c     **** }
+ 139:../main.c     **** 
+ 140:../main.c     **** #endif
+ 141:../main.c     **** 
+ 142:../main.c     ****     while(1)
+ 143:../main.c     **** 		{
+ 144:../main.c     **** 			
+ 145:../main.c     **** 			// Obsluga linii komend
+ 146:../main.c     **** #if CMD_LINE
+ 147:../main.c     **** 			CommandLineCheck();
+ 148:../main.c     **** #endif
+ 149:../main.c     **** 
+ 150:../main.c     **** 			// Obsluga serwera
+ 151:../main.c     **** 			ServerCheckForJob();
+ 152:../main.c     **** 
+ 153:../main.c     **** #if RC5_CONTROL
+ 154:../main.c     **** 			RC5Check();
+ 155:../main.c     **** #endif
+ 156:../main.c     **** 			
+ 157:../main.c     **** #if TEMP_READ
+ 158:../main.c     **** 			TempCheck();
+ 159:../main.c     **** #endif
+ 160:../main.c     **** 			
+ 161:../main.c     **** 		}
+ 162:../main.c     **** }
+ 163:../main.c     **** 
+ 164:../main.c     **** 
+ 165:../main.c     **** static void HardwareSetup( void )
+ 166:../main.c     **** {
+ 167:../main.c     **** 	RCC_Conf();
+ 22665              		.loc 1 167 0
+ 22666              		.cfi_offset 14, -4
+ 22667 0006 FFF7FEFF 		bl	RCC_Conf
+ 168:../main.c     **** 	NVIC_Config();
+ 22668              		.loc 1 168 0
+ 22669 000a FFF7FEFF 		bl	NVIC_Config
+ 169:../main.c     **** 	GPIO_Config();
+ 22670              		.loc 1 169 0
+ 22671 000e FFF7FEFF 		bl	GPIO_Config
+ 170:../main.c     **** 	
+ 171:../main.c     **** 	//Standard, ms delay
+ 172:../main.c     **** 	Delay_config();
+ 22672              		.loc 1 172 0
+ 22673 0012 FFF7FEFF 		bl	Delay_config
+ 173:../main.c     **** 	
+ 174:../main.c     **** 	//used for 1Wire
+ 175:../main.c     **** 	Delay_us_init();
+ 22674              		.loc 1 175 0
+ 22675 0016 FFF7FEFF 		bl	Delay_us_init
+ 176:../main.c     **** 	usartSetup();
+ 22676              		.loc 1 176 0
+ 22677 001a FFF7FEFF 		bl	usartSetup
+ 177:../main.c     **** 	
+ 178:../main.c     **** #if CMD_LINE
+ 179:../main.c     **** 		USART_ITConfig(USART1, USART_IT_RXNE,  ENABLE);
+ 22678              		.loc 1 179 0
+ 22679 001e 43F60000 		movw	r0, #:lower16:1073821696
+ 22680 0022 C4F20100 		movt	r0, #:upper16:1073821696
+ 22681 0026 40F22551 		movw	r1, #1317
+ 22682 002a 4FF00102 		mov	r2, #1
+ 22683 002e FFF7FEFF 		bl	USART_ITConfig
+ 180:../main.c     **** #endif
+ 181:../main.c     **** 	
+ 182:../main.c     **** 	// used by ENC28j60
+ 183:../main.c     **** 	SPI1_Init();
+ 22684              		.loc 1 183 0
+ 22685 0032 FFF7FEFF 		bl	SPI1_Init
+ 184:../main.c     **** 	
+ 185:../main.c     **** 	// Konfiguracja pwm dla serwomechanizmu i diody rgb
+ 186:../main.c     **** 	pwmSetup();
+ 22686              		.loc 1 186 0
+ 22687 0036 FFF7FEFF 		bl	pwmSetup
+ 187:../main.c     **** 
+ 188:../main.c     **** #if RGB_DIODE
+ 189:../main.c     **** 	rgbPwmSetup();
+ 22688              		.loc 1 189 0
+ 22689 003a FFF7FEFF 		bl	rgbPwmSetup
+ 22690              	.LBE5:
+ 22691              	.LBE4:
+ 22692              		.loc 1 97 0
+ 22693 003e 4FF47A70 		mov	r0, #1000
+ 22694 0042 FFF7FEFF 		bl	Delay
+ 22695              		.loc 1 98 0
+ 22696 0046 FFF7FEFF 		bl	InitServer
+ 22697              		.loc 1 100 0
+ 22698 004a FFF7FEFF 		bl	RTC_Config
+ 22699              		.loc 1 104 0
+ 22700 004e 4FF00000 		mov	r0, #0
+ 22701 0052 0AA9     		add	r1, sp, #40
+ 22702 0054 FFF7FEFF 		bl	f_mount
+ 22703 0058 50BB     		cbnz	r0, .L4
+ 22704              		.loc 1 106 0
+ 22705 005a FFF7FEFF 		bl	disk_initialize
+ 22706              		.loc 1 108 0
+ 22707 005e 10F0030F 		tst	r0, #3
+ 22708              	.LVL0:
+ 22709 0062 02D1     		bne	.L5
+ 22710 0064 10F0040F 		tst	r0, #4
+ 22711 0068 06D0     		beq	.L6
+ 22712              	.L5:
+ 22713              		.loc 1 112 0
+ 22714 006a 40F20000 		movw	r0, #:lower16:.LC0
+ 22715              	.LVL1:
+ 22716 006e C0F20000 		movt	r0, #:upper16:.LC0
+ 22717 0072 FFF7FEFF 		bl	min_printf
+ 22718              		.loc 1 108 0
+ 22719 0076 21E0     		b	.L10
+ 22720              	.LVL2:
+ 22721              	.L6:
+ 22722              		.loc 1 118 0
+ 22723 0078 40F20000 		movw	r0, #:lower16:.LC1
+ 22724              	.LVL3:
+ 22725 007c C0F20000 		movt	r0, #:upper16:.LC1
+ 22726 0080 FFF7FEFF 		bl	usart_printf
+ 22727              		.loc 1 121 0
+ 22728 0084 01A8     		add	r0, sp, #4
+ 22729 0086 40F20001 		movw	r1, #:lower16:.LC2
+ 22730 008a C0F20001 		movt	r1, #:upper16:.LC2
+ 22731 008e 4FF01302 		mov	r2, #19
+ 22732 0092 FFF7FEFF 		bl	f_open
+ 22733 0096 38B9     		cbnz	r0, .L8
+ 22734              		.loc 1 125 0
+ 22735 0098 40F20000 		movw	r0, #:lower16:.LC3
+ 22736 009c C0F20000 		movt	r0, #:upper16:.LC3
+ 22737 00a0 FFF7FEFF 		bl	usart_printf
+ 22738              		.loc 1 127 0
+ 22739 00a4 FFF7FEFF 		bl	Blink
+ 22740              	.L8:
+ 22741              		.loc 1 131 0
+ 22742 00a8 01A8     		add	r0, sp, #4
+ 22743 00aa FFF7FEFF 		bl	f_close
+ 22744 00ae 05E0     		b	.L10
+ 22745              	.L4:
+ 22746              		.loc 1 135 0
+ 22747 00b0 40F20000 		movw	r0, #:lower16:.LC4
+ 22748 00b4 C0F20000 		movt	r0, #:upper16:.LC4
+ 22749 00b8 FFF7FEFF 		bl	min_printf
+ 22750              	.L10:
+ 22751              		.loc 1 147 0
+ 22752 00bc FFF7FEFF 		bl	CommandLineCheck
+ 22753              		.loc 1 151 0
+ 22754 00c0 FFF7FEFF 		bl	ServerCheckForJob
+ 22755              		.loc 1 158 0
+ 22756 00c4 FFF7FEFF 		bl	TempCheck
+ 22757 00c8 F8E7     		b	.L10
+ 22758              		.cfi_endproc
+ 22759              	.LFE30:
+ 22761              		.comm	Fs,560,4
+ 22762 00ca 00BF     		.section	.rodata.str1.4,"aMS",%progbits,1
+ 22763              		.align	2
+ 22764              	.LC0:
+ 22765 0000 426C6164 		.ascii	"Blad inicjalizacji\015\012\000"
+ 22765      20696E69 
+ 22765      636A616C 
+ 22765      697A6163 
+ 22765      6A690D0A 
+ 22766 0015 000000   		.space	3
+ 22767              	.LC1:
+ 22768 0018 5A616D6F 		.ascii	"Zamontowano karte SD\015\012\000"
+ 22768      6E746F77 
+ 22768      616E6F20 
+ 22768      6B617274 
+ 22768      65205344 
+ 22769 002f 00       		.space	1
+ 22770              	.LC2:
+ 22771 0030 2F74656D 		.ascii	"/temp.txt\000"
+ 22771      702E7478 
+ 22771      7400
+ 22772 003a 0000     		.space	2
+ 22773              	.LC3:
+ 22774 003c 4F747761 		.ascii	"Otwarto plik 'temp.txt'\015\012\000"
+ 22774      72746F20 
+ 22774      706C696B 
+ 22774      20277465 
+ 22774      6D702E74 
+ 22775 0056 0000     		.space	2
+ 22776              	.LC4:
+ 22777 0058 426C6164 		.ascii	"Blad montowania\015\012\000"
+ 22777      206D6F6E 
+ 22777      746F7761 
+ 22777      6E69610D 
+ 22777      0A00
+ 22778 006a 0000     		.text
+ 22779              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 main.c
+C:\Users\user\AppData\Local\Temp\ccgNWco6.s:22605  .text.Blink:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccgNWco6.s:22610  .text.Blink:00000000 Blink
+C:\Users\user\AppData\Local\Temp\ccgNWco6.s:22646  .text.main:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccgNWco6.s:22651  .text.main:00000000 main
+C:\Users\user\AppData\Local\Temp\ccgNWco6.s:22764  .rodata.str1.4:00000000 .LC0
+C:\Users\user\AppData\Local\Temp\ccgNWco6.s:22767  .rodata.str1.4:00000018 .LC1
+C:\Users\user\AppData\Local\Temp\ccgNWco6.s:22770  .rodata.str1.4:00000030 .LC2
+C:\Users\user\AppData\Local\Temp\ccgNWco6.s:22773  .rodata.str1.4:0000003c .LC3
+C:\Users\user\AppData\Local\Temp\ccgNWco6.s:22776  .rodata.str1.4:00000058 .LC4
+                            *COM*:00000230 Fs
+C:\Users\user\AppData\Local\Temp\ccgNWco6.s:22763  .rodata.str1.4:00000000 $d
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+Delay
+RCC_Conf
+NVIC_Config
+GPIO_Config
+Delay_config
+Delay_us_init
+usartSetup
+USART_ITConfig
+SPI1_Init
+pwmSetup
+rgbPwmSetup
+InitServer
+RTC_Config
+f_mount
+disk_initialize
+min_printf
+usart_printf
+f_open
+f_close
+CommandLineCheck
+ServerCheckForJob
+TempCheck

@@ -1,0 +1,296 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"rc5.c"
+  23              	.Ltext0:
+  24              		.file 1 "../rc5/rc5.c"
+ 18261              		.align	2
+ 18262              		.global	RC5Check
+ 18263              		.thumb
+ 18264              		.thumb_func
+ 18266              	RC5Check:
+ 18267              	.LFB29:
+   1:../rc5/rc5.c  **** #include "rc5.h"
+   2:../rc5/rc5.c  **** 
+   3:../rc5/rc5.c  **** volatile uint16_t rc5 = 0;
+   4:../rc5/rc5.c  **** volatile uint16_t rc5_ok = 0;
+   5:../rc5/rc5.c  **** 
+   6:../rc5/rc5.c  **** void RC5Check(void)
+   7:../rc5/rc5.c  **** {
+ 18268              		.loc 1 7 0
+ 18269              		.cfi_startproc
+ 18270              		@ args = 0, pretend = 0, frame = 0
+ 18271              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18272              		@ link register save eliminated.
+   8:../rc5/rc5.c  **** 		static uint8_t rc5_toogle = 2;
+   9:../rc5/rc5.c  **** 		static uint8_t rc5_toogle_last = 2;
+  10:../rc5/rc5.c  **** 		uint16_t rc5_code = 0;
+  11:../rc5/rc5.c  **** 	
+  12:../rc5/rc5.c  **** 		//sprawdzenie flagi odbioru danych
+  13:../rc5/rc5.c  **** 		if(rc5_ok != 0)
+ 18273              		.loc 1 13 0
+ 18274 0000 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 18275 0004 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 18276 0008 1B88     		ldrh	r3, [r3, #0]
+ 18277 000a 9BB2     		uxth	r3, r3
+ 18278 000c 002B     		cmp	r3, #0
+ 18279 000e 38D0     		beq	.L7
+  14:../rc5/rc5.c  **** 		{
+  15:../rc5/rc5.c  **** 			//wykonanie kopii zdekodowanego kodu RC5
+  16:../rc5/rc5.c  **** 			rc5_code = rc5;
+ 18280              		.loc 1 16 0
+ 18281 0010 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 18282 0014 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 18283 0018 1A88     		ldrh	r2, [r3, #0]
+ 18284 001a 92B2     		uxth	r2, r2
+  17:../rc5/rc5.c  **** 
+  18:../rc5/rc5.c  **** 			//sprawdzenie bitu toggle
+  19:../rc5/rc5.c  **** 			if((rc5_code & 0x0800) == 0)
+ 18285              		.loc 1 19 0
+ 18286 001c 12F4006F 		tst	r2, #2048
+  20:../rc5/rc5.c  **** 				{rc5_toogle = 0;}
+ 18287              		.loc 1 20 0
+ 18288 0020 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 18289 0024 C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 18290 0028 0CBF     		ite	eq
+ 18291 002a 0021     		moveq	r1, #0
+  21:../rc5/rc5.c  **** 			else
+  22:../rc5/rc5.c  **** 				{rc5_toogle = 1;}
+ 18292              		.loc 1 22 0
+ 18293 002c 0121     		movne	r1, #1
+ 18294 002e 1970     		strb	r1, [r3, #0]
+  23:../rc5/rc5.c  **** 
+  24:../rc5/rc5.c  **** 			//wykonanie kodu jeli wcisnieto "nowy" klawisz
+  25:../rc5/rc5.c  **** 			if(rc5_toogle != rc5_toogle_last)
+ 18295              		.loc 1 25 0
+ 18296 0030 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 18297 0034 C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 18298 0038 1978     		ldrb	r1, [r3, #0]	@ zero_extendqisi2
+ 18299 003a 40F20003 		movw	r3, #:lower16:.LANCHOR3
+ 18300 003e C0F20003 		movt	r3, #:upper16:.LANCHOR3
+ 18301 0042 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 18302 0044 8B42     		cmp	r3, r1
+ 18303 0046 1CD0     		beq	.L7
+  26:../rc5/rc5.c  **** 			{
+  27:../rc5/rc5.c  **** 				//aktualizacja poprzedniej flagi toogle
+  28:../rc5/rc5.c  **** 				rc5_toogle_last = rc5_toogle;
+ 18304              		.loc 1 28 0
+ 18305 0048 40F20003 		movw	r3, #:lower16:.LANCHOR3
+ 18306 004c C0F20003 		movt	r3, #:upper16:.LANCHOR3
+ 18307 0050 1970     		strb	r1, [r3, #0]
+  29:../rc5/rc5.c  **** 				
+  30:../rc5/rc5.c  **** 				switch (rc5_code & 0x003F)
+ 18308              		.loc 1 30 0
+ 18309 0052 02F03F02 		and	r2, r2, #63
+ 18310 0056 012A     		cmp	r2, #1
+ 18311 0058 02D0     		beq	.L5
+ 18312 005a 022A     		cmp	r2, #2
+ 18313 005c 11D1     		bne	.L7
+ 18314 005e 08E0     		b	.L8
+ 18315              	.L5:
+  31:../rc5/rc5.c  **** 				{
+  32:../rc5/rc5.c  **** 					case RC5_Code_1 :
+  33:../rc5/rc5.c  **** 						GPIOC->ODR ^=GPIO_Pin_9;
+ 18316              		.loc 1 33 0
+ 18317 0060 41F20003 		movw	r3, #:lower16:1073811456
+ 18318 0064 C4F20103 		movt	r3, #:upper16:1073811456
+ 18319 0068 DA68     		ldr	r2, [r3, #12]
+ 18320 006a 82F40072 		eor	r2, r2, #512
+ 18321 006e DA60     		str	r2, [r3, #12]
+  34:../rc5/rc5.c  **** 
+  35:../rc5/rc5.c  **** 						#if RC5_UART_DEBUG
+  36:../rc5/rc5.c  **** 							min_printf("RC5: 1\r\n")
+  37:../rc5/rc5.c  **** 						#endif
+  38:../rc5/rc5.c  **** 
+  39:../rc5/rc5.c  **** 						break;
+ 18322              		.loc 1 39 0
+ 18323 0070 7047     		bx	lr
+ 18324              	.L8:
+  40:../rc5/rc5.c  **** 					
+  41:../rc5/rc5.c  **** 					case RC5_Code_2 :
+  42:../rc5/rc5.c  **** 						GPIOC->ODR ^=GPIO_Pin_8;
+ 18325              		.loc 1 42 0
+ 18326 0072 41F20003 		movw	r3, #:lower16:1073811456
+ 18327 0076 C4F20103 		movt	r3, #:upper16:1073811456
+ 18328 007a DA68     		ldr	r2, [r3, #12]
+ 18329 007c 82F48072 		eor	r2, r2, #256
+ 18330 0080 DA60     		str	r2, [r3, #12]
+ 18331              	.L7:
+ 18332 0082 7047     		bx	lr
+ 18333              		.cfi_endproc
+ 18334              	.LFE29:
+ 18336              		.section	.text.RC5Timer_Config,"ax",%progbits
+ 18337              		.align	2
+ 18338              		.global	RC5Timer_Config
+ 18339              		.thumb
+ 18340              		.thumb_func
+ 18342              	RC5Timer_Config:
+ 18343              	.LFB30:
+  43:../rc5/rc5.c  **** 
+  44:../rc5/rc5.c  **** 						#if RC5_UART_DEBUG
+  45:../rc5/rc5.c  **** 							min_printf("RC5: 2\r\n")
+  46:../rc5/rc5.c  **** 						#endif
+  47:../rc5/rc5.c  **** 
+  48:../rc5/rc5.c  **** 						break;
+  49:../rc5/rc5.c  **** 				
+  50:../rc5/rc5.c  **** 					default:
+  51:../rc5/rc5.c  **** 						break;
+  52:../rc5/rc5.c  **** 				
+  53:../rc5/rc5.c  **** 				}
+  54:../rc5/rc5.c  **** 			
+  55:../rc5/rc5.c  **** 			}	
+  56:../rc5/rc5.c  **** 		}
+  57:../rc5/rc5.c  **** 		
+  58:../rc5/rc5.c  **** }
+  59:../rc5/rc5.c  **** 
+  60:../rc5/rc5.c  **** void RC5Timer_Config(void)
+  61:../rc5/rc5.c  **** {
+ 18344              		.loc 1 61 0
+ 18345              		.cfi_startproc
+ 18346              		@ args = 0, pretend = 0, frame = 32
+ 18347              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18348 0000 70B5     		push	{r4, r5, r6, lr}
+ 18349              	.LCFI0:
+ 18350              		.cfi_def_cfa_offset 16
+ 18351 0002 88B0     		sub	sp, sp, #32
+ 18352              	.LCFI1:
+ 18353              		.cfi_def_cfa_offset 48
+  62:../rc5/rc5.c  **** 		TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+  63:../rc5/rc5.c  **** 		TIM_OCInitTypeDef TIM_OCInitStructure;
+  64:../rc5/rc5.c  **** 
+  65:../rc5/rc5.c  **** 		TIM_TimeBaseStructure.TIM_Period = 65535;
+ 18354              		.loc 1 65 0
+ 18355 0004 4FF0FF33 		mov	r3, #-1	@ movhi
+ 18356 0008 ADF81830 		strh	r3, [sp, #24]	@ movhi
+  66:../rc5/rc5.c  **** 		TIM_TimeBaseStructure.TIM_Prescaler = 467;
+ 18357              		.loc 1 66 0
+ 18358 000c 40F2D313 		movw	r3, 467	@ movhi
+ 18359 0010 ADF81430 		strh	r3, [sp, #20]	@ movhi
+  67:../rc5/rc5.c  **** 		TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+ 18360              		.loc 1 67 0
+ 18361 0014 4FF00006 		mov	r6, #0
+ 18362              		.cfi_offset 14, -4
+ 18363              		.cfi_offset 6, -8
+ 18364              		.cfi_offset 5, -12
+ 18365              		.cfi_offset 4, -16
+ 18366 0018 ADF81A60 		strh	r6, [sp, #26]	@ movhi
+  68:../rc5/rc5.c  **** 		TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+ 18367              		.loc 1 68 0
+ 18368 001c ADF81660 		strh	r6, [sp, #22]	@ movhi
+  69:../rc5/rc5.c  **** 
+  70:../rc5/rc5.c  **** 		TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+ 18369              		.loc 1 70 0
+ 18370 0020 40F20044 		movw	r4, #:lower16:1073742848
+ 18371 0024 C4F20004 		movt	r4, #:upper16:1073742848
+ 18372 0028 2046     		mov	r0, r4
+ 18373 002a 05A9     		add	r1, sp, #20
+ 18374 002c FFF7FEFF 		bl	TIM_TimeBaseInit
+  71:../rc5/rc5.c  **** 
+  72:../rc5/rc5.c  **** 		TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Inactive;
+ 18375              		.loc 1 72 0
+ 18376 0030 4FF02003 		mov	r3, #32	@ movhi
+ 18377 0034 ADF80430 		strh	r3, [sp, #4]	@ movhi
+  73:../rc5/rc5.c  **** 		TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+ 18378              		.loc 1 73 0
+ 18379 0038 4FF00105 		mov	r5, #1
+ 18380 003c ADF80650 		strh	r5, [sp, #6]	@ movhi
+  74:../rc5/rc5.c  **** 		TIM_OCInitStructure.TIM_Pulse = 150;
+ 18381              		.loc 1 74 0
+ 18382 0040 4FF09603 		mov	r3, #150	@ movhi
+ 18383 0044 ADF80A30 		strh	r3, [sp, #10]	@ movhi
+  75:../rc5/rc5.c  **** 		TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+ 18384              		.loc 1 75 0
+ 18385 0048 ADF80C60 		strh	r6, [sp, #12]	@ movhi
+  76:../rc5/rc5.c  **** 
+  77:../rc5/rc5.c  **** 		TIM_OC1Init(TIM3, &TIM_OCInitStructure);
+ 18386              		.loc 1 77 0
+ 18387 004c 2046     		mov	r0, r4
+ 18388 004e 01A9     		add	r1, sp, #4
+ 18389 0050 FFF7FEFF 		bl	TIM_OC1Init
+  78:../rc5/rc5.c  **** 		TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Enable);
+ 18390              		.loc 1 78 0
+ 18391 0054 2046     		mov	r0, r4
+ 18392 0056 4FF00801 		mov	r1, #8
+ 18393 005a FFF7FEFF 		bl	TIM_OC1PreloadConfig
+  79:../rc5/rc5.c  **** 	
+  80:../rc5/rc5.c  **** 		TIM_ARRPreloadConfig(TIM3, ENABLE);
+ 18394              		.loc 1 80 0
+ 18395 005e 2046     		mov	r0, r4
+ 18396 0060 2946     		mov	r1, r5
+ 18397 0062 FFF7FEFF 		bl	TIM_ARRPreloadConfig
+  81:../rc5/rc5.c  **** 
+  82:../rc5/rc5.c  **** 		TIM_ITConfig(TIM3, TIM_IT_CC1, ENABLE);
+ 18398              		.loc 1 82 0
+ 18399 0066 2046     		mov	r0, r4
+ 18400 0068 4FF00201 		mov	r1, #2
+ 18401 006c 2A46     		mov	r2, r5
+ 18402 006e FFF7FEFF 		bl	TIM_ITConfig
+  83:../rc5/rc5.c  **** 
+  84:../rc5/rc5.c  **** 		TIM_Cmd(TIM3, ENABLE);
+ 18403              		.loc 1 84 0
+ 18404 0072 2046     		mov	r0, r4
+ 18405 0074 2946     		mov	r1, r5
+ 18406 0076 FFF7FEFF 		bl	TIM_Cmd
+  85:../rc5/rc5.c  **** 
+  86:../rc5/rc5.c  **** }
+ 18407              		.loc 1 86 0
+ 18408 007a 08B0     		add	sp, sp, #32
+ 18409 007c 70BD     		pop	{r4, r5, r6, pc}
+ 18410              		.cfi_endproc
+ 18411              	.LFE30:
+ 18413              		.global	rc5
+ 18414              		.global	rc5_ok
+ 18415 007e 00BF     		.section	.bss.rc5,"aw",%nobits
+ 18416              		.align	1
+ 18417              		.set	.LANCHOR1,. + 0
+ 18420              	rc5:
+ 18421 0000 0000     		.space	2
+ 18422              		.section	.data.rc5_toogle.2946,"aw",%progbits
+ 18423              		.set	.LANCHOR2,. + 0
+ 18426              	rc5_toogle.2946:
+ 18427 0000 02       		.byte	2
+ 18428              		.section	.data.rc5_toogle_last.2947,"aw",%progbits
+ 18429              		.set	.LANCHOR3,. + 0
+ 18432              	rc5_toogle_last.2947:
+ 18433 0000 02       		.byte	2
+ 18434              		.section	.bss.rc5_ok,"aw",%nobits
+ 18435              		.align	1
+ 18436              		.set	.LANCHOR0,. + 0
+ 18439              	rc5_ok:
+ 18440 0000 0000     		.space	2
+ 18441              		.text
+ 18442              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 rc5.c
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18261  .text.RC5Check:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18266  .text.RC5Check:00000000 RC5Check
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18436  .bss.rc5_ok:00000000 .LANCHOR0
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18417  .bss.rc5:00000000 .LANCHOR1
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18423  .data.rc5_toogle.2946:00000000 .LANCHOR2
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18429  .data.rc5_toogle_last.2947:00000000 .LANCHOR3
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18337  .text.RC5Timer_Config:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18342  .text.RC5Timer_Config:00000000 RC5Timer_Config
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18420  .bss.rc5:00000000 rc5
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18439  .bss.rc5_ok:00000000 rc5_ok
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18416  .bss.rc5:00000000 $d
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18426  .data.rc5_toogle.2946:00000000 rc5_toogle.2946
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18432  .data.rc5_toogle_last.2947:00000000 rc5_toogle_last.2947
+C:\Users\user\AppData\Local\Temp\cc5P3iGL.s:18435  .bss.rc5_ok:00000000 $d
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+TIM_TimeBaseInit
+TIM_OC1Init
+TIM_OC1PreloadConfig
+TIM_ARRPreloadConfig
+TIM_ITConfig
+TIM_Cmd

@@ -1,0 +1,2832 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"serverWWW.c"
+  23              	.Ltext0:
+  24              		.file 1 "../SERVER/serverWWW.c"
+ 21711              		.align	2
+ 21712              		.global	www_clock_tick
+ 21713              		.thumb
+ 21714              		.thumb_func
+ 21716              	www_clock_tick:
+ 21717              	.LFB29:
+   1:../SERVER/serverWWW.c **** #include "serverWWW.h"
+   2:../SERVER/serverWWW.c **** #include <stdlib.h>
+   3:../SERVER/serverWWW.c **** #include <string.h>
+   4:../SERVER/serverWWW.c **** #include <conversion.h>
+   5:../SERVER/serverWWW.c **** #include <server_config.h>
+   6:../SERVER/serverWWW.c **** #include "dnslkup.h"
+   7:../SERVER/serverWWW.c **** #include "websrv_help_functions.h"
+   8:../SERVER/serverWWW.c **** #include "timeconversions.h"
+   9:../SERVER/serverWWW.c **** #include <temp_read.h>
+  10:../SERVER/serverWWW.c **** #include "../RTC/rtc.h"
+  11:../SERVER/serverWWW.c **** 
+  12:../SERVER/serverWWW.c **** #include <stdio.h>
+  13:../SERVER/serverWWW.c **** 
+  14:../SERVER/serverWWW.c **** // przechowuje string z aktualna temperatura od czujnikow
+  15:../SERVER/serverWWW.c **** extern char temperatura[MAX_LICZBA_CZUJNIKOW_TEMP][6];
+  16:../SERVER/serverWWW.c **** 
+  17:../SERVER/serverWWW.c **** /* Obrazek wyswietlany na stronie
+  18:../SERVER/serverWWW.c ****  *
+  19:../SERVER/serverWWW.c ****  *
+  20:../SERVER/serverWWW.c ****  */
+  21:../SERVER/serverWWW.c **** const uint8_t rawData[360] = { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46,
+  22:../SERVER/serverWWW.c **** 		0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+  23:../SERVER/serverWWW.c **** 		0xFF, 0xDB, 0x00, 0x43, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+  24:../SERVER/serverWWW.c **** 		0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x01, 0x01,
+  25:../SERVER/serverWWW.c **** 		0x01, 0x01, 0x03, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x04, 0x04, 0x03,
+  26:../SERVER/serverWWW.c **** 		0x03, 0x03, 0x03, 0x04, 0x04, 0x06, 0x05, 0x04, 0x04, 0x05, 0x04, 0x03,
+  27:../SERVER/serverWWW.c **** 		0x03, 0x05, 0x07, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x06, 0x04, 0x05,
+  28:../SERVER/serverWWW.c **** 		0x07, 0x07, 0x07, 0x06, 0x07, 0x06, 0x06, 0x06, 0x06, 0xFF, 0xC0, 0x00,
+  29:../SERVER/serverWWW.c **** 		0x0B, 0x08, 0x00, 0x10, 0x00, 0x10, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xC4,
+  30:../SERVER/serverWWW.c **** 		0x00, 0x16, 0x00, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  31:../SERVER/serverWWW.c **** 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x07, 0x0A, 0xFF, 0xC4,
+  32:../SERVER/serverWWW.c **** 		0x00, 0x20, 0x10, 0x00, 0x02, 0x03, 0x01, 0x00, 0x02, 0x02, 0x03, 0x00,
+  33:../SERVER/serverWWW.c **** 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x03, 0x01, 0x04, 0x05,
+  34:../SERVER/serverWWW.c **** 		0x06, 0x07, 0x11, 0x00, 0x13, 0x12, 0x14, 0x21, 0xFF, 0xDA, 0x00, 0x08,
+  35:../SERVER/serverWWW.c **** 		0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, 0xD3, 0xE7, 0x99, 0xBB, 0x87, 0x7D,
+  36:../SERVER/serverWWW.c **** 		0x56, 0xB4, 0xB9, 0x3E, 0xAB, 0x23, 0x53, 0x64, 0xF0, 0xAC, 0x6A, 0x75,
+  37:../SERVER/serverWWW.c **** 		0x7D, 0xBE, 0x66, 0xAB, 0x32, 0x06, 0xA3, 0xFF, 0x00, 0x70, 0x4E, 0xB5,
+  38:../SERVER/serverWWW.c **** 		0x1C, 0xEA, 0xED, 0x91, 0x10, 0xAD, 0x5D, 0xB1, 0xFB, 0x26, 0x72, 0x2D,
+  39:../SERVER/serverWWW.c **** 		0x73, 0x19, 0xE9, 0xC5, 0x31, 0x02, 0xDF, 0x82, 0x57, 0x91, 0xBC, 0x95,
+  40:../SERVER/serverWWW.c **** 		0x89, 0x6F, 0x9B, 0xE8, 0xFA, 0x3B, 0x2F, 0xD5, 0xEB, 0x7A, 0x1E, 0xD0,
+  41:../SERVER/serverWWW.c **** 		0x36, 0x68, 0xE7, 0x33, 0x57, 0x69, 0xB6, 0xB6, 0xE0, 0x35, 0xE5, 0x03,
+  42:../SERVER/serverWWW.c **** 		0xA1, 0x9C, 0xAD, 0x05, 0x17, 0xF5, 0xEC, 0xB2, 0x29, 0x70, 0xB0, 0x4A,
+  43:../SERVER/serverWWW.c **** 		0x42, 0x7E, 0xE3, 0x81, 0xFC, 0xE1, 0x93, 0x31, 0x4A, 0xF2, 0xB7, 0x6F,
+  44:../SERVER/serverWWW.c **** 		0xA5, 0x6E, 0xB7, 0x7A, 0x36, 0x1B, 0xC3, 0xF4, 0x3A, 0xEB, 0xE7, 0xF5,
+  45:../SERVER/serverWWW.c **** 		0x83, 0x33, 0x56, 0x2F, 0x15, 0x9C, 0xAC, 0xD5, 0x24, 0xD9, 0x00, 0xA6,
+  46:../SERVER/serverWWW.c **** 		0x42, 0xBD, 0x1B, 0x8D, 0x6A, 0x72, 0x8D, 0x91, 0xF4, 0xB0, 0x4B, 0xF8,
+  47:../SERVER/serverWWW.c **** 		0x3E, 0xFD, 0xCF, 0xAF, 0x85, 0x63, 0xBA, 0x5D, 0xE5, 0x73, 0xA8, 0xC7,
+  48:../SERVER/serverWWW.c **** 		0xDD, 0xD8, 0xD6, 0xA1, 0x77, 0x36, 0xE5, 0x7E, 0x92, 0xD5, 0x9C, 0x8C,
+  49:../SERVER/serverWWW.c **** 		0x75, 0x5A, 0x85, 0x55, 0x86, 0x0B, 0x86, 0xCA, 0x88, 0x0A, 0x1B, 0x5D,
+  50:../SERVER/serverWWW.c **** 		0x4B, 0x05, 0x55, 0x41, 0x43, 0x08, 0x0A, 0x1C, 0xC5, 0xFE, 0x20, 0x52,
+  51:../SERVER/serverWWW.c **** 		0x25, 0x23, 0xFF, 0xD9, };
+  52:../SERVER/serverWWW.c **** 
+  53:../SERVER/serverWWW.c **** uint8_t mymac[6] = { 0xf0, 0xd4, 0xa2, 0x9b, 0x12, 0x20 };
+  54:../SERVER/serverWWW.c **** 
+  55:../SERVER/serverWWW.c **** // Adres ip serwera
+  56:../SERVER/serverWWW.c **** static uint8_t myip[4] = { 192, 168, 1, 25};
+  57:../SERVER/serverWWW.c **** 
+  58:../SERVER/serverWWW.c **** #define MYUDPPORT 1200
+  59:../SERVER/serverWWW.c **** #define MYWWWPORT 80
+  60:../SERVER/serverWWW.c **** 
+  61:../SERVER/serverWWW.c **** // Bufor dla pakietow
+  62:../SERVER/serverWWW.c **** #define BUFFER_SIZE 1400
+  63:../SERVER/serverWWW.c **** static uint8_t buf[BUFFER_SIZE + 1];
+  64:../SERVER/serverWWW.c **** 
+  65:../SERVER/serverWWW.c **** // Zmienne specyficzne dla aplikacji
+  66:../SERVER/serverWWW.c **** 
+  67:../SERVER/serverWWW.c **** static uint8_t cmd_number = 0; // nr polecenia przeslanego przez URL
+  68:../SERVER/serverWWW.c **** static unsigned char switch_state[4]; // aktualny stan przyciskow
+  69:../SERVER/serverWWW.c **** static char gStrbuf[25]; // Bufor
+  70:../SERVER/serverWWW.c **** 
+  71:../SERVER/serverWWW.c **** static uint8_t WWWConfig_status = WWW_CONFIG_ENABLED;
+  72:../SERVER/serverWWW.c **** 
+  73:../SERVER/serverWWW.c **** // ---------- Zmienne uzywane przez funkcje synchronizacji adresu ip z zewnetrznym serwerem -------
+  74:../SERVER/serverWWW.c **** 
+  75:../SERVER/serverWWW.c **** #if UPDATE_IP
+  76:../SERVER/serverWWW.c **** #define TRANS_NUM_GWMAC 1									//jakas stala - identyfikator tylko
+  77:../SERVER/serverWWW.c **** #define WEBSERVER_VHOST "kubeqz.cba.pl"						//adres pod ktorym jest dostepny ten serwer
+  78:../SERVER/serverWWW.c **** static uint8_t gwip[4] = { 192, 168, 1, 1 }; //ip gateway'a
+  79:../SERVER/serverWWW.c **** static uint8_t gwmac[6]; //mac gateway'a
+  80:../SERVER/serverWWW.c **** 
+  81:../SERVER/serverWWW.c **** static uint8_t otherside_www_ip[4]; // ip uzyskane od serwera dns
+  82:../SERVER/serverWWW.c **** static uint8_t pingsrcip[4];
+  83:../SERVER/serverWWW.c **** 
+  84:../SERVER/serverWWW.c **** static volatile uint8_t start_web_client = 1; // = 1 , aby po uruchomieniu zaktualizowal ip po star
+  85:../SERVER/serverWWW.c **** static volatile uint8_t sec = 0;
+  86:../SERVER/serverWWW.c **** 
+  87:../SERVER/serverWWW.c **** static uint8_t web_client_attempts = 0;
+  88:../SERVER/serverWWW.c **** static uint8_t web_client_sendok = 0;
+  89:../SERVER/serverWWW.c **** 
+  90:../SERVER/serverWWW.c **** static int8_t dns_state = 0;
+  91:../SERVER/serverWWW.c **** static int8_t gw_arp_state = 0;
+  92:../SERVER/serverWWW.c **** 
+  93:../SERVER/serverWWW.c **** void arpresolver_result_callback(uint8_t *ip __attribute__((unused)), uint8_t transaction_number,
+  94:../SERVER/serverWWW.c **** 		uint8_t *mac);
+  95:../SERVER/serverWWW.c **** void browserresult_callback(uint16_t webstatuscode, uint16_t datapos __attribute__((unused)),
+  96:../SERVER/serverWWW.c **** 		uint16_t len __attribute__((unused)));
+  97:../SERVER/serverWWW.c **** #endif
+  98:../SERVER/serverWWW.c **** 
+  99:../SERVER/serverWWW.c **** // Sekcja dotycz¹ca zegara NTP
+ 100:../SERVER/serverWWW.c **** #if NTP_CLOCK
+ 101:../SERVER/serverWWW.c **** 
+ 102:../SERVER/serverWWW.c **** static char day[16];
+ 103:../SERVER/serverWWW.c **** static char clock[16];
+ 104:../SERVER/serverWWW.c **** 
+ 105:../SERVER/serverWWW.c **** static uint8_t ntpip[4] = { 17, 254, 0, 31 };
+ 106:../SERVER/serverWWW.c **** static int16_t hours_offset_to_utc = -10;
+ 107:../SERVER/serverWWW.c **** 
+ 108:../SERVER/serverWWW.c **** volatile uint8_t haveNTPanswer = 0;
+ 109:../SERVER/serverWWW.c **** volatile uint8_t send_ntp_req_from_idle_loop = 1;
+ 110:../SERVER/serverWWW.c **** 
+ 111:../SERVER/serverWWW.c **** #endif
+ 112:../SERVER/serverWWW.c **** 
+ 113:../SERVER/serverWWW.c **** void www_clock_tick() {
+ 21718              		.loc 1 113 0
+ 21719              		.cfi_startproc
+ 21720              		@ args = 0, pretend = 0, frame = 0
+ 21721              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21722              		@ link register save eliminated.
+ 114:../SERVER/serverWWW.c **** 
+ 115:../SERVER/serverWWW.c **** 	sec++;
+ 21723              		.loc 1 115 0
+ 21724 0000 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 21725 0004 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 21726 0008 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 21727 000a 02F10102 		add	r2, r2, #1
+ 21728 000e D2B2     		uxtb	r2, r2
+ 21729 0010 1A70     		strb	r2, [r3, #0]
+ 116:../SERVER/serverWWW.c **** 
+ 117:../SERVER/serverWWW.c **** }
+ 21730              		.loc 1 117 0
+ 21731 0012 7047     		bx	lr
+ 21732              		.cfi_endproc
+ 21733              	.LFE29:
+ 21735              		.section	.text.enableWWWConfig,"ax",%progbits
+ 21736              		.align	2
+ 21737              		.global	enableWWWConfig
+ 21738              		.thumb
+ 21739              		.thumb_func
+ 21741              	enableWWWConfig:
+ 21742              	.LFB32:
+ 118:../SERVER/serverWWW.c **** 
+ 119:../SERVER/serverWWW.c **** //Inicjalizacja serwera
+ 120:../SERVER/serverWWW.c **** void InitServer(void) {
+ 121:../SERVER/serverWWW.c **** 
+ 122:../SERVER/serverWWW.c **** 	enc28j60Init(mymac);
+ 123:../SERVER/serverWWW.c **** 	Delay(1);
+ 124:../SERVER/serverWWW.c **** 	enc28j60clkout(0); //wylacz external CLK dla redukcji zak³oceñ ( EMI )
+ 125:../SERVER/serverWWW.c **** 	Delay(1);
+ 126:../SERVER/serverWWW.c **** 	enc28j60PhyWrite(PHLCON, 0x476);
+ 127:../SERVER/serverWWW.c **** 	Delay(100);
+ 128:../SERVER/serverWWW.c **** 
+ 129:../SERVER/serverWWW.c **** #if UART_DEBUG
+ 130:../SERVER/serverWWW.c **** 	min_printf("ENC28J60 wersja: %x\r\n", enc28j60getrev());
+ 131:../SERVER/serverWWW.c **** #endif
+ 132:../SERVER/serverWWW.c **** 
+ 133:../SERVER/serverWWW.c **** 	//Zainicjalizuj serwer
+ 134:../SERVER/serverWWW.c **** 	init_udp_or_www_server(mymac, myip);
+ 135:../SERVER/serverWWW.c **** 	www_server_port(MYWWWPORT);
+ 136:../SERVER/serverWWW.c **** 
+ 137:../SERVER/serverWWW.c **** }
+ 138:../SERVER/serverWWW.c **** 
+ 139:../SERVER/serverWWW.c **** void changeIP(uint8_t * ip) {
+ 140:../SERVER/serverWWW.c **** 
+ 141:../SERVER/serverWWW.c **** 	if (sizeof(ip) == sizeof(myip))
+ 142:../SERVER/serverWWW.c **** 		memcpy(myip, ip, 4);
+ 143:../SERVER/serverWWW.c **** 
+ 144:../SERVER/serverWWW.c **** 	init_udp_or_www_server(mymac, myip);
+ 145:../SERVER/serverWWW.c **** 
+ 146:../SERVER/serverWWW.c **** }
+ 147:../SERVER/serverWWW.c **** 
+ 148:../SERVER/serverWWW.c **** void enableWWWConfig() {
+ 21743              		.loc 1 148 0
+ 21744              		.cfi_startproc
+ 21745              		@ args = 0, pretend = 0, frame = 0
+ 21746              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21747              		@ link register save eliminated.
+ 149:../SERVER/serverWWW.c **** 
+ 150:../SERVER/serverWWW.c **** 	WWWConfig_status = WWW_CONFIG_ENABLED;
+ 21748              		.loc 1 150 0
+ 21749 0000 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 21750 0004 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 21751 0008 4FF00102 		mov	r2, #1
+ 21752 000c 1A70     		strb	r2, [r3, #0]
+ 151:../SERVER/serverWWW.c **** 
+ 152:../SERVER/serverWWW.c **** }
+ 21753              		.loc 1 152 0
+ 21754 000e 7047     		bx	lr
+ 21755              		.cfi_endproc
+ 21756              	.LFE32:
+ 21758              		.section	.text.disableWWWConfig,"ax",%progbits
+ 21759              		.align	2
+ 21760              		.global	disableWWWConfig
+ 21761              		.thumb
+ 21762              		.thumb_func
+ 21764              	disableWWWConfig:
+ 21765              	.LFB33:
+ 153:../SERVER/serverWWW.c **** 
+ 154:../SERVER/serverWWW.c **** void disableWWWConfig() {
+ 21766              		.loc 1 154 0
+ 21767              		.cfi_startproc
+ 21768              		@ args = 0, pretend = 0, frame = 0
+ 21769              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21770              		@ link register save eliminated.
+ 155:../SERVER/serverWWW.c **** 
+ 156:../SERVER/serverWWW.c **** 	WWWConfig_status = WWW_CONFIG_DISABLED;
+ 21771              		.loc 1 156 0
+ 21772 0000 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 21773 0004 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 21774 0008 4FF00002 		mov	r2, #0
+ 21775 000c 1A70     		strb	r2, [r3, #0]
+ 157:../SERVER/serverWWW.c **** 
+ 158:../SERVER/serverWWW.c **** }
+ 21776              		.loc 1 158 0
+ 21777 000e 7047     		bx	lr
+ 21778              		.cfi_endproc
+ 21779              	.LFE33:
+ 21781              		.section	.text.updateIP,"ax",%progbits
+ 21782              		.align	2
+ 21783              		.global	updateIP
+ 21784              		.thumb
+ 21785              		.thumb_func
+ 21787              	updateIP:
+ 21788              	.LFB34:
+ 159:../SERVER/serverWWW.c **** 
+ 160:../SERVER/serverWWW.c **** void updateIP() {
+ 21789              		.loc 1 160 0
+ 21790              		.cfi_startproc
+ 21791              		@ args = 0, pretend = 0, frame = 0
+ 21792              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21793              		@ link register save eliminated.
+ 161:../SERVER/serverWWW.c **** 
+ 162:../SERVER/serverWWW.c **** 	start_web_client = 1;
+ 21794              		.loc 1 162 0
+ 21795 0000 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 21796 0004 C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 21797 0008 4FF00102 		mov	r2, #1
+ 21798 000c 1A70     		strb	r2, [r3, #0]
+ 163:../SERVER/serverWWW.c **** 
+ 164:../SERVER/serverWWW.c **** }
+ 21799              		.loc 1 164 0
+ 21800 000e 7047     		bx	lr
+ 21801              		.cfi_endproc
+ 21802              	.LFE34:
+ 21804              		.section	.text.resetNTPClient,"ax",%progbits
+ 21805              		.align	2
+ 21806              		.global	resetNTPClient
+ 21807              		.thumb
+ 21808              		.thumb_func
+ 21810              	resetNTPClient:
+ 21811              	.LFB35:
+ 165:../SERVER/serverWWW.c **** 
+ 166:../SERVER/serverWWW.c **** void resetNTPClient() {
+ 21812              		.loc 1 166 0
+ 21813              		.cfi_startproc
+ 21814              		@ args = 0, pretend = 0, frame = 0
+ 21815              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21816              		@ link register save eliminated.
+ 167:../SERVER/serverWWW.c **** 
+ 168:../SERVER/serverWWW.c **** 	haveNTPanswer = 0;
+ 21817              		.loc 1 168 0
+ 21818 0000 40F20003 		movw	r3, #:lower16:.LANCHOR3
+ 21819 0004 C0F20003 		movt	r3, #:upper16:.LANCHOR3
+ 21820 0008 4FF00002 		mov	r2, #0
+ 21821 000c 1A70     		strb	r2, [r3, #0]
+ 169:../SERVER/serverWWW.c **** 	send_ntp_req_from_idle_loop = NTP_REQUEST;
+ 21822              		.loc 1 169 0
+ 21823 000e 40F20003 		movw	r3, #:lower16:.LANCHOR4
+ 21824 0012 C0F20003 		movt	r3, #:upper16:.LANCHOR4
+ 21825 0016 4FF00102 		mov	r2, #1
+ 21826 001a 1A70     		strb	r2, [r3, #0]
+ 170:../SERVER/serverWWW.c **** 
+ 171:../SERVER/serverWWW.c **** }
+ 21827              		.loc 1 171 0
+ 21828 001c 7047     		bx	lr
+ 21829              		.cfi_endproc
+ 21830              	.LFE35:
+ 21832 001e 00BF     		.section	.text.arpresolver_result_callback,"ax",%progbits
+ 21833              		.align	2
+ 21834              		.global	arpresolver_result_callback
+ 21835              		.thumb
+ 21836              		.thumb_func
+ 21838              	arpresolver_result_callback:
+ 21839              	.LFB43:
+ 172:../SERVER/serverWWW.c **** 
+ 173:../SERVER/serverWWW.c **** uint16_t print_image(uint8_t *buf) {
+ 174:../SERVER/serverWWW.c **** 	uint16_t plen;
+ 175:../SERVER/serverWWW.c **** 
+ 176:../SERVER/serverWWW.c **** 	plen = http200image();
+ 177:../SERVER/serverWWW.c **** 	plen = fill_tcp_data_len(buf, plen, rawData, 360);
+ 178:../SERVER/serverWWW.c **** 
+ 179:../SERVER/serverWWW.c **** 	return (plen);
+ 180:../SERVER/serverWWW.c **** }
+ 181:../SERVER/serverWWW.c **** 
+ 182:../SERVER/serverWWW.c **** // g³ówna funkcja serwera, sprawdza bufor kontrolera w poszukiwaniu]
+ 183:../SERVER/serverWWW.c **** // ¿¹dañ obs³ugi
+ 184:../SERVER/serverWWW.c **** void ServerCheckForJob(void) {
+ 185:../SERVER/serverWWW.c **** 	int16_t cmd;
+ 186:../SERVER/serverWWW.c **** 	uint16_t dat_p;
+ 187:../SERVER/serverWWW.c **** 
+ 188:../SERVER/serverWWW.c **** 	uint16_t plen = 0;
+ 189:../SERVER/serverWWW.c **** 	char str[20];
+ 190:../SERVER/serverWWW.c **** 	uint8_t ntpclientportL = 0;
+ 191:../SERVER/serverWWW.c **** 	uint32_t time = 0;
+ 192:../SERVER/serverWWW.c **** 	uint32_t dayclock = 0;
+ 193:../SERVER/serverWWW.c **** 	uint8_t tm_sec, tm_min, tm_hour;
+ 194:../SERVER/serverWWW.c **** 
+ 195:../SERVER/serverWWW.c **** 	// handle ping and wait for a tcp packet
+ 196:../SERVER/serverWWW.c **** 	plen = enc28j60PacketReceive(BUFFER_SIZE, buf);
+ 197:../SERVER/serverWWW.c **** 	buf[BUFFER_SIZE] = '\0';
+ 198:../SERVER/serverWWW.c **** 	dat_p = packetloop_arp_icmp_tcp(buf, plen);
+ 199:../SERVER/serverWWW.c **** 
+ 200:../SERVER/serverWWW.c **** 	// jezeli to nie request wyswietlenia strony
+ 201:../SERVER/serverWWW.c **** 	if (plen == 0) {
+ 202:../SERVER/serverWWW.c **** 
+ 203:../SERVER/serverWWW.c **** 		// we are idle here trigger arp and dns stuff here
+ 204:../SERVER/serverWWW.c **** 		if (gw_arp_state == GW_ARP_REQUEST)
+ 205:../SERVER/serverWWW.c **** 		{
+ 206:../SERVER/serverWWW.c **** 			// find the mac address of the gateway (e.g your dsl router).
+ 207:../SERVER/serverWWW.c **** 			get_mac_with_arp(gwip, TRANS_NUM_GWMAC,
+ 208:../SERVER/serverWWW.c **** 					&arpresolver_result_callback);
+ 209:../SERVER/serverWWW.c **** 			gw_arp_state = GW_ARP_REQUEST_SENT;
+ 210:../SERVER/serverWWW.c **** 
+ 211:../SERVER/serverWWW.c **** 			usart_printf("Wyslano DNS_IP_REQUEST\r\n");
+ 212:../SERVER/serverWWW.c **** 		}
+ 213:../SERVER/serverWWW.c **** 
+ 214:../SERVER/serverWWW.c **** 		if ((get_mac_with_arp_wait() == 0) && (gw_arp_state
+ 215:../SERVER/serverWWW.c **** 				== GW_ARP_REQUEST_SENT))
+ 216:../SERVER/serverWWW.c **** 		{
+ 217:../SERVER/serverWWW.c **** 			gw_arp_state = GW_ARP_RECEIVED;
+ 218:../SERVER/serverWWW.c **** 
+ 219:../SERVER/serverWWW.c **** 		}
+ 220:../SERVER/serverWWW.c **** 
+ 221:../SERVER/serverWWW.c **** 		if (dns_state == DNS_IP_REQUEST && gw_arp_state == GW_ARP_RECEIVED)
+ 222:../SERVER/serverWWW.c **** 		{
+ 223:../SERVER/serverWWW.c **** 
+ 224:../SERVER/serverWWW.c **** 			if (!enc28j60linkup())
+ 225:../SERVER/serverWWW.c **** 				return;
+ 226:../SERVER/serverWWW.c **** 
+ 227:../SERVER/serverWWW.c **** 			sec = 0;
+ 228:../SERVER/serverWWW.c **** 			dns_state = DNS_IP_REQUEST_SENT;
+ 229:../SERVER/serverWWW.c **** 			dnslkup_request(buf, WEBSERVER_VHOST, gwmac);
+ 230:../SERVER/serverWWW.c **** 
+ 231:../SERVER/serverWWW.c **** 			return;
+ 232:../SERVER/serverWWW.c **** 		}
+ 233:../SERVER/serverWWW.c **** 
+ 234:../SERVER/serverWWW.c **** 		if (dns_state == DNS_IP_REQUEST_SENT && dnslkup_haveanswer())
+ 235:../SERVER/serverWWW.c **** 		{
+ 236:../SERVER/serverWWW.c **** 			dns_state = DNS_IP_RECEIVED;
+ 237:../SERVER/serverWWW.c **** 			dnslkup_get_ip(otherside_www_ip);
+ 238:../SERVER/serverWWW.c **** 
+ 239:../SERVER/serverWWW.c **** #if UART_DEBUG
+ 240:../SERVER/serverWWW.c **** 			usart_printf("Odebrano IP gateway'a\r\n");
+ 241:../SERVER/serverWWW.c **** #endif
+ 242:../SERVER/serverWWW.c **** 
+ 243:../SERVER/serverWWW.c **** 		}
+ 244:../SERVER/serverWWW.c **** 
+ 245:../SERVER/serverWWW.c **** 		if (dns_state != DNS_IP_RECEIVED) {
+ 246:../SERVER/serverWWW.c **** 
+ 247:../SERVER/serverWWW.c **** 			//Po minucie spróbuj ponownie
+ 248:../SERVER/serverWWW.c **** 			if (sec > DNS_RETRY_TIME) {
+ 249:../SERVER/serverWWW.c **** 				dns_state = DNS_IP_REQUEST;
+ 250:../SERVER/serverWWW.c **** 				gw_arp_state = GW_ARP_REQUEST;
+ 251:../SERVER/serverWWW.c **** 				sec = 0;
+ 252:../SERVER/serverWWW.c **** 			}
+ 253:../SERVER/serverWWW.c **** 
+ 254:../SERVER/serverWWW.c **** 			// jezeli nie bedziemy miec IP DNS'a to nie mozemy kontaktowac sie ze stronami www
+ 255:../SERVER/serverWWW.c **** 			return;
+ 256:../SERVER/serverWWW.c **** 
+ 257:../SERVER/serverWWW.c **** 		}
+ 258:../SERVER/serverWWW.c **** 
+ 259:../SERVER/serverWWW.c **** 		if (start_web_client == WEB_CLIENT_REQUEST)
+ 260:../SERVER/serverWWW.c **** 		{
+ 261:../SERVER/serverWWW.c **** 
+ 262:../SERVER/serverWWW.c **** #if UART_DEBUG
+ 263:../SERVER/serverWWW.c **** 			usart_printf("Wyslano request odswiezenia IP\r\n");
+ 264:../SERVER/serverWWW.c **** #endif
+ 265:../SERVER/serverWWW.c **** 
+ 266:../SERVER/serverWWW.c **** 			sec = 0;
+ 267:../SERVER/serverWWW.c **** 			start_web_client = WEB_CLIENT_REQUEST_SENT;
+ 268:../SERVER/serverWWW.c **** 			web_client_attempts++;
+ 269:../SERVER/serverWWW.c **** 			mk_net_str(str, pingsrcip, 4, '.', 10);
+ 270:../SERVER/serverWWW.c **** 			urlencode(str, gStrbuf);
+ 271:../SERVER/serverWWW.c **** 			client_browse_url("/update_ip.php", gStrbuf, PSTR(WEBSERVER_VHOST),
+ 272:../SERVER/serverWWW.c **** 					&browserresult_callback, otherside_www_ip, gwmac);
+ 273:../SERVER/serverWWW.c **** 		}
+ 274:../SERVER/serverWWW.c **** 
+ 275:../SERVER/serverWWW.c **** 		// reset after a delay to prevent permanent bouncing
+ 276:../SERVER/serverWWW.c **** 		if ((sec > 60) && (start_web_client == WEB_CLIENT_REQUEST_SENT))
+ 277:../SERVER/serverWWW.c **** 		{
+ 278:../SERVER/serverWWW.c **** 			start_web_client = 0;
+ 279:../SERVER/serverWWW.c **** 		}
+ 280:../SERVER/serverWWW.c **** 
+ 281:../SERVER/serverWWW.c **** 		return;
+ 282:../SERVER/serverWWW.c **** 	}
+ 283:../SERVER/serverWWW.c **** 
+ 284:../SERVER/serverWWW.c **** 	// check if udp otherwise continue
+ 285:../SERVER/serverWWW.c **** 	if (dat_p == 0)
+ 286:../SERVER/serverWWW.c **** 	{
+ 287:../SERVER/serverWWW.c **** 		// check for incomming messages not processed
+ 288:../SERVER/serverWWW.c **** 		// as part of packetloop_arp_icmp_tcp, e.g udp messages
+ 289:../SERVER/serverWWW.c **** 
+ 290:../SERVER/serverWWW.c **** 		udp_client_check_for_dns_answer(buf, plen);
+ 291:../SERVER/serverWWW.c **** 		goto UDP;
+ 292:../SERVER/serverWWW.c **** 	}
+ 293:../SERVER/serverWWW.c **** 
+ 294:../SERVER/serverWWW.c **** 	if (!strncmp("GET /camera.jpg", (char *) &(buf[dat_p]), 15) != 0) {
+ 295:../SERVER/serverWWW.c **** 		plen = print_image(buf);
+ 296:../SERVER/serverWWW.c **** 		goto SENDTCP;
+ 297:../SERVER/serverWWW.c **** 	}
+ 298:../SERVER/serverWWW.c **** 
+ 299:../SERVER/serverWWW.c **** 	if (strncmp("GET ", (char *) &(buf[dat_p]), 4) != 0) {
+ 300:../SERVER/serverWWW.c **** 
+ 301:../SERVER/serverWWW.c **** 		plen = http200ok();
+ 302:../SERVER/serverWWW.c **** 		plen = fill_tcp_data_p(buf, plen, PSTR("<h1>200 OK</h1>"));
+ 303:../SERVER/serverWWW.c **** 		goto SENDTCP;
+ 304:../SERVER/serverWWW.c **** 
+ 305:../SERVER/serverWWW.c **** 	}
+ 306:../SERVER/serverWWW.c **** 
+ 307:../SERVER/serverWWW.c **** 	// wyswietl glowna strone
+ 308:../SERVER/serverWWW.c **** 	if (strncmp("/ ", (char *) &(buf[dat_p + 4]), 2) == 0) {
+ 309:../SERVER/serverWWW.c **** 		plen = print_webpage(buf);
+ 310:../SERVER/serverWWW.c **** 		goto SENDTCP;
+ 311:../SERVER/serverWWW.c **** 	}
+ 312:../SERVER/serverWWW.c **** 
+ 313:../SERVER/serverWWW.c **** 	cmd = analyse_get_url((char *) &(buf[dat_p + 4]));
+ 314:../SERVER/serverWWW.c **** 
+ 315:../SERVER/serverWWW.c **** 	switch (cmd) {
+ 316:../SERVER/serverWWW.c **** 	case 1:
+ 317:../SERVER/serverWWW.c **** 
+ 318:../SERVER/serverWWW.c **** 		switch_state[cmd - 1] = ~switch_state[cmd - 1];
+ 319:../SERVER/serverWWW.c **** 		GPIOC->ODR ^= ~GPIO_Pin_9;
+ 320:../SERVER/serverWWW.c **** 		break;
+ 321:../SERVER/serverWWW.c **** 
+ 322:../SERVER/serverWWW.c **** 	case 2:
+ 323:../SERVER/serverWWW.c **** 
+ 324:../SERVER/serverWWW.c **** 		switch_state[cmd - 1] = ~switch_state[cmd - 1];
+ 325:../SERVER/serverWWW.c **** 		break;
+ 326:../SERVER/serverWWW.c **** 
+ 327:../SERVER/serverWWW.c **** 	case 3:
+ 328:../SERVER/serverWWW.c **** 
+ 329:../SERVER/serverWWW.c **** 		switch_state[cmd - 1] = ~switch_state[cmd - 1];
+ 330:../SERVER/serverWWW.c **** 		break;
+ 331:../SERVER/serverWWW.c **** 
+ 332:../SERVER/serverWWW.c **** 	case 4:
+ 333:../SERVER/serverWWW.c **** 
+ 334:../SERVER/serverWWW.c **** 		switch_state[cmd - 1] = ~switch_state[cmd - 1];
+ 335:../SERVER/serverWWW.c **** 		break;
+ 336:../SERVER/serverWWW.c **** 
+ 337:../SERVER/serverWWW.c **** 	default:
+ 338:../SERVER/serverWWW.c **** 		if (cmd >= 60 && cmd < 201 && cmd_number == 0) {
+ 339:../SERVER/serverWWW.c **** 			TIM4->CCR4 = (uint16_t) cmd;
+ 340:../SERVER/serverWWW.c **** 		} else if (cmd_number > 0) {
+ 341:../SERVER/serverWWW.c **** 			switch (cmd_number) {
+ 342:../SERVER/serverWWW.c **** 			case 1:
+ 343:../SERVER/serverWWW.c **** 				TIM4->CCR3 = cmd; //set RED
+ 344:../SERVER/serverWWW.c **** 				break;
+ 345:../SERVER/serverWWW.c **** 			case 2:
+ 346:../SERVER/serverWWW.c **** 				TIM4->CCR1 = cmd; //set GREEN
+ 347:../SERVER/serverWWW.c **** 				break;
+ 348:../SERVER/serverWWW.c **** 			case 3:
+ 349:../SERVER/serverWWW.c **** 				TIM4->CCR2 = cmd; //set BLUE
+ 350:../SERVER/serverWWW.c **** 				break;
+ 351:../SERVER/serverWWW.c **** 
+ 352:../SERVER/serverWWW.c **** 			default:
+ 353:../SERVER/serverWWW.c **** 				break;
+ 354:../SERVER/serverWWW.c **** 
+ 355:../SERVER/serverWWW.c **** 			}
+ 356:../SERVER/serverWWW.c **** 			cmd_number = 0;
+ 357:../SERVER/serverWWW.c **** 		}
+ 358:../SERVER/serverWWW.c **** 		break;
+ 359:../SERVER/serverWWW.c **** 
+ 360:../SERVER/serverWWW.c **** 	}
+ 361:../SERVER/serverWWW.c **** 
+ 362:../SERVER/serverWWW.c **** 	plen = print_webpage(buf);
+ 363:../SERVER/serverWWW.c **** 
+ 364:../SERVER/serverWWW.c **** 	SENDTCP: www_server_reply(buf, plen); // send data
+ 365:../SERVER/serverWWW.c **** 	return;
+ 366:../SERVER/serverWWW.c **** 
+ 367:../SERVER/serverWWW.c **** 	UDP:					// UDP/NTP protocol handling and idle tasks
+ 368:../SERVER/serverWWW.c **** 							// check if ip packets are for us:
+ 369:../SERVER/serverWWW.c **** #if NTP_CLOCK
+ 370:../SERVER/serverWWW.c **** 	// we are idle here (no incomming packet to process).
+ 371:../SERVER/serverWWW.c **** 	if ((send_ntp_req_from_idle_loop == NTP_REQUEST) && (dns_state == DNS_IP_RECEIVED))
+ 372:../SERVER/serverWWW.c **** 	{
+ 373:../SERVER/serverWWW.c **** 
+ 374:../SERVER/serverWWW.c **** 		send_ntp_req_from_idle_loop = NTP_IDLE;
+ 375:../SERVER/serverWWW.c **** 		client_ntp_request(buf, ntpip, ntpclientportL, gwip);
+ 376:../SERVER/serverWWW.c **** 
+ 377:../SERVER/serverWWW.c **** 		if (haveNTPanswer == 0)
+ 378:../SERVER/serverWWW.c **** 		{
+ 379:../SERVER/serverWWW.c **** #if UART_DEBUG
+ 380:../SERVER/serverWWW.c **** 			min_printf("Waiting for NTP server\r\n");
+ 381:../SERVER/serverWWW.c **** #endif
+ 382:../SERVER/serverWWW.c **** 		}
+ 383:../SERVER/serverWWW.c **** 
+ 384:../SERVER/serverWWW.c **** 
+ 385:../SERVER/serverWWW.c **** 	}
+ 386:../SERVER/serverWWW.c **** 	if (haveNTPanswer==0)
+ 387:../SERVER/serverWWW.c **** 			{
+ 388:../SERVER/serverWWW.c ****       // ntp src port must be 123 (0x7b):
+ 389:../SERVER/serverWWW.c ****       if (buf[IP_PROTO_P]==IP_PROTO_UDP_V&&buf[UDP_SRC_PORT_H_P]==0&&buf[UDP_SRC_PORT_L_P]==0x7b)
+ 390:../SERVER/serverWWW.c **** 			{
+ 391:../SERVER/serverWWW.c **** 				if (client_ntp_process_answer(buf,&time,ntpclientportL))
+ 392:../SERVER/serverWWW.c **** 				{
+ 393:../SERVER/serverWWW.c **** 					// convert to unix time:
+ 394:../SERVER/serverWWW.c **** 					if ((time & 0x80000000UL) ==0)
+ 395:../SERVER/serverWWW.c **** 					{
+ 396:../SERVER/serverWWW.c **** 						// 7-Feb-2036 @ 06:28:16 UTC it will wrap:
+ 397:../SERVER/serverWWW.c **** 						time+=2085978496;
+ 398:../SERVER/serverWWW.c **** 					}
+ 399:../SERVER/serverWWW.c **** 					else
+ 400:../SERVER/serverWWW.c **** 					{
+ 401:../SERVER/serverWWW.c **** 						// from now until 2036:
+ 402:../SERVER/serverWWW.c **** 						time-= GETTIMEOFDAY_TO_NTP_OFFSET;
+ 403:../SERVER/serverWWW.c **** 					}
+ 404:../SERVER/serverWWW.c **** 					time += (int32_t)-360*(int32_t)hours_offset_to_utc;
+ 405:../SERVER/serverWWW.c **** 
+ 406:../SERVER/serverWWW.c **** 					// returns day and time-string in seperate variables:
+ 407:../SERVER/serverWWW.c **** 					gmtime(time,day,clock);
+ 408:../SERVER/serverWWW.c **** 
+ 409:../SERVER/serverWWW.c **** 					#if UART_DEBUG
+ 410:../SERVER/serverWWW.c **** 						min_printf("Zegar NTP: %s %s\r\n", day, clock);
+ 411:../SERVER/serverWWW.c **** 					#endif
+ 412:../SERVER/serverWWW.c **** 
+ 413:../SERVER/serverWWW.c **** 					dayclock = time % 86400UL;
+ 414:../SERVER/serverWWW.c **** 
+ 415:../SERVER/serverWWW.c **** 					tm_sec = dayclock % 60UL;
+ 416:../SERVER/serverWWW.c **** 					tm_min = (dayclock % 3600UL) / 60;
+ 417:../SERVER/serverWWW.c **** 					tm_hour = dayclock / 3600UL;
+ 418:../SERVER/serverWWW.c **** 
+ 419:../SERVER/serverWWW.c **** 					/* Wait until last write operation on RTC registers has finished */
+ 420:../SERVER/serverWWW.c **** 					while ((RTC->CRL & RTC_FLAG_RTOFF) == (uint16_t)RESET);
+ 421:../SERVER/serverWWW.c **** 
+ 422:../SERVER/serverWWW.c **** 					RTC_SetCounter(tm_sec + tm_min*60 + tm_hour*3600);
+ 423:../SERVER/serverWWW.c **** 
+ 424:../SERVER/serverWWW.c **** 					haveNTPanswer=1;
+ 425:../SERVER/serverWWW.c **** 				}
+ 426:../SERVER/serverWWW.c ****      }
+ 427:../SERVER/serverWWW.c **** 		}
+ 428:../SERVER/serverWWW.c **** 
+ 429:../SERVER/serverWWW.c **** #endif	 
+ 430:../SERVER/serverWWW.c **** }
+ 431:../SERVER/serverWWW.c **** 
+ 432:../SERVER/serverWWW.c **** // prepare the webpage by writing the data to the tcp send buffer
+ 433:../SERVER/serverWWW.c **** uint16_t print_webpage(uint8_t *buf) {
+ 434:../SERVER/serverWWW.c **** 	uint16_t plen;
+ 435:../SERVER/serverWWW.c **** 	uint8_t i = 0;
+ 436:../SERVER/serverWWW.c **** 	char bufor[2];
+ 437:../SERVER/serverWWW.c **** 	RTCDate data;
+ 438:../SERVER/serverWWW.c **** 
+ 439:../SERVER/serverWWW.c **** 	RTCgetTime(&data);
+ 440:../SERVER/serverWWW.c **** 
+ 441:../SERVER/serverWWW.c **** 	plen = http200ok();
+ 442:../SERVER/serverWWW.c **** 
+ 443:../SERVER/serverWWW.c **** 	plen
+ 444:../SERVER/serverWWW.c **** 			= fill_tcp_data_p(
+ 445:../SERVER/serverWWW.c **** 					buf,
+ 446:../SERVER/serverWWW.c **** 					plen,
+ 447:../SERVER/serverWWW.c **** 					"<html><head></head><body bgcolor=#CACAE8>\
+ 448:../SERVER/serverWWW.c **** <h2 style=\"font-family:Arial,Helvetica,sans-serif;color:#E815B0;text-align:center\">Serwer STM32Di
+ 449:../SERVER/serverWWW.c **** </br>\
+ 450:../SERVER/serverWWW.c **** <table border=1 style=\"background-color:#E6E6F0;border:1px solid black;border-collapse:collapse;\"
+ 451:../SERVER/serverWWW.c **** <tr style=\"padding:10px;text-align:center;font-family:\"Georgia\",Helvetica,sans-serif\">\
+ 452:../SERVER/serverWWW.c **** <td colspan=\"4\">Stan wyjsc:</td>\
+ 453:../SERVER/serverWWW.c **** <td></td>\
+ 454:../SERVER/serverWWW.c **** <td colspan=\"4\">Aktualna temperatura:</td>\
+ 455:../SERVER/serverWWW.c **** </tr>\
+ 456:../SERVER/serverWWW.c **** <tr style=\"padding:5px;text-align:center\">");
+ 457:../SERVER/serverWWW.c **** 
+ 458:../SERVER/serverWWW.c **** 	// Uzupelnianie danych na podstawie statusu
+ 459:../SERVER/serverWWW.c **** 	for (i = 0; i < 4; i++) {
+ 460:../SERVER/serverWWW.c **** 		plen = fill_tcp_data_p(buf, plen, "<td width=12%><a href=\"./?sw=");
+ 461:../SERVER/serverWWW.c **** 		itoa(i + 1, bufor, 10);
+ 462:../SERVER/serverWWW.c **** 
+ 463:../SERVER/serverWWW.c **** 		//nr switcha
+ 464:../SERVER/serverWWW.c **** 		plen = fill_tcp_data_p(buf, plen, bufor);
+ 465:../SERVER/serverWWW.c **** 		plen = fill_tcp_data_p(buf, plen, "\"><font color=#");
+ 466:../SERVER/serverWWW.c **** 
+ 467:../SERVER/serverWWW.c **** 		if (switch_state[i])
+ 468:../SERVER/serverWWW.c **** 			plen = fill_tcp_data_p(buf, plen, "00FF00>ON");
+ 469:../SERVER/serverWWW.c **** 		else
+ 470:../SERVER/serverWWW.c **** 			plen = fill_tcp_data_p(buf, plen, "FF0000>OFF");
+ 471:../SERVER/serverWWW.c **** 
+ 472:../SERVER/serverWWW.c **** 		plen = fill_tcp_data_p(buf, plen, "</font></a></td>");
+ 473:../SERVER/serverWWW.c **** 
+ 474:../SERVER/serverWWW.c **** 	}
+ 475:../SERVER/serverWWW.c **** 	plen = fill_tcp_data_p(buf, plen, "<td></td>\
+ 476:../SERVER/serverWWW.c **** <td width=15%>");
+ 477:../SERVER/serverWWW.c **** 	plen = fill_tcp_data_p(buf, plen, temperatura[0]);
+ 478:../SERVER/serverWWW.c **** 	plen = fill_tcp_data_p(buf, plen, "</td>\
+ 479:../SERVER/serverWWW.c **** <td width=15%>");
+ 480:../SERVER/serverWWW.c **** 	//plen = fill_tcp_data_p(buf, plen, temperatura[1]);
+ 481:../SERVER/serverWWW.c **** 	plen
+ 482:../SERVER/serverWWW.c **** 			= fill_tcp_data_p(
+ 483:../SERVER/serverWWW.c **** 					buf,
+ 484:../SERVER/serverWWW.c **** 					plen,
+ 485:../SERVER/serverWWW.c **** 					"</td>\
+ 486:../SERVER/serverWWW.c **** </tr>\
+ 487:../SERVER/serverWWW.c **** </table>\
+ 488:../SERVER/serverWWW.c **** </br>\
+ 489:../SERVER/serverWWW.c **** <p style=\"padding:10px;text-align:center;font-family:Arial,Helvetica,sans-serif\">\
+ 490:../SERVER/serverWWW.c **** <font>Obrazek:</font>\
+ 491:../SERVER/serverWWW.c **** </p>\
+ 492:../SERVER/serverWWW.c **** </br>\
+ 493:../SERVER/serverWWW.c **** <p style=\"text-align:center;\">\
+ 494:../SERVER/serverWWW.c **** <img src=\"camera.jpg\" height=160 width=160/>\
+ 495:../SERVER/serverWWW.c **** </p>\
+ 496:../SERVER/serverWWW.c **** </br>\
+ 497:../SERVER/serverWWW.c **** <hr><pre>Design & coding by Jakub Zbydniewski 12.2012</br>Aktualny czas RTC: ");
+ 498:../SERVER/serverWWW.c **** 	plen = fill_tcp_data_p(buf, plen, day);
+ 499:../SERVER/serverWWW.c **** 	plen = fill_tcp_data_p(buf, plen, " ");
+ 500:../SERVER/serverWWW.c **** 	sprintf(gStrbuf, "%d:%d", data.hour, data.minute);
+ 501:../SERVER/serverWWW.c **** 	plen = fill_tcp_data_p(buf, plen, gStrbuf);
+ 502:../SERVER/serverWWW.c **** 	plen = fill_tcp_data_p(buf, plen, "<pre></body></html>");
+ 503:../SERVER/serverWWW.c **** 
+ 504:../SERVER/serverWWW.c **** 	return (plen);
+ 505:../SERVER/serverWWW.c **** }
+ 506:../SERVER/serverWWW.c **** 
+ 507:../SERVER/serverWWW.c **** int16_t analyse_get_url(char *str) {
+ 508:../SERVER/serverWWW.c **** 	int16_t temp = 0;
+ 509:../SERVER/serverWWW.c **** 
+ 510:../SERVER/serverWWW.c **** 	// Sprawdzanie pierwszego "/"
+ 511:../SERVER/serverWWW.c **** 	if (*str == '/') {
+ 512:../SERVER/serverWWW.c **** 		str++;
+ 513:../SERVER/serverWWW.c **** 	} else {
+ 514:../SERVER/serverWWW.c **** 		return (-1);
+ 515:../SERVER/serverWWW.c **** 	}
+ 516:../SERVER/serverWWW.c **** 
+ 517:../SERVER/serverWWW.c **** 	// str is now something like ?sw=1 or just end of url
+ 518:../SERVER/serverWWW.c **** 	if (find_key_val(str, gStrbuf, 5, "sw")) {
+ 519:../SERVER/serverWWW.c **** 		return (gStrbuf[0] - 48);
+ 520:../SERVER/serverWWW.c **** 	}
+ 521:../SERVER/serverWWW.c **** 
+ 522:../SERVER/serverWWW.c **** #if SERVO			
+ 523:../SERVER/serverWWW.c **** 	// if str is like ?pw=120
+ 524:../SERVER/serverWWW.c **** 	if (find_key_val(str,gStrbuf,10,"pw")) {
+ 525:../SERVER/serverWWW.c **** 		temp = myatoi(gStrbuf);
+ 526:../SERVER/serverWWW.c **** 		return (int16_t)temp;
+ 527:../SERVER/serverWWW.c **** 	}
+ 528:../SERVER/serverWWW.c **** #endif
+ 529:../SERVER/serverWWW.c **** 
+ 530:../SERVER/serverWWW.c **** #if RGB_DIODE
+ 531:../SERVER/serverWWW.c **** 	if (find_key_val(str, gStrbuf, 10, "setR")) {
+ 532:../SERVER/serverWWW.c **** 		temp = myatoi(gStrbuf);
+ 533:../SERVER/serverWWW.c **** 		cmd_number = 1;
+ 534:../SERVER/serverWWW.c **** 		return (int16_t) temp;
+ 535:../SERVER/serverWWW.c **** 	}
+ 536:../SERVER/serverWWW.c **** 
+ 537:../SERVER/serverWWW.c **** 	if (find_key_val(str, gStrbuf, 10, "setG")) {
+ 538:../SERVER/serverWWW.c **** 		temp = myatoi(gStrbuf);
+ 539:../SERVER/serverWWW.c **** 		cmd_number = 2;
+ 540:../SERVER/serverWWW.c **** 		return (int16_t) temp;
+ 541:../SERVER/serverWWW.c **** 	}
+ 542:../SERVER/serverWWW.c **** 
+ 543:../SERVER/serverWWW.c **** 	if (find_key_val(str, gStrbuf, 10, "setB")) {
+ 544:../SERVER/serverWWW.c **** 		temp = myatoi(gStrbuf);
+ 545:../SERVER/serverWWW.c **** 		cmd_number = 3;
+ 546:../SERVER/serverWWW.c **** 		return (int16_t) temp;
+ 547:../SERVER/serverWWW.c **** 	}
+ 548:../SERVER/serverWWW.c **** #endif				
+ 549:../SERVER/serverWWW.c **** 
+ 550:../SERVER/serverWWW.c **** 	return (-3);
+ 551:../SERVER/serverWWW.c **** }
+ 552:../SERVER/serverWWW.c **** 
+ 553:../SERVER/serverWWW.c **** uint16_t http200ok(void) {
+ 554:../SERVER/serverWWW.c **** 	return (fill_tcp_data_p(
+ 555:../SERVER/serverWWW.c **** 			buf,
+ 556:../SERVER/serverWWW.c **** 			0,
+ 557:../SERVER/serverWWW.c **** 			PSTR("HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nPragma: no-cache\r\n\r\n")));
+ 558:../SERVER/serverWWW.c **** }
+ 559:../SERVER/serverWWW.c **** 
+ 560:../SERVER/serverWWW.c **** uint16_t http200image(void) {
+ 561:../SERVER/serverWWW.c **** 	return (fill_tcp_data_p(
+ 562:../SERVER/serverWWW.c **** 			buf,
+ 563:../SERVER/serverWWW.c **** 			0,
+ 564:../SERVER/serverWWW.c **** 			PSTR("HTTP/1.0 200 OK\r\nContent-Type: image/bmp\r\nContent-Length: 623\r\n\r\n")));
+ 565:../SERVER/serverWWW.c **** }
+ 566:../SERVER/serverWWW.c **** 
+ 567:../SERVER/serverWWW.c **** #if UPDATE_IP
+ 568:../SERVER/serverWWW.c **** 
+ 569:../SERVER/serverWWW.c **** // the __attribute__((unused)) is a gcc compiler directive to avoid warnings about unsed variables.
+ 570:../SERVER/serverWWW.c **** void browserresult_callback(uint16_t webstatuscode, uint16_t datapos __attribute__((unused)),
+ 571:../SERVER/serverWWW.c **** 		uint16_t len __attribute__((unused))) {
+ 572:../SERVER/serverWWW.c **** 	if (webstatuscode == 200) {
+ 573:../SERVER/serverWWW.c **** 		web_client_sendok++;
+ 574:../SERVER/serverWWW.c **** 
+ 575:../SERVER/serverWWW.c **** #if UART_DEBUG
+ 576:../SERVER/serverWWW.c **** 		usart_printf("Uaktualniono IP\r\n");
+ 577:../SERVER/serverWWW.c **** #endif
+ 578:../SERVER/serverWWW.c **** 	}
+ 579:../SERVER/serverWWW.c **** }
+ 580:../SERVER/serverWWW.c **** 
+ 581:../SERVER/serverWWW.c **** // the __attribute__((unused)) is a gcc compiler directive to avoid warnings about unsed variables.
+ 582:../SERVER/serverWWW.c **** void arpresolver_result_callback(uint8_t *ip __attribute__((unused)), uint8_t transaction_number,
+ 583:../SERVER/serverWWW.c **** 		uint8_t *mac) {
+ 21840              		.loc 1 583 0
+ 21841              		.cfi_startproc
+ 21842              		@ args = 0, pretend = 0, frame = 0
+ 21843              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21844              	.LVL0:
+ 21845 0000 10B5     		push	{r4, lr}
+ 21846              	.LCFI0:
+ 21847              		.cfi_def_cfa_offset 8
+ 21848 0002 84B0     		sub	sp, sp, #16
+ 21849              	.LCFI1:
+ 21850              		.cfi_def_cfa_offset 24
+ 21851 0004 1446     		mov	r4, r2
+ 21852              		.cfi_offset 14, -4
+ 21853              		.cfi_offset 4, -8
+ 584:../SERVER/serverWWW.c **** 	uint8_t i = 0;
+ 585:../SERVER/serverWWW.c **** 	if (transaction_number == TRANS_NUM_GWMAC) {
+ 21854              		.loc 1 585 0
+ 21855 0006 0129     		cmp	r1, #1
+ 21856 0008 1AD1     		bne	.L14
+ 21857              	.LVL1:
+ 586:../SERVER/serverWWW.c **** 
+ 587:../SERVER/serverWWW.c **** #if UART_DEBUG
+ 588:../SERVER/serverWWW.c **** 		min_printf("Adres MAC bramy: %x:%x:%x:%x:%x:%x\r\n", mac[0], mac[1],
+ 21858              		.loc 1 588 0
+ 21859 000a 1178     		ldrb	r1, [r2, #0]	@ zero_extendqisi2
+ 21860              	.LVL2:
+ 21861 000c 5278     		ldrb	r2, [r2, #1]	@ zero_extendqisi2
+ 21862 000e A378     		ldrb	r3, [r4, #2]	@ zero_extendqisi2
+ 21863 0010 E078     		ldrb	r0, [r4, #3]	@ zero_extendqisi2
+ 21864              	.LVL3:
+ 21865 0012 0090     		str	r0, [sp, #0]
+ 21866 0014 2079     		ldrb	r0, [r4, #4]	@ zero_extendqisi2
+ 21867 0016 0190     		str	r0, [sp, #4]
+ 21868 0018 6079     		ldrb	r0, [r4, #5]	@ zero_extendqisi2
+ 21869 001a 0290     		str	r0, [sp, #8]
+ 21870 001c 40F20000 		movw	r0, #:lower16:.LC0
+ 21871 0020 C0F20000 		movt	r0, #:upper16:.LC0
+ 21872 0024 FFF7FEFF 		bl	min_printf
+ 21873 0028 4FF00003 		mov	r3, #0
+ 589:../SERVER/serverWWW.c **** 				mac[2], mac[3], mac[4], mac[5]);
+ 590:../SERVER/serverWWW.c **** #endif
+ 591:../SERVER/serverWWW.c **** 		// skopiuj pozyskany adres MAC bramy
+ 592:../SERVER/serverWWW.c **** 		while (i < 6) {
+ 593:../SERVER/serverWWW.c **** 			gwmac[i] = mac[i];
+ 21874              		.loc 1 593 0
+ 21875 002c 40F20001 		movw	r1, #:lower16:.LANCHOR5
+ 21876 0030 C0F20001 		movt	r1, #:upper16:.LANCHOR5
+ 21877              	.L13:
+ 21878 0034 E25C     		ldrb	r2, [r4, r3]	@ zero_extendqisi2
+ 21879 0036 CA54     		strb	r2, [r1, r3]
+ 21880 0038 03F10103 		add	r3, r3, #1
+ 21881              		.loc 1 592 0
+ 21882 003c 062B     		cmp	r3, #6
+ 21883 003e F9D1     		bne	.L13
+ 21884              	.LVL4:
+ 21885              	.L14:
+ 594:../SERVER/serverWWW.c **** 			i++;
+ 595:../SERVER/serverWWW.c **** 		}
+ 596:../SERVER/serverWWW.c **** 	}
+ 597:../SERVER/serverWWW.c **** }
+ 21886              		.loc 1 597 0
+ 21887 0040 04B0     		add	sp, sp, #16
+ 21888 0042 10BD     		pop	{r4, pc}
+ 21889              		.cfi_endproc
+ 21890              	.LFE43:
+ 21892              		.section	.text.browserresult_callback,"ax",%progbits
+ 21893              		.align	2
+ 21894              		.global	browserresult_callback
+ 21895              		.thumb
+ 21896              		.thumb_func
+ 21898              	browserresult_callback:
+ 21899              	.LFB42:
+ 21900              		.loc 1 571 0
+ 21901              		.cfi_startproc
+ 21902              		@ args = 0, pretend = 0, frame = 0
+ 21903              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21904              	.LVL5:
+ 21905 0000 08B5     		push	{r3, lr}
+ 21906              	.LCFI2:
+ 21907              		.cfi_def_cfa_offset 8
+ 21908              		.loc 1 572 0
+ 21909 0002 C828     		cmp	r0, #200
+ 21910 0004 0DD1     		bne	.L18
+ 21911              		.cfi_offset 14, -4
+ 21912              		.cfi_offset 3, -8
+ 21913              		.loc 1 573 0
+ 21914 0006 40F20003 		movw	r3, #:lower16:.LANCHOR6
+ 21915 000a C0F20003 		movt	r3, #:upper16:.LANCHOR6
+ 21916 000e 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 21917              	.LVL6:
+ 21918 0010 02F10102 		add	r2, r2, #1
+ 21919 0014 1A70     		strb	r2, [r3, #0]
+ 21920              		.loc 1 576 0
+ 21921 0016 40F20000 		movw	r0, #:lower16:.LC1
+ 21922              	.LVL7:
+ 21923 001a C0F20000 		movt	r0, #:upper16:.LC1
+ 21924 001e FFF7FEFF 		bl	usart_printf
+ 21925              	.LVL8:
+ 21926              	.L18:
+ 21927 0022 08BD     		pop	{r3, pc}
+ 21928              		.cfi_endproc
+ 21929              	.LFE42:
+ 21931              		.section	.text.http200image,"ax",%progbits
+ 21932              		.align	2
+ 21933              		.global	http200image
+ 21934              		.thumb
+ 21935              		.thumb_func
+ 21937              	http200image:
+ 21938              	.LFB41:
+ 21939              		.loc 1 560 0
+ 21940              		.cfi_startproc
+ 21941              		@ args = 0, pretend = 0, frame = 0
+ 21942              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21943 0000 08B5     		push	{r3, lr}
+ 21944              	.LCFI3:
+ 21945              		.cfi_def_cfa_offset 8
+ 21946              		.loc 1 561 0
+ 21947 0002 40F20000 		movw	r0, #:lower16:.LANCHOR7
+ 21948 0006 C0F20000 		movt	r0, #:upper16:.LANCHOR7
+ 21949 000a 4FF00001 		mov	r1, #0
+ 21950 000e 40F20002 		movw	r2, #:lower16:.LC2
+ 21951 0012 C0F20002 		movt	r2, #:upper16:.LC2
+ 21952              		.cfi_offset 14, -4
+ 21953              		.cfi_offset 3, -8
+ 21954 0016 FFF7FEFF 		bl	fill_tcp_data_p
+ 21955              		.loc 1 565 0
+ 21956 001a 08BD     		pop	{r3, pc}
+ 21957              		.cfi_endproc
+ 21958              	.LFE41:
+ 21960              		.section	.text.http200ok,"ax",%progbits
+ 21961              		.align	2
+ 21962              		.global	http200ok
+ 21963              		.thumb
+ 21964              		.thumb_func
+ 21966              	http200ok:
+ 21967              	.LFB40:
+ 21968              		.loc 1 553 0
+ 21969              		.cfi_startproc
+ 21970              		@ args = 0, pretend = 0, frame = 0
+ 21971              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21972 0000 08B5     		push	{r3, lr}
+ 21973              	.LCFI4:
+ 21974              		.cfi_def_cfa_offset 8
+ 21975              		.loc 1 554 0
+ 21976 0002 40F20000 		movw	r0, #:lower16:.LANCHOR7
+ 21977 0006 C0F20000 		movt	r0, #:upper16:.LANCHOR7
+ 21978 000a 4FF00001 		mov	r1, #0
+ 21979 000e 40F20002 		movw	r2, #:lower16:.LC3
+ 21980 0012 C0F20002 		movt	r2, #:upper16:.LC3
+ 21981              		.cfi_offset 14, -4
+ 21982              		.cfi_offset 3, -8
+ 21983 0016 FFF7FEFF 		bl	fill_tcp_data_p
+ 21984              		.loc 1 558 0
+ 21985 001a 08BD     		pop	{r3, pc}
+ 21986              		.cfi_endproc
+ 21987              	.LFE40:
+ 21989              		.section	.text.analyse_get_url,"ax",%progbits
+ 21990              		.align	2
+ 21991              		.global	analyse_get_url
+ 21992              		.thumb
+ 21993              		.thumb_func
+ 21995              	analyse_get_url:
+ 21996              	.LFB39:
+ 21997              		.loc 1 507 0
+ 21998              		.cfi_startproc
+ 21999              		@ args = 0, pretend = 0, frame = 0
+ 22000              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22001              	.LVL9:
+ 22002 0000 10B5     		push	{r4, lr}
+ 22003              	.LCFI5:
+ 22004              		.cfi_def_cfa_offset 8
+ 22005              		.loc 1 511 0
+ 22006 0002 0378     		ldrb	r3, [r0, #0]	@ zero_extendqisi2
+ 22007 0004 2F2B     		cmp	r3, #47
+ 22008 0006 18BF     		it	ne
+ 22009 0008 4FF6FF70 		movwne	r0, #65535
+ 22010              	.LVL10:
+ 22011 000c 6ED1     		bne	.L25
+ 22012              		.cfi_offset 14, -4
+ 22013              		.cfi_offset 4, -8
+ 22014              		.loc 1 512 0
+ 22015 000e 00F10104 		add	r4, r0, #1
+ 22016              	.LVL11:
+ 22017              		.loc 1 518 0
+ 22018 0012 2046     		mov	r0, r4
+ 22019              	.LVL12:
+ 22020 0014 40F20001 		movw	r1, #:lower16:.LANCHOR8
+ 22021 0018 C0F20001 		movt	r1, #:upper16:.LANCHOR8
+ 22022 001c 4FF00502 		mov	r2, #5
+ 22023 0020 40F20003 		movw	r3, #:lower16:.LC4
+ 22024 0024 C0F20003 		movt	r3, #:upper16:.LC4
+ 22025 0028 FFF7FEFF 		bl	find_key_val
+ 22026 002c 40B1     		cbz	r0, .L26
+ 22027              		.loc 1 519 0
+ 22028 002e 40F20003 		movw	r3, #:lower16:.LANCHOR8
+ 22029 0032 C0F20003 		movt	r3, #:upper16:.LANCHOR8
+ 22030 0036 1878     		ldrb	r0, [r3, #0]	@ zero_extendqisi2
+ 22031 0038 A0F13000 		sub	r0, r0, #48
+ 22032 003c 80B2     		uxth	r0, r0
+ 22033              	.LVL13:
+ 22034 003e 55E0     		b	.L25
+ 22035              	.LVL14:
+ 22036              	.L26:
+ 22037              		.loc 1 531 0
+ 22038 0040 2046     		mov	r0, r4
+ 22039 0042 40F20001 		movw	r1, #:lower16:.LANCHOR8
+ 22040 0046 C0F20001 		movt	r1, #:upper16:.LANCHOR8
+ 22041 004a 4FF00A02 		mov	r2, #10
+ 22042 004e 40F20003 		movw	r3, #:lower16:.LC5
+ 22043 0052 C0F20003 		movt	r3, #:upper16:.LC5
+ 22044 0056 FFF7FEFF 		bl	find_key_val
+ 22045 005a 68B1     		cbz	r0, .L27
+ 22046              		.loc 1 532 0
+ 22047 005c 40F20000 		movw	r0, #:lower16:.LANCHOR8
+ 22048 0060 C0F20000 		movt	r0, #:upper16:.LANCHOR8
+ 22049 0064 FFF7FEFF 		bl	myatoi
+ 22050              		.loc 1 533 0
+ 22051 0068 40F20003 		movw	r3, #:lower16:.LANCHOR9
+ 22052 006c C0F20003 		movt	r3, #:upper16:.LANCHOR9
+ 22053 0070 4FF00102 		mov	r2, #1
+ 22054 0074 1A70     		strb	r2, [r3, #0]
+ 22055              		.loc 1 534 0
+ 22056 0076 39E0     		b	.L25
+ 22057              	.L27:
+ 22058              		.loc 1 537 0
+ 22059 0078 2046     		mov	r0, r4
+ 22060 007a 40F20001 		movw	r1, #:lower16:.LANCHOR8
+ 22061 007e C0F20001 		movt	r1, #:upper16:.LANCHOR8
+ 22062 0082 4FF00A02 		mov	r2, #10
+ 22063 0086 40F20003 		movw	r3, #:lower16:.LC6
+ 22064 008a C0F20003 		movt	r3, #:upper16:.LC6
+ 22065 008e FFF7FEFF 		bl	find_key_val
+ 22066 0092 68B1     		cbz	r0, .L28
+ 22067              		.loc 1 538 0
+ 22068 0094 40F20000 		movw	r0, #:lower16:.LANCHOR8
+ 22069 0098 C0F20000 		movt	r0, #:upper16:.LANCHOR8
+ 22070 009c FFF7FEFF 		bl	myatoi
+ 22071              		.loc 1 539 0
+ 22072 00a0 40F20003 		movw	r3, #:lower16:.LANCHOR9
+ 22073 00a4 C0F20003 		movt	r3, #:upper16:.LANCHOR9
+ 22074 00a8 4FF00202 		mov	r2, #2
+ 22075 00ac 1A70     		strb	r2, [r3, #0]
+ 22076              		.loc 1 540 0
+ 22077 00ae 1DE0     		b	.L25
+ 22078              	.L28:
+ 22079              		.loc 1 543 0
+ 22080 00b0 2046     		mov	r0, r4
+ 22081 00b2 40F20001 		movw	r1, #:lower16:.LANCHOR8
+ 22082 00b6 C0F20001 		movt	r1, #:upper16:.LANCHOR8
+ 22083 00ba 4FF00A02 		mov	r2, #10
+ 22084 00be 40F20003 		movw	r3, #:lower16:.LC7
+ 22085 00c2 C0F20003 		movt	r3, #:upper16:.LC7
+ 22086 00c6 FFF7FEFF 		bl	find_key_val
+ 22087 00ca 10B9     		cbnz	r0, .L29
+ 22088 00cc 4FF6FD70 		movw	r0, #65533
+ 22089              	.LVL15:
+ 22090 00d0 0CE0     		b	.L25
+ 22091              	.LVL16:
+ 22092              	.L29:
+ 22093              		.loc 1 544 0
+ 22094 00d2 40F20000 		movw	r0, #:lower16:.LANCHOR8
+ 22095 00d6 C0F20000 		movt	r0, #:upper16:.LANCHOR8
+ 22096 00da FFF7FEFF 		bl	myatoi
+ 22097              		.loc 1 545 0
+ 22098 00de 40F20003 		movw	r3, #:lower16:.LANCHOR9
+ 22099 00e2 C0F20003 		movt	r3, #:upper16:.LANCHOR9
+ 22100 00e6 4FF00302 		mov	r2, #3
+ 22101 00ea 1A70     		strb	r2, [r3, #0]
+ 22102              	.LVL17:
+ 22103              	.L25:
+ 22104              		.loc 1 551 0
+ 22105 00ec 00B2     		sxth	r0, r0
+ 22106              	.LVL18:
+ 22107 00ee 10BD     		pop	{r4, pc}
+ 22108              		.cfi_endproc
+ 22109              	.LFE39:
+ 22111              		.section	.text.print_webpage,"ax",%progbits
+ 22112              		.align	2
+ 22113              		.global	print_webpage
+ 22114              		.thumb
+ 22115              		.thumb_func
+ 22117              	print_webpage:
+ 22118              	.LFB38:
+ 22119              		.loc 1 433 0
+ 22120              		.cfi_startproc
+ 22121              		@ args = 0, pretend = 0, frame = 24
+ 22122              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22123              	.LVL19:
+ 22124 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 22125              	.LCFI6:
+ 22126              		.cfi_def_cfa_offset 36
+ 22127 0004 87B0     		sub	sp, sp, #28
+ 22128              	.LCFI7:
+ 22129              		.cfi_def_cfa_offset 64
+ 22130 0006 0446     		mov	r4, r0
+ 22131              		.cfi_offset 14, -4
+ 22132              		.cfi_offset 11, -8
+ 22133              		.cfi_offset 10, -12
+ 22134              		.cfi_offset 9, -16
+ 22135              		.cfi_offset 8, -20
+ 22136              		.cfi_offset 7, -24
+ 22137              		.cfi_offset 6, -28
+ 22138              		.cfi_offset 5, -32
+ 22139              		.cfi_offset 4, -36
+ 22140              		.loc 1 439 0
+ 22141 0008 03A8     		add	r0, sp, #12
+ 22142              	.LVL20:
+ 22143 000a FFF7FEFF 		bl	RTCgetTime
+ 22144              		.loc 1 441 0
+ 22145 000e FFF7FEFF 		bl	http200ok
+ 22146 0012 0146     		mov	r1, r0
+ 22147              		.loc 1 444 0
+ 22148 0014 2046     		mov	r0, r4
+ 22149 0016 40F20002 		movw	r2, #:lower16:.LC8
+ 22150 001a C0F20002 		movt	r2, #:upper16:.LC8
+ 22151 001e FFF7FEFF 		bl	fill_tcp_data_p
+ 22152 0022 0146     		mov	r1, r0
+ 22153              	.LVL21:
+ 22154 0024 4FF00105 		mov	r5, #1
+ 22155              		.loc 1 460 0
+ 22156 0028 40F20008 		movw	r8, #:lower16:.LC9
+ 22157 002c C0F20008 		movt	r8, #:upper16:.LC9
+ 22158              		.loc 1 461 0
+ 22159 0030 05AE     		add	r6, sp, #20
+ 22160              		.loc 1 465 0
+ 22161 0032 40F2000A 		movw	sl, #:lower16:.LC10
+ 22162 0036 C0F2000A 		movt	sl, #:upper16:.LC10
+ 22163              		.loc 1 467 0
+ 22164 003a 40F20009 		movw	r9, #:lower16:.LANCHOR10
+ 22165 003e C0F20009 		movt	r9, #:upper16:.LANCHOR10
+ 22166              		.loc 1 470 0
+ 22167 0042 40F20003 		movw	r3, #:lower16:.LC12
+ 22168 0046 C0F20003 		movt	r3, #:upper16:.LC12
+ 22169 004a 0093     		str	r3, [sp, #0]
+ 22170              		.loc 1 468 0
+ 22171 004c 40F20003 		movw	r3, #:lower16:.LC11
+ 22172 0050 C0F20003 		movt	r3, #:upper16:.LC11
+ 22173 0054 0193     		str	r3, [sp, #4]
+ 22174              		.loc 1 472 0
+ 22175 0056 40F2000B 		movw	fp, #:lower16:.LC13
+ 22176 005a C0F2000B 		movt	fp, #:upper16:.LC13
+ 22177              	.L34:
+ 22178              		.loc 1 460 0
+ 22179 005e 2046     		mov	r0, r4
+ 22180 0060 4246     		mov	r2, r8
+ 22181 0062 FFF7FEFF 		bl	fill_tcp_data_p
+ 22182              	.LVL22:
+ 22183 0066 0746     		mov	r7, r0
+ 22184              		.loc 1 461 0
+ 22185 0068 2846     		mov	r0, r5
+ 22186 006a 3146     		mov	r1, r6
+ 22187 006c 4FF00A02 		mov	r2, #10
+ 22188 0070 FFF7FEFF 		bl	itoa
+ 22189              		.loc 1 464 0
+ 22190 0074 2046     		mov	r0, r4
+ 22191 0076 3946     		mov	r1, r7
+ 22192 0078 3246     		mov	r2, r6
+ 22193 007a FFF7FEFF 		bl	fill_tcp_data_p
+ 22194 007e 0146     		mov	r1, r0
+ 22195              		.loc 1 465 0
+ 22196 0080 2046     		mov	r0, r4
+ 22197 0082 5246     		mov	r2, sl
+ 22198 0084 FFF7FEFF 		bl	fill_tcp_data_p
+ 22199 0088 0146     		mov	r1, r0
+ 22200              	.LVL23:
+ 22201              		.loc 1 467 0
+ 22202 008a 09EB0503 		add	r3, r9, r5
+ 22203 008e 13F8013C 		ldrb	r3, [r3, #-1]	@ zero_extendqisi2
+ 22204 0092 2BB1     		cbz	r3, .L32
+ 22205              		.loc 1 468 0
+ 22206 0094 2046     		mov	r0, r4
+ 22207 0096 019A     		ldr	r2, [sp, #4]
+ 22208 0098 FFF7FEFF 		bl	fill_tcp_data_p
+ 22209              	.LVL24:
+ 22210 009c 0146     		mov	r1, r0
+ 22211              	.LVL25:
+ 22212 009e 04E0     		b	.L33
+ 22213              	.L32:
+ 22214              		.loc 1 470 0
+ 22215 00a0 2046     		mov	r0, r4
+ 22216 00a2 009A     		ldr	r2, [sp, #0]
+ 22217 00a4 FFF7FEFF 		bl	fill_tcp_data_p
+ 22218              	.LVL26:
+ 22219 00a8 0146     		mov	r1, r0
+ 22220              	.LVL27:
+ 22221              	.L33:
+ 22222              		.loc 1 472 0
+ 22223 00aa 2046     		mov	r0, r4
+ 22224 00ac 5A46     		mov	r2, fp
+ 22225 00ae FFF7FEFF 		bl	fill_tcp_data_p
+ 22226              	.LVL28:
+ 22227 00b2 0146     		mov	r1, r0
+ 22228              	.LVL29:
+ 22229 00b4 05F10105 		add	r5, r5, #1
+ 22230              		.loc 1 459 0
+ 22231 00b8 052D     		cmp	r5, #5
+ 22232 00ba D0D1     		bne	.L34
+ 22233              		.loc 1 475 0
+ 22234 00bc 2046     		mov	r0, r4
+ 22235 00be 40F20002 		movw	r2, #:lower16:.LC14
+ 22236 00c2 C0F20002 		movt	r2, #:upper16:.LC14
+ 22237 00c6 FFF7FEFF 		bl	fill_tcp_data_p
+ 22238              	.LVL30:
+ 22239 00ca 0146     		mov	r1, r0
+ 22240              		.loc 1 477 0
+ 22241 00cc 2046     		mov	r0, r4
+ 22242 00ce 40F20002 		movw	r2, #:lower16:temperatura
+ 22243 00d2 C0F20002 		movt	r2, #:upper16:temperatura
+ 22244 00d6 FFF7FEFF 		bl	fill_tcp_data_p
+ 22245 00da 0146     		mov	r1, r0
+ 22246              		.loc 1 478 0
+ 22247 00dc 2046     		mov	r0, r4
+ 22248 00de 40F20002 		movw	r2, #:lower16:.LC15
+ 22249 00e2 C0F20002 		movt	r2, #:upper16:.LC15
+ 22250 00e6 FFF7FEFF 		bl	fill_tcp_data_p
+ 22251 00ea 0146     		mov	r1, r0
+ 22252              		.loc 1 482 0
+ 22253 00ec 2046     		mov	r0, r4
+ 22254 00ee 40F20002 		movw	r2, #:lower16:.LC16
+ 22255 00f2 C0F20002 		movt	r2, #:upper16:.LC16
+ 22256 00f6 FFF7FEFF 		bl	fill_tcp_data_p
+ 22257 00fa 0146     		mov	r1, r0
+ 22258              		.loc 1 498 0
+ 22259 00fc 2046     		mov	r0, r4
+ 22260 00fe 40F20002 		movw	r2, #:lower16:.LANCHOR11
+ 22261 0102 C0F20002 		movt	r2, #:upper16:.LANCHOR11
+ 22262 0106 FFF7FEFF 		bl	fill_tcp_data_p
+ 22263 010a 0146     		mov	r1, r0
+ 22264              		.loc 1 499 0
+ 22265 010c 2046     		mov	r0, r4
+ 22266 010e 40F20002 		movw	r2, #:lower16:.LC17
+ 22267 0112 C0F20002 		movt	r2, #:upper16:.LC17
+ 22268 0116 FFF7FEFF 		bl	fill_tcp_data_p
+ 22269 011a 0646     		mov	r6, r0
+ 22270              		.loc 1 500 0
+ 22271 011c 40F20005 		movw	r5, #:lower16:.LANCHOR8
+ 22272 0120 C0F20005 		movt	r5, #:upper16:.LANCHOR8
+ 22273 0124 2846     		mov	r0, r5
+ 22274 0126 40F20001 		movw	r1, #:lower16:.LC18
+ 22275 012a C0F20001 		movt	r1, #:upper16:.LC18
+ 22276 012e 9DF81020 		ldrb	r2, [sp, #16]	@ zero_extendqisi2
+ 22277 0132 9DF81130 		ldrb	r3, [sp, #17]	@ zero_extendqisi2
+ 22278 0136 FFF7FEFF 		bl	sprintf
+ 22279              		.loc 1 501 0
+ 22280 013a 2046     		mov	r0, r4
+ 22281 013c 3146     		mov	r1, r6
+ 22282 013e 2A46     		mov	r2, r5
+ 22283 0140 FFF7FEFF 		bl	fill_tcp_data_p
+ 22284 0144 0146     		mov	r1, r0
+ 22285              		.loc 1 502 0
+ 22286 0146 2046     		mov	r0, r4
+ 22287 0148 40F20002 		movw	r2, #:lower16:.LC19
+ 22288 014c C0F20002 		movt	r2, #:upper16:.LC19
+ 22289 0150 FFF7FEFF 		bl	fill_tcp_data_p
+ 22290              		.loc 1 505 0
+ 22291 0154 07B0     		add	sp, sp, #28
+ 22292 0156 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, sl, fp, pc}
+ 22293              		.cfi_endproc
+ 22294              	.LFE38:
+ 22296 015a 00BF     		.section	.text.print_image,"ax",%progbits
+ 22297              		.align	2
+ 22298              		.global	print_image
+ 22299              		.thumb
+ 22300              		.thumb_func
+ 22302              	print_image:
+ 22303              	.LFB36:
+ 22304              		.loc 1 173 0
+ 22305              		.cfi_startproc
+ 22306              		@ args = 0, pretend = 0, frame = 0
+ 22307              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22308              	.LVL31:
+ 22309 0000 10B5     		push	{r4, lr}
+ 22310              	.LCFI8:
+ 22311              		.cfi_def_cfa_offset 8
+ 22312 0002 0446     		mov	r4, r0
+ 22313              		.cfi_offset 14, -4
+ 22314              		.cfi_offset 4, -8
+ 22315              		.loc 1 176 0
+ 22316 0004 FFF7FEFF 		bl	http200image
+ 22317              	.LVL32:
+ 22318 0008 0146     		mov	r1, r0
+ 22319              		.loc 1 177 0
+ 22320 000a 2046     		mov	r0, r4
+ 22321 000c 40F20002 		movw	r2, #:lower16:.LANCHOR12
+ 22322 0010 C0F20002 		movt	r2, #:upper16:.LANCHOR12
+ 22323 0014 4FF4B473 		mov	r3, #360
+ 22324 0018 FFF7FEFF 		bl	fill_tcp_data_len
+ 22325              		.loc 1 180 0
+ 22326 001c 10BD     		pop	{r4, pc}
+ 22327              		.cfi_endproc
+ 22328              	.LFE36:
+ 22330 001e 00BF     		.section	.text.ServerCheckForJob,"ax",%progbits
+ 22331              		.align	2
+ 22332              		.global	ServerCheckForJob
+ 22333              		.thumb
+ 22334              		.thumb_func
+ 22336              	ServerCheckForJob:
+ 22337              	.LFB37:
+ 22338              		.loc 1 184 0
+ 22339              		.cfi_startproc
+ 22340              		@ args = 0, pretend = 0, frame = 24
+ 22341              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22342 0000 70B5     		push	{r4, r5, r6, lr}
+ 22343              	.LCFI9:
+ 22344              		.cfi_def_cfa_offset 16
+ 22345 0002 88B0     		sub	sp, sp, #32
+ 22346              	.LCFI10:
+ 22347              		.cfi_def_cfa_offset 48
+ 22348              		.loc 1 191 0
+ 22349 0004 4FF00006 		mov	r6, #0
+ 22350              		.cfi_offset 14, -4
+ 22351              		.cfi_offset 6, -8
+ 22352              		.cfi_offset 5, -12
+ 22353              		.cfi_offset 4, -16
+ 22354 0008 0296     		str	r6, [sp, #8]
+ 22355              	.LVL33:
+ 22356              		.loc 1 196 0
+ 22357 000a 40F20004 		movw	r4, #:lower16:.LANCHOR7
+ 22358 000e C0F20004 		movt	r4, #:upper16:.LANCHOR7
+ 22359 0012 4FF4AF60 		mov	r0, #1400
+ 22360 0016 2146     		mov	r1, r4
+ 22361 0018 FFF7FEFF 		bl	enc28j60PacketReceive
+ 22362 001c 85B2     		uxth	r5, r0
+ 22363              	.LVL34:
+ 22364              		.loc 1 197 0
+ 22365 001e 84F87865 		strb	r6, [r4, #1400]
+ 22366              		.loc 1 198 0
+ 22367 0022 2046     		mov	r0, r4
+ 22368 0024 2946     		mov	r1, r5
+ 22369 0026 FFF7FEFF 		bl	packetloop_arp_icmp_tcp
+ 22370              		.loc 1 201 0
+ 22371 002a 002D     		cmp	r5, #0
+ 22372 002c 40F00781 		bne	.L40
+ 22373              		.loc 1 204 0
+ 22374 0030 40F20003 		movw	r3, #:lower16:.LANCHOR13
+ 22375 0034 C0F20003 		movt	r3, #:upper16:.LANCHOR13
+ 22376 0038 93F90030 		ldrsb	r3, [r3, #0]
+ 22377 003c C3B9     		cbnz	r3, .L41
+ 22378              		.loc 1 207 0
+ 22379 003e 40F20000 		movw	r0, #:lower16:.LANCHOR14
+ 22380 0042 C0F20000 		movt	r0, #:upper16:.LANCHOR14
+ 22381 0046 4FF00101 		mov	r1, #1
+ 22382 004a 40F20002 		movw	r2, #:lower16:arpresolver_result_callback
+ 22383 004e C0F20002 		movt	r2, #:upper16:arpresolver_result_callback
+ 22384 0052 FFF7FEFF 		bl	get_mac_with_arp
+ 22385              		.loc 1 209 0
+ 22386 0056 40F20003 		movw	r3, #:lower16:.LANCHOR13
+ 22387 005a C0F20003 		movt	r3, #:upper16:.LANCHOR13
+ 22388 005e 4FF00102 		mov	r2, #1
+ 22389 0062 1A70     		strb	r2, [r3, #0]
+ 22390              		.loc 1 211 0
+ 22391 0064 40F20000 		movw	r0, #:lower16:.LC20
+ 22392 0068 C0F20000 		movt	r0, #:upper16:.LC20
+ 22393 006c FFF7FEFF 		bl	usart_printf
+ 22394              	.L41:
+ 22395              		.loc 1 214 0
+ 22396 0070 FFF7FEFF 		bl	get_mac_with_arp_wait
+ 22397 0074 68B9     		cbnz	r0, .L42
+ 22398 0076 40F20003 		movw	r3, #:lower16:.LANCHOR13
+ 22399 007a C0F20003 		movt	r3, #:upper16:.LANCHOR13
+ 22400 007e 93F90030 		ldrsb	r3, [r3, #0]
+ 22401 0082 012B     		cmp	r3, #1
+ 22402              		.loc 1 217 0
+ 22403 0084 01BF     		itttt	eq
+ 22404 0086 40F20003 		movweq	r3, #:lower16:.LANCHOR13
+ 22405 008a C0F20003 		movteq	r3, #:upper16:.LANCHOR13
+ 22406 008e 0222     		moveq	r2, #2
+ 22407 0090 1A70     		strbeq	r2, [r3, #0]
+ 22408              	.L42:
+ 22409              		.loc 1 221 0
+ 22410 0092 40F20003 		movw	r3, #:lower16:.LANCHOR15
+ 22411 0096 C0F20003 		movt	r3, #:upper16:.LANCHOR15
+ 22412 009a 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 22413 009c 4BBB     		cbnz	r3, .L43
+ 22414 009e 40F20003 		movw	r3, #:lower16:.LANCHOR13
+ 22415 00a2 C0F20003 		movt	r3, #:upper16:.LANCHOR13
+ 22416 00a6 93F90030 		ldrsb	r3, [r3, #0]
+ 22417 00aa 022B     		cmp	r3, #2
+ 22418 00ac 42D1     		bne	.L44
+ 22419              		.loc 1 224 0
+ 22420 00ae FFF7FEFF 		bl	enc28j60linkup
+ 22421 00b2 0028     		cmp	r0, #0
+ 22422 00b4 00F04B82 		beq	.L72
+ 22423              		.loc 1 227 0
+ 22424 00b8 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 22425 00bc C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 22426 00c0 4FF00002 		mov	r2, #0
+ 22427 00c4 1A70     		strb	r2, [r3, #0]
+ 22428              		.loc 1 228 0
+ 22429 00c6 40F20003 		movw	r3, #:lower16:.LANCHOR15
+ 22430 00ca C0F20003 		movt	r3, #:upper16:.LANCHOR15
+ 22431 00ce 4FF00102 		mov	r2, #1
+ 22432 00d2 1A70     		strb	r2, [r3, #0]
+ 22433              		.loc 1 229 0
+ 22434 00d4 40F20000 		movw	r0, #:lower16:.LANCHOR7
+ 22435 00d8 C0F20000 		movt	r0, #:upper16:.LANCHOR7
+ 22436 00dc 40F20001 		movw	r1, #:lower16:.LC21
+ 22437 00e0 C0F20001 		movt	r1, #:upper16:.LC21
+ 22438 00e4 40F20002 		movw	r2, #:lower16:.LANCHOR5
+ 22439 00e8 C0F20002 		movt	r2, #:upper16:.LANCHOR5
+ 22440 00ec FFF7FEFF 		bl	dnslkup_request
+ 22441              		.loc 1 231 0
+ 22442 00f0 2DE2     		b	.L72
+ 22443              	.L43:
+ 22444              		.loc 1 234 0
+ 22445 00f2 5BB2     		sxtb	r3, r3
+ 22446 00f4 012B     		cmp	r3, #1
+ 22447 00f6 15D1     		bne	.L46
+ 22448 00f8 FFF7FEFF 		bl	dnslkup_haveanswer
+ 22449 00fc 90B1     		cbz	r0, .L46
+ 22450              		.loc 1 236 0
+ 22451 00fe 40F20003 		movw	r3, #:lower16:.LANCHOR15
+ 22452 0102 C0F20003 		movt	r3, #:upper16:.LANCHOR15
+ 22453 0106 4FF00202 		mov	r2, #2
+ 22454 010a 1A70     		strb	r2, [r3, #0]
+ 22455              		.loc 1 237 0
+ 22456 010c 40F20000 		movw	r0, #:lower16:.LANCHOR16
+ 22457 0110 C0F20000 		movt	r0, #:upper16:.LANCHOR16
+ 22458 0114 FFF7FEFF 		bl	dnslkup_get_ip
+ 22459              		.loc 1 240 0
+ 22460 0118 40F20000 		movw	r0, #:lower16:.LC22
+ 22461 011c C0F20000 		movt	r0, #:upper16:.LC22
+ 22462 0120 FFF7FEFF 		bl	usart_printf
+ 22463              	.L46:
+ 22464              		.loc 1 245 0
+ 22465 0124 40F20003 		movw	r3, #:lower16:.LANCHOR15
+ 22466 0128 C0F20003 		movt	r3, #:upper16:.LANCHOR15
+ 22467 012c 93F90030 		ldrsb	r3, [r3, #0]
+ 22468 0130 022B     		cmp	r3, #2
+ 22469 0132 19D0     		beq	.L47
+ 22470              	.L44:
+ 22471              		.loc 1 248 0
+ 22472 0134 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 22473 0138 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 22474 013c 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 22475 013e 142B     		cmp	r3, #20
+ 22476 0140 40F20582 		bls	.L72
+ 22477              		.loc 1 249 0
+ 22478 0144 40F20003 		movw	r3, #:lower16:.LANCHOR15
+ 22479 0148 C0F20003 		movt	r3, #:upper16:.LANCHOR15
+ 22480 014c 4FF00002 		mov	r2, #0
+ 22481 0150 1A70     		strb	r2, [r3, #0]
+ 22482              		.loc 1 250 0
+ 22483 0152 40F20003 		movw	r3, #:lower16:.LANCHOR13
+ 22484 0156 C0F20003 		movt	r3, #:upper16:.LANCHOR13
+ 22485 015a 1A70     		strb	r2, [r3, #0]
+ 22486              		.loc 1 251 0
+ 22487 015c 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 22488 0160 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 22489 0164 1A70     		strb	r2, [r3, #0]
+ 22490 0166 F2E1     		b	.L72
+ 22491              	.L47:
+ 22492              		.loc 1 259 0
+ 22493 0168 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 22494 016c C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 22495 0170 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 22496 0172 012B     		cmp	r3, #1
+ 22497 0174 4BD1     		bne	.L48
+ 22498              		.loc 1 263 0
+ 22499 0176 40F20000 		movw	r0, #:lower16:.LC23
+ 22500 017a C0F20000 		movt	r0, #:upper16:.LC23
+ 22501 017e FFF7FEFF 		bl	usart_printf
+ 22502              		.loc 1 266 0
+ 22503 0182 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 22504 0186 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 22505 018a 4FF00002 		mov	r2, #0
+ 22506 018e 1A70     		strb	r2, [r3, #0]
+ 22507              		.loc 1 267 0
+ 22508 0190 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 22509 0194 C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 22510 0198 4FF00202 		mov	r2, #2
+ 22511 019c 1A70     		strb	r2, [r3, #0]
+ 22512              		.loc 1 268 0
+ 22513 019e 40F20003 		movw	r3, #:lower16:.LANCHOR17
+ 22514 01a2 C0F20003 		movt	r3, #:upper16:.LANCHOR17
+ 22515 01a6 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 22516 01a8 02F10102 		add	r2, r2, #1
+ 22517 01ac 1A70     		strb	r2, [r3, #0]
+ 22518              		.loc 1 269 0
+ 22519 01ae 03AD     		add	r5, sp, #12
+ 22520              	.LVL35:
+ 22521 01b0 4FF00A03 		mov	r3, #10
+ 22522 01b4 0093     		str	r3, [sp, #0]
+ 22523 01b6 2846     		mov	r0, r5
+ 22524 01b8 40F20001 		movw	r1, #:lower16:.LANCHOR18
+ 22525 01bc C0F20001 		movt	r1, #:upper16:.LANCHOR18
+ 22526 01c0 4FF00402 		mov	r2, #4
+ 22527 01c4 4FF02E03 		mov	r3, #46
+ 22528 01c8 FFF7FEFF 		bl	mk_net_str
+ 22529              		.loc 1 270 0
+ 22530 01cc 40F20004 		movw	r4, #:lower16:.LANCHOR8
+ 22531 01d0 C0F20004 		movt	r4, #:upper16:.LANCHOR8
+ 22532 01d4 2846     		mov	r0, r5
+ 22533 01d6 2146     		mov	r1, r4
+ 22534 01d8 FFF7FEFF 		bl	urlencode
+ 22535              		.loc 1 271 0
+ 22536 01dc 40F20003 		movw	r3, #:lower16:.LANCHOR16
+ 22537 01e0 C0F20003 		movt	r3, #:upper16:.LANCHOR16
+ 22538 01e4 0093     		str	r3, [sp, #0]
+ 22539 01e6 40F20003 		movw	r3, #:lower16:.LANCHOR5
+ 22540 01ea C0F20003 		movt	r3, #:upper16:.LANCHOR5
+ 22541 01ee 0193     		str	r3, [sp, #4]
+ 22542 01f0 40F20000 		movw	r0, #:lower16:.LC24
+ 22543 01f4 C0F20000 		movt	r0, #:upper16:.LC24
+ 22544 01f8 2146     		mov	r1, r4
+ 22545 01fa 40F20002 		movw	r2, #:lower16:.LC21
+ 22546 01fe C0F20002 		movt	r2, #:upper16:.LC21
+ 22547 0202 40F20003 		movw	r3, #:lower16:browserresult_callback
+ 22548 0206 C0F20003 		movt	r3, #:upper16:browserresult_callback
+ 22549 020a FFF7FEFF 		bl	client_browse_url
+ 22550              	.LVL36:
+ 22551              	.L48:
+ 22552              		.loc 1 276 0
+ 22553 020e 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 22554 0212 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 22555 0216 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 22556 0218 3C2B     		cmp	r3, #60
+ 22557 021a 40F29881 		bls	.L72
+ 22558 021e 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 22559 0222 C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 22560 0226 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 22561 0228 022B     		cmp	r3, #2
+ 22562 022a 40F09081 		bne	.L72
+ 22563              		.loc 1 278 0
+ 22564 022e 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 22565 0232 C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 22566 0236 4FF00002 		mov	r2, #0
+ 22567 023a 1A70     		strb	r2, [r3, #0]
+ 22568 023c 87E1     		b	.L72
+ 22569              	.L40:
+ 22570              		.loc 1 285 0
+ 22571 023e 78B9     		cbnz	r0, .L49
+ 22572              	.LVL37:
+ 22573              		.loc 1 290 0
+ 22574 0240 40F20000 		movw	r0, #:lower16:.LANCHOR7
+ 22575              	.LVL38:
+ 22576 0244 C0F20000 		movt	r0, #:upper16:.LANCHOR7
+ 22577 0248 2946     		mov	r1, r5
+ 22578 024a FFF7FEFF 		bl	udp_client_check_for_dns_answer
+ 22579              	.L50:
+ 22580              		.loc 1 371 0
+ 22581 024e 40F20003 		movw	r3, #:lower16:.LANCHOR4
+ 22582 0252 C0F20003 		movt	r3, #:upper16:.LANCHOR4
+ 22583 0256 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 22584 0258 012B     		cmp	r3, #1
+ 22585 025a 40F0EA80 		bne	.L68
+ 22586 025e BFE0     		b	.L75
+ 22587              	.LVL39:
+ 22588              	.L49:
+ 22589              		.loc 1 294 0
+ 22590 0260 0546     		mov	r5, r0
+ 22591              	.LVL40:
+ 22592 0262 40F20004 		movw	r4, #:lower16:.LANCHOR7
+ 22593 0266 C0F20004 		movt	r4, #:upper16:.LANCHOR7
+ 22594 026a 0444     		add	r4, r4, r0
+ 22595              	.LVL41:
+ 22596 026c 40F20000 		movw	r0, #:lower16:.LC25
+ 22597 0270 C0F20000 		movt	r0, #:upper16:.LC25
+ 22598 0274 2146     		mov	r1, r4
+ 22599 0276 4FF00F02 		mov	r2, #15
+ 22600 027a FFF7FEFF 		bl	strncmp
+ 22601 027e 38B9     		cbnz	r0, .L51
+ 22602              		.loc 1 295 0
+ 22603 0280 40F20000 		movw	r0, #:lower16:.LANCHOR7
+ 22604 0284 C0F20000 		movt	r0, #:upper16:.LANCHOR7
+ 22605 0288 FFF7FEFF 		bl	print_image
+ 22606 028c 0146     		mov	r1, r0
+ 22607              	.LVL42:
+ 22608              		.loc 1 296 0
+ 22609 028e A0E0     		b	.L52
+ 22610              	.LVL43:
+ 22611              	.L51:
+ 22612              		.loc 1 299 0
+ 22613 0290 40F20000 		movw	r0, #:lower16:.LC26
+ 22614 0294 C0F20000 		movt	r0, #:upper16:.LC26
+ 22615 0298 2146     		mov	r1, r4
+ 22616 029a 4FF00402 		mov	r2, #4
+ 22617 029e FFF7FEFF 		bl	strncmp
+ 22618 02a2 70B1     		cbz	r0, .L53
+ 22619              		.loc 1 301 0
+ 22620 02a4 FFF7FEFF 		bl	http200ok
+ 22621 02a8 0146     		mov	r1, r0
+ 22622              		.loc 1 302 0
+ 22623 02aa 40F20000 		movw	r0, #:lower16:.LANCHOR7
+ 22624 02ae C0F20000 		movt	r0, #:upper16:.LANCHOR7
+ 22625 02b2 40F20002 		movw	r2, #:lower16:.LC27
+ 22626 02b6 C0F20002 		movt	r2, #:upper16:.LC27
+ 22627 02ba FFF7FEFF 		bl	fill_tcp_data_p
+ 22628 02be 0146     		mov	r1, r0
+ 22629              	.LVL44:
+ 22630              		.loc 1 303 0
+ 22631 02c0 87E0     		b	.L52
+ 22632              	.LVL45:
+ 22633              	.L53:
+ 22634              		.loc 1 308 0
+ 22635 02c2 A44B     		ldr	r3, .L76
+ 22636 02c4 1D44     		add	r5, r5, r3
+ 22637 02c6 40F20000 		movw	r0, #:lower16:.LC28
+ 22638 02ca C0F20000 		movt	r0, #:upper16:.LC28
+ 22639 02ce 2946     		mov	r1, r5
+ 22640 02d0 4FF00202 		mov	r2, #2
+ 22641 02d4 FFF7FEFF 		bl	strncmp
+ 22642 02d8 38B9     		cbnz	r0, .L54
+ 22643              		.loc 1 309 0
+ 22644 02da 40F20000 		movw	r0, #:lower16:.LANCHOR7
+ 22645 02de C0F20000 		movt	r0, #:upper16:.LANCHOR7
+ 22646 02e2 FFF7FEFF 		bl	print_webpage
+ 22647 02e6 0146     		mov	r1, r0
+ 22648              	.LVL46:
+ 22649              		.loc 1 310 0
+ 22650 02e8 73E0     		b	.L52
+ 22651              	.LVL47:
+ 22652              	.L54:
+ 22653              		.loc 1 313 0
+ 22654 02ea 2846     		mov	r0, r5
+ 22655 02ec FFF7FEFF 		bl	analyse_get_url
+ 22656 02f0 80B2     		uxth	r0, r0
+ 22657              	.LVL48:
+ 22658              		.loc 1 315 0
+ 22659 02f2 03B2     		sxth	r3, r0
+ 22660              	.LVL49:
+ 22661 02f4 03F1FF33 		add	r3, r3, #-1
+ 22662              	.LVL50:
+ 22663 02f8 032B     		cmp	r3, #3
+ 22664 02fa 31D8     		bhi	.L55
+ 22665 02fc DFE803F0 		tbb	[pc, r3]
+ 22666              	.L60:
+ 22667 0300 02       		.byte	(.L56-.L60)/2
+ 22668 0301 15       		.byte	(.L57-.L60)/2
+ 22669 0302 1E       		.byte	(.L58-.L60)/2
+ 22670 0303 27       		.byte	(.L59-.L60)/2
+ 22671              		.align	1
+ 22672              	.L56:
+ 22673              		.loc 1 318 0
+ 22674 0304 40F20003 		movw	r3, #:lower16:.LANCHOR10
+ 22675 0308 C0F20003 		movt	r3, #:upper16:.LANCHOR10
+ 22676 030c 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 22677 030e 6FEA0202 		mvn	r2, r2
+ 22678 0312 1A70     		strb	r2, [r3, #0]
+ 22679              		.loc 1 319 0
+ 22680 0314 41F20003 		movw	r3, #:lower16:1073811456
+ 22681 0318 C4F20103 		movt	r3, #:upper16:1073811456
+ 22682 031c D968     		ldr	r1, [r3, #12]
+ 22683 031e 6FF40072 		mvn	r2, #512
+ 22684 0322 81EA0202 		eor	r2, r1, r2
+ 22685 0326 DA60     		str	r2, [r3, #12]
+ 22686              		.loc 1 320 0
+ 22687 0328 4CE0     		b	.L61
+ 22688              	.L57:
+ 22689              		.loc 1 324 0
+ 22690 032a 40F20003 		movw	r3, #:lower16:.LANCHOR10
+ 22691 032e C0F20003 		movt	r3, #:upper16:.LANCHOR10
+ 22692 0332 5A78     		ldrb	r2, [r3, #1]	@ zero_extendqisi2
+ 22693 0334 6FEA0202 		mvn	r2, r2
+ 22694 0338 5A70     		strb	r2, [r3, #1]
+ 22695              		.loc 1 325 0
+ 22696 033a 43E0     		b	.L61
+ 22697              	.L58:
+ 22698              		.loc 1 329 0
+ 22699 033c 40F20003 		movw	r3, #:lower16:.LANCHOR10
+ 22700 0340 C0F20003 		movt	r3, #:upper16:.LANCHOR10
+ 22701 0344 9A78     		ldrb	r2, [r3, #2]	@ zero_extendqisi2
+ 22702 0346 6FEA0202 		mvn	r2, r2
+ 22703 034a 9A70     		strb	r2, [r3, #2]
+ 22704              		.loc 1 330 0
+ 22705 034c 3AE0     		b	.L61
+ 22706              	.L59:
+ 22707              		.loc 1 334 0
+ 22708 034e 40F20003 		movw	r3, #:lower16:.LANCHOR10
+ 22709 0352 C0F20003 		movt	r3, #:upper16:.LANCHOR10
+ 22710 0356 DA78     		ldrb	r2, [r3, #3]	@ zero_extendqisi2
+ 22711 0358 6FEA0202 		mvn	r2, r2
+ 22712 035c DA70     		strb	r2, [r3, #3]
+ 22713              		.loc 1 335 0
+ 22714 035e 31E0     		b	.L61
+ 22715              	.L55:
+ 22716              		.loc 1 338 0
+ 22717 0360 80B2     		uxth	r0, r0
+ 22718              	.LVL51:
+ 22719 0362 A0F13C03 		sub	r3, r0, #60
+ 22720 0366 9BB2     		uxth	r3, r3
+ 22721 0368 8C2B     		cmp	r3, #140
+ 22722 036a 40F20003 		movw	r3, #:lower16:.LANCHOR9
+ 22723 036e C0F20003 		movt	r3, #:upper16:.LANCHOR9
+ 22724 0372 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 22725 0374 07D8     		bhi	.L62
+ 22726 0376 3BB9     		cbnz	r3, .L63
+ 22727              		.loc 1 339 0
+ 22728 0378 40F60003 		movw	r3, #:lower16:1073743872
+ 22729 037c C4F20003 		movt	r3, #:upper16:1073743872
+ 22730 0380 A3F84000 		strh	r0, [r3, #64]	@ movhi
+ 22731              		.loc 1 338 0
+ 22732 0384 1EE0     		b	.L61
+ 22733              	.L62:
+ 22734              		.loc 1 340 0
+ 22735 0386 EBB1     		cbz	r3, .L61
+ 22736              	.L63:
+ 22737              		.loc 1 341 0
+ 22738 0388 022B     		cmp	r3, #2
+ 22739              		.loc 1 346 0
+ 22740 038a 02BF     		ittt	eq
+ 22741 038c 40F60003 		movweq	r3, #:lower16:1073743872
+ 22742 0390 C4F20003 		movteq	r3, #:upper16:1073743872
+ 22743 0394 9886     		strheq	r0, [r3, #52]	@ movhi
+ 22744              		.loc 1 341 0
+ 22745 0396 0ED0     		beq	.L64
+ 22746 0398 032B     		cmp	r3, #3
+ 22747              		.loc 1 349 0
+ 22748 039a 02BF     		ittt	eq
+ 22749 039c 40F60003 		movweq	r3, #:lower16:1073743872
+ 22750 03a0 C4F20003 		movteq	r3, #:upper16:1073743872
+ 22751 03a4 1887     		strheq	r0, [r3, #56]	@ movhi
+ 22752              		.loc 1 341 0
+ 22753 03a6 06D0     		beq	.L64
+ 22754 03a8 012B     		cmp	r3, #1
+ 22755              		.loc 1 343 0
+ 22756 03aa 02BF     		ittt	eq
+ 22757 03ac 40F60003 		movweq	r3, #:lower16:1073743872
+ 22758 03b0 C4F20003 		movteq	r3, #:upper16:1073743872
+ 22759 03b4 9887     		strheq	r0, [r3, #60]	@ movhi
+ 22760              	.L64:
+ 22761              		.loc 1 356 0
+ 22762 03b6 40F20003 		movw	r3, #:lower16:.LANCHOR9
+ 22763 03ba C0F20003 		movt	r3, #:upper16:.LANCHOR9
+ 22764 03be 4FF00002 		mov	r2, #0
+ 22765 03c2 1A70     		strb	r2, [r3, #0]
+ 22766              	.L61:
+ 22767              		.loc 1 362 0
+ 22768 03c4 40F20000 		movw	r0, #:lower16:.LANCHOR7
+ 22769 03c8 C0F20000 		movt	r0, #:upper16:.LANCHOR7
+ 22770 03cc FFF7FEFF 		bl	print_webpage
+ 22771 03d0 0146     		mov	r1, r0
+ 22772              	.LVL52:
+ 22773              	.L52:
+ 22774              		.loc 1 364 0
+ 22775 03d2 40F20000 		movw	r0, #:lower16:.LANCHOR7
+ 22776 03d6 C0F20000 		movt	r0, #:upper16:.LANCHOR7
+ 22777 03da FFF7FEFF 		bl	www_server_reply
+ 22778              	.LVL53:
+ 22779              		.loc 1 365 0
+ 22780 03de B6E0     		b	.L72
+ 22781              	.LVL54:
+ 22782              	.L75:
+ 22783              		.loc 1 371 0
+ 22784 03e0 40F20003 		movw	r3, #:lower16:.LANCHOR15
+ 22785 03e4 C0F20003 		movt	r3, #:upper16:.LANCHOR15
+ 22786 03e8 93F90030 		ldrsb	r3, [r3, #0]
+ 22787 03ec 022B     		cmp	r3, #2
+ 22788 03ee 20D1     		bne	.L68
+ 22789              		.loc 1 374 0
+ 22790 03f0 40F20003 		movw	r3, #:lower16:.LANCHOR4
+ 22791 03f4 C0F20003 		movt	r3, #:upper16:.LANCHOR4
+ 22792 03f8 4FF00002 		mov	r2, #0
+ 22793 03fc 1A70     		strb	r2, [r3, #0]
+ 22794              		.loc 1 375 0
+ 22795 03fe 40F20000 		movw	r0, #:lower16:.LANCHOR7
+ 22796 0402 C0F20000 		movt	r0, #:upper16:.LANCHOR7
+ 22797 0406 40F20001 		movw	r1, #:lower16:.LANCHOR19
+ 22798 040a C0F20001 		movt	r1, #:upper16:.LANCHOR19
+ 22799 040e 40F20003 		movw	r3, #:lower16:.LANCHOR14
+ 22800 0412 C0F20003 		movt	r3, #:upper16:.LANCHOR14
+ 22801 0416 FFF7FEFF 		bl	client_ntp_request
+ 22802              		.loc 1 377 0
+ 22803 041a 40F20003 		movw	r3, #:lower16:.LANCHOR3
+ 22804 041e C0F20003 		movt	r3, #:upper16:.LANCHOR3
+ 22805 0422 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 22806 0424 2BB9     		cbnz	r3, .L68
+ 22807              		.loc 1 380 0
+ 22808 0426 40F20000 		movw	r0, #:lower16:.LC29
+ 22809 042a C0F20000 		movt	r0, #:upper16:.LC29
+ 22810 042e FFF7FEFF 		bl	min_printf
+ 22811              	.L68:
+ 22812              		.loc 1 386 0
+ 22813 0432 40F20003 		movw	r3, #:lower16:.LANCHOR3
+ 22814 0436 C0F20003 		movt	r3, #:upper16:.LANCHOR3
+ 22815 043a 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 22816 043c 002B     		cmp	r3, #0
+ 22817 043e 40F08680 		bne	.L72
+ 22818              		.loc 1 389 0
+ 22819 0442 40F20003 		movw	r3, #:lower16:.LANCHOR7
+ 22820 0446 C0F20003 		movt	r3, #:upper16:.LANCHOR7
+ 22821 044a DB7D     		ldrb	r3, [r3, #23]	@ zero_extendqisi2
+ 22822 044c 112B     		cmp	r3, #17
+ 22823 044e 7ED1     		bne	.L72
+ 22824 0450 40F20003 		movw	r3, #:lower16:.LANCHOR7
+ 22825 0454 C0F20003 		movt	r3, #:upper16:.LANCHOR7
+ 22826 0458 93F82230 		ldrb	r3, [r3, #34]	@ zero_extendqisi2
+ 22827 045c 002B     		cmp	r3, #0
+ 22828 045e 76D1     		bne	.L72
+ 22829 0460 40F20003 		movw	r3, #:lower16:.LANCHOR7
+ 22830 0464 C0F20003 		movt	r3, #:upper16:.LANCHOR7
+ 22831 0468 93F82330 		ldrb	r3, [r3, #35]	@ zero_extendqisi2
+ 22832 046c 7B2B     		cmp	r3, #123
+ 22833 046e 6ED1     		bne	.L72
+ 22834              		.loc 1 391 0
+ 22835 0470 40F20000 		movw	r0, #:lower16:.LANCHOR7
+ 22836 0474 C0F20000 		movt	r0, #:upper16:.LANCHOR7
+ 22837 0478 02A9     		add	r1, sp, #8
+ 22838 047a 4FF00002 		mov	r2, #0
+ 22839 047e FFF7FEFF 		bl	client_ntp_process_answer
+ 22840 0482 0028     		cmp	r0, #0
+ 22841 0484 63D0     		beq	.L72
+ 22842              		.loc 1 394 0
+ 22843 0486 029A     		ldr	r2, [sp, #8]
+ 22844              		.loc 1 402 0
+ 22845 0488 48F28013 		movw	r3, #:lower16:2085978496
+ 22846 048c C7F65543 		movt	r3, #:upper16:2085978496
+ 22847 0490 1344     		add	r3, r2, r3
+ 22848 0492 0293     		str	r3, [sp, #8]
+ 22849              	.LVL55:
+ 22850              		.loc 1 404 0
+ 22851 0494 0298     		ldr	r0, [sp, #8]
+ 22852 0496 00F56160 		add	r0, r0, #3600
+ 22853              	.LVL56:
+ 22854 049a 0290     		str	r0, [sp, #8]
+ 22855              		.loc 1 407 0
+ 22856 049c 40F20005 		movw	r5, #:lower16:.LANCHOR11
+ 22857              	.LVL57:
+ 22858 04a0 C0F20005 		movt	r5, #:upper16:.LANCHOR11
+ 22859 04a4 40F20004 		movw	r4, #:lower16:.LANCHOR20
+ 22860 04a8 C0F20004 		movt	r4, #:upper16:.LANCHOR20
+ 22861 04ac 2946     		mov	r1, r5
+ 22862 04ae 2246     		mov	r2, r4
+ 22863 04b0 FFF7FEFF 		bl	gmtime
+ 22864              	.LVL58:
+ 22865              		.loc 1 410 0
+ 22866 04b4 40F20000 		movw	r0, #:lower16:.LC30
+ 22867 04b8 C0F20000 		movt	r0, #:upper16:.LC30
+ 22868 04bc 2946     		mov	r1, r5
+ 22869 04be 2246     		mov	r2, r4
+ 22870 04c0 FFF7FEFF 		bl	min_printf
+ 22871              		.loc 1 413 0
+ 22872 04c4 029A     		ldr	r2, [sp, #8]
+ 22873 04c6 44F20753 		movw	r3, #:lower16:-1037155065
+ 22874 04ca CCF22E23 		movt	r3, #:upper16:-1037155065
+ 22875 04ce A3FB0243 		umull	r4, r3, r3, r2
+ 22876 04d2 4FEA1341 		lsr	r1, r3, #16
+ 22877              	.LVL59:
+ 22878 04d6 45F28013 		movw	r3, #:lower16:86400
+ 22879 04da C0F20103 		movt	r3, #:upper16:86400
+ 22880 04de 03FB1121 		mls	r1, r3, r1, r2
+ 22881              		.loc 1 420 0
+ 22882 04e2 42F60002 		movw	r2, #:lower16:1073752064
+ 22883 04e6 C4F20002 		movt	r2, #:upper16:1073752064
+ 22884              	.LVL60:
+ 22885              	.L71:
+ 22886 04ea 9388     		ldrh	r3, [r2, #4]
+ 22887 04ec 13F0200F 		tst	r3, #32
+ 22888 04f0 FBD0     		beq	.L71
+ 22889              		.loc 1 422 0
+ 22890 04f2 4BF2C533 		movw	r3, #:lower16:-1851608123
+ 22891 04f6 C9F2A213 		movt	r3, #:upper16:-1851608123
+ 22892 04fa A3FB0123 		umull	r2, r3, r3, r1
+ 22893 04fe 4FEAD322 		lsr	r2, r3, #11
+ 22894 0502 5FFA82FE 		uxtb	lr, r2
+ 22895 0506 4FF4616C 		mov	ip, #3600
+ 22896 050a 48F68903 		movw	r3, #:lower16:-2004318071
+ 22897 050e C8F68803 		movt	r3, #:upper16:-2004318071
+ 22898 0512 A3FB0140 		umull	r4, r0, r3, r1
+ 22899 0516 4FEA5010 		lsr	r0, r0, #5
+ 22900 051a C0EB0010 		rsb	r0, r0, r0, lsl #4
+ 22901 051e A1EB8000 		sub	r0, r1, r0, lsl #2
+ 22902 0522 C0B2     		uxtb	r0, r0
+ 22903 0524 0CFB0E00 		mla	r0, ip, lr, r0
+ 22904 0528 0CFB1212 		mls	r2, ip, r2, r1
+ 22905 052c A3FB0213 		umull	r1, r3, r3, r2
+ 22906              	.LVL61:
+ 22907 0530 C3F34713 		ubfx	r3, r3, #5, #8
+ 22908 0534 C3EB0313 		rsb	r3, r3, r3, lsl #4
+ 22909 0538 00EB8300 		add	r0, r0, r3, lsl #2
+ 22910 053c FFF7FEFF 		bl	RTC_SetCounter
+ 22911              		.loc 1 424 0
+ 22912 0540 40F20003 		movw	r3, #:lower16:.LANCHOR3
+ 22913 0544 C0F20003 		movt	r3, #:upper16:.LANCHOR3
+ 22914 0548 4FF00102 		mov	r2, #1
+ 22915 054c 1A70     		strb	r2, [r3, #0]
+ 22916              	.LVL62:
+ 22917              	.L72:
+ 22918              		.loc 1 430 0
+ 22919 054e 08B0     		add	sp, sp, #32
+ 22920 0550 70BD     		pop	{r4, r5, r6, pc}
+ 22921              	.L77:
+ 22922 0552 00BF     		.align	2
+ 22923              	.L76:
+ 22924 0554 04000000 		.word	.LANCHOR7+4
+ 22925              		.cfi_endproc
+ 22926              	.LFE37:
+ 22928              		.section	.text.changeIP,"ax",%progbits
+ 22929              		.align	2
+ 22930              		.global	changeIP
+ 22931              		.thumb
+ 22932              		.thumb_func
+ 22934              	changeIP:
+ 22935              	.LFB31:
+ 22936              		.loc 1 139 0
+ 22937              		.cfi_startproc
+ 22938              		@ args = 0, pretend = 0, frame = 0
+ 22939              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22940              	.LVL63:
+ 22941 0000 10B5     		push	{r4, lr}
+ 22942              	.LCFI11:
+ 22943              		.cfi_def_cfa_offset 8
+ 22944 0002 0146     		mov	r1, r0
+ 22945              		.loc 1 142 0
+ 22946 0004 40F20004 		movw	r4, #:lower16:.LANCHOR21
+ 22947              		.cfi_offset 14, -4
+ 22948              		.cfi_offset 4, -8
+ 22949 0008 C0F20004 		movt	r4, #:upper16:.LANCHOR21
+ 22950 000c 2046     		mov	r0, r4
+ 22951              	.LVL64:
+ 22952 000e 4FF00402 		mov	r2, #4
+ 22953 0012 FFF7FEFF 		bl	memcpy
+ 22954              	.LVL65:
+ 22955              		.loc 1 144 0
+ 22956 0016 40F20000 		movw	r0, #:lower16:.LANCHOR22
+ 22957 001a C0F20000 		movt	r0, #:upper16:.LANCHOR22
+ 22958 001e 2146     		mov	r1, r4
+ 22959 0020 FFF7FEFF 		bl	init_udp_or_www_server
+ 22960              		.loc 1 146 0
+ 22961 0024 10BD     		pop	{r4, pc}
+ 22962              		.cfi_endproc
+ 22963              	.LFE31:
+ 22965 0026 00BF     		.section	.text.InitServer,"ax",%progbits
+ 22966              		.align	2
+ 22967              		.global	InitServer
+ 22968              		.thumb
+ 22969              		.thumb_func
+ 22971              	InitServer:
+ 22972              	.LFB30:
+ 22973              		.loc 1 120 0
+ 22974              		.cfi_startproc
+ 22975              		@ args = 0, pretend = 0, frame = 0
+ 22976              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22977 0000 10B5     		push	{r4, lr}
+ 22978              	.LCFI12:
+ 22979              		.cfi_def_cfa_offset 8
+ 22980              		.loc 1 122 0
+ 22981 0002 40F20004 		movw	r4, #:lower16:.LANCHOR22
+ 22982              		.cfi_offset 14, -4
+ 22983              		.cfi_offset 4, -8
+ 22984 0006 C0F20004 		movt	r4, #:upper16:.LANCHOR22
+ 22985 000a 2046     		mov	r0, r4
+ 22986 000c FFF7FEFF 		bl	enc28j60Init
+ 22987              		.loc 1 123 0
+ 22988 0010 4FF00100 		mov	r0, #1
+ 22989 0014 FFF7FEFF 		bl	Delay
+ 22990              		.loc 1 124 0
+ 22991 0018 4FF00000 		mov	r0, #0
+ 22992 001c FFF7FEFF 		bl	enc28j60clkout
+ 22993              		.loc 1 125 0
+ 22994 0020 4FF00100 		mov	r0, #1
+ 22995 0024 FFF7FEFF 		bl	Delay
+ 22996              		.loc 1 126 0
+ 22997 0028 4FF01400 		mov	r0, #20
+ 22998 002c 40F27641 		movw	r1, #1142
+ 22999 0030 FFF7FEFF 		bl	enc28j60PhyWrite
+ 23000              		.loc 1 127 0
+ 23001 0034 4FF06400 		mov	r0, #100
+ 23002 0038 FFF7FEFF 		bl	Delay
+ 23003              		.loc 1 130 0
+ 23004 003c FFF7FEFF 		bl	enc28j60getrev
+ 23005 0040 0146     		mov	r1, r0
+ 23006 0042 40F20000 		movw	r0, #:lower16:.LC31
+ 23007 0046 C0F20000 		movt	r0, #:upper16:.LC31
+ 23008 004a FFF7FEFF 		bl	min_printf
+ 23009              		.loc 1 134 0
+ 23010 004e 2046     		mov	r0, r4
+ 23011 0050 40F20001 		movw	r1, #:lower16:.LANCHOR21
+ 23012 0054 C0F20001 		movt	r1, #:upper16:.LANCHOR21
+ 23013 0058 FFF7FEFF 		bl	init_udp_or_www_server
+ 23014              		.loc 1 135 0
+ 23015 005c 4FF05000 		mov	r0, #80
+ 23016 0060 FFF7FEFF 		bl	www_server_port
+ 23017              		.loc 1 137 0
+ 23018 0064 10BD     		pop	{r4, pc}
+ 23019              		.cfi_endproc
+ 23020              	.LFE30:
+ 23022              		.global	rawData
+ 23023              		.global	mymac
+ 23024              		.global	haveNTPanswer
+ 23025              		.global	send_ntp_req_from_idle_loop
+ 23026 0066 00BF     		.section	.data.WWWConfig_status,"aw",%progbits
+ 23027              		.set	.LANCHOR1,. + 0
+ 23030              	WWWConfig_status:
+ 23031 0000 01       		.byte	1
+ 23032              		.section	.bss.gwmac,"aw",%nobits
+ 23033              		.align	2
+ 23034              		.set	.LANCHOR5,. + 0
+ 23037              	gwmac:
+ 23038 0000 00000000 		.space	6
+ 23038      0000
+ 23039 0006 0000     		.section	.bss.dns_state,"aw",%nobits
+ 23040              		.set	.LANCHOR15,. + 0
+ 23043              	dns_state:
+ 23044 0000 00       		.space	1
+ 23045              		.section	.bss.buf,"aw",%nobits
+ 23046              		.align	2
+ 23047              		.set	.LANCHOR7,. + 0
+ 23050              	buf:
+ 23051 0000 00000000 		.space	1401
+ 23051      00000000 
+ 23051      00000000 
+ 23051      00000000 
+ 23051      00000000 
+ 23052 0579 000000   		.section	.data.start_web_client,"aw",%progbits
+ 23053              		.set	.LANCHOR2,. + 0
+ 23056              	start_web_client:
+ 23057 0000 01       		.byte	1
+ 23058              		.section	.bss.pingsrcip,"aw",%nobits
+ 23059              		.align	2
+ 23060              		.set	.LANCHOR18,. + 0
+ 23063              	pingsrcip:
+ 23064 0000 00000000 		.space	4
+ 23065              		.section	.bss.cmd_number,"aw",%nobits
+ 23066              		.set	.LANCHOR9,. + 0
+ 23069              	cmd_number:
+ 23070 0000 00       		.space	1
+ 23071              		.section	.bss.day,"aw",%nobits
+ 23072              		.align	2
+ 23073              		.set	.LANCHOR11,. + 0
+ 23076              	day:
+ 23077 0000 00000000 		.space	16
+ 23077      00000000 
+ 23077      00000000 
+ 23077      00000000 
+ 23078              		.section	.bss.switch_state,"aw",%nobits
+ 23079              		.align	2
+ 23080              		.set	.LANCHOR10,. + 0
+ 23083              	switch_state:
+ 23084 0000 00000000 		.space	4
+ 23085              		.section	.bss.gStrbuf,"aw",%nobits
+ 23086              		.align	2
+ 23087              		.set	.LANCHOR8,. + 0
+ 23090              	gStrbuf:
+ 23091 0000 00000000 		.space	25
+ 23091      00000000 
+ 23091      00000000 
+ 23091      00000000 
+ 23091      00000000 
+ 23092 0019 000000   		.section	.data.myip,"aw",%progbits
+ 23093              		.align	2
+ 23094              		.set	.LANCHOR21,. + 0
+ 23097              	myip:
+ 23098 0000 C0       		.byte	-64
+ 23099 0001 A8       		.byte	-88
+ 23100 0002 01       		.byte	1
+ 23101 0003 19       		.byte	25
+ 23102              		.section	.data.mymac,"aw",%progbits
+ 23103              		.align	2
+ 23104              		.set	.LANCHOR22,. + 0
+ 23107              	mymac:
+ 23108 0000 F0       		.byte	-16
+ 23109 0001 D4       		.byte	-44
+ 23110 0002 A2       		.byte	-94
+ 23111 0003 9B       		.byte	-101
+ 23112 0004 12       		.byte	18
+ 23113 0005 20       		.byte	32
+ 23114 0006 0000     		.section	.bss.web_client_attempts,"aw",%nobits
+ 23115              		.set	.LANCHOR17,. + 0
+ 23118              	web_client_attempts:
+ 23119 0000 00       		.space	1
+ 23120              		.section	.rodata.str1.4,"aMS",%progbits,1
+ 23121              		.align	2
+ 23122              	.LC0:
+ 23123 0000 41647265 		.ascii	"Adres MAC bramy: %x:%x:%x:%x:%x:%x\015\012\000"
+ 23123      73204D41 
+ 23123      43206272 
+ 23123      616D793A 
+ 23123      2025783A 
+ 23124 0025 000000   		.space	3
+ 23125              	.LC1:
+ 23126 0028 55616B74 		.ascii	"Uaktualniono IP\015\012\000"
+ 23126      75616C6E 
+ 23126      696F6E6F 
+ 23126      2049500D 
+ 23126      0A00
+ 23127 003a 0000     		.space	2
+ 23128              	.LC2:
+ 23129 003c 48545450 		.ascii	"HTTP/1.0 200 OK\015\012Content-Type: image/bmp\015\012"
+ 23129      2F312E30 
+ 23129      20323030 
+ 23129      204F4B0D 
+ 23129      0A436F6E 
+ 23130 0066 436F6E74 		.ascii	"Content-Length: 623\015\012\015\012\000"
+ 23130      656E742D 
+ 23130      4C656E67 
+ 23130      74683A20 
+ 23130      3632330D 
+ 23131 007e 0000     		.space	2
+ 23132              	.LC3:
+ 23133 0080 48545450 		.ascii	"HTTP/1.0 200 OK\015\012Content-Type: text/html\015\012"
+ 23133      2F312E30 
+ 23133      20323030 
+ 23133      204F4B0D 
+ 23133      0A436F6E 
+ 23134 00aa 50726167 		.ascii	"Pragma: no-cache\015\012\015\012\000"
+ 23134      6D613A20 
+ 23134      6E6F2D63 
+ 23134      61636865 
+ 23134      0D0A0D0A 
+ 23135 00bf 00       		.space	1
+ 23136              	.LC4:
+ 23137 00c0 737700   		.ascii	"sw\000"
+ 23138 00c3 00       		.space	1
+ 23139              	.LC5:
+ 23140 00c4 73657452 		.ascii	"setR\000"
+ 23140      00
+ 23141 00c9 000000   		.space	3
+ 23142              	.LC6:
+ 23143 00cc 73657447 		.ascii	"setG\000"
+ 23143      00
+ 23144 00d1 000000   		.space	3
+ 23145              	.LC7:
+ 23146 00d4 73657442 		.ascii	"setB\000"
+ 23146      00
+ 23147 00d9 000000   		.space	3
+ 23148              	.LC8:
+ 23149 00dc 3C68746D 		.ascii	"<html><head></head><body bgcolor=#CACAE8><h2 style="
+ 23149      6C3E3C68 
+ 23149      6561643E 
+ 23149      3C2F6865 
+ 23149      61643E3C 
+ 23150 010f 22666F6E 		.ascii	"\"font-family:Arial,Helvetica,sans-serif;color:#E81"
+ 23150      742D6661 
+ 23150      6D696C79 
+ 23150      3A417269 
+ 23150      616C2C48 
+ 23151 0141 3542303B 		.ascii	"5B0;text-align:center\">Serwer STM32Discovery</h2><"
+ 23151      74657874 
+ 23151      2D616C69 
+ 23151      676E3A63 
+ 23151      656E7465 
+ 23152 0173 2F62723E 		.ascii	"/br><table border=1 style=\"background-color:#E6E6F"
+ 23152      3C746162 
+ 23152      6C652062 
+ 23152      6F726465 
+ 23152      723D3120 
+ 23153 01a5 303B626F 		.ascii	"0;border:1px solid black;border-collapse:collapse;\""
+ 23153      72646572 
+ 23153      3A317078 
+ 23153      20736F6C 
+ 23153      69642062 
+ 23154 01d8 20776964 		.ascii	" width=60% cellpadding=0 cellspacing=0 align=center"
+ 23154      74683D36 
+ 23154      30252063 
+ 23154      656C6C70 
+ 23154      61646469 
+ 23155 020b 3E3C7472 		.ascii	"><tr style=\"padding:10px;text-align:center;font-fa"
+ 23155      20737479 
+ 23155      6C653D22 
+ 23155      70616464 
+ 23155      696E673A 
+ 23156 023d 6D696C79 		.ascii	"mily:\"Georgia\",Helvetica,sans-serif\"><td colspan"
+ 23156      3A224765 
+ 23156      6F726769 
+ 23156      61222C48 
+ 23156      656C7665 
+ 23157 026d 3D223422 		.ascii	"=\"4\">Stan wyjsc:</td><td></td><td colspan=\"4\">A"
+ 23157      3E537461 
+ 23157      6E207779 
+ 23157      6A73633A 
+ 23157      3C2F7464 
+ 23158 029c 6B747561 		.ascii	"ktualna temperatura:</td></tr><tr style=\"padding:5"
+ 23158      6C6E6120 
+ 23158      74656D70 
+ 23158      65726174 
+ 23158      7572613A 
+ 23159 02ce 70783B74 		.ascii	"px;text-align:center\">\000"
+ 23159      6578742D 
+ 23159      616C6967 
+ 23159      6E3A6365 
+ 23159      6E746572 
+ 23160 02e5 000000   		.space	3
+ 23161              	.LC9:
+ 23162 02e8 3C746420 		.ascii	"<td width=12%><a href=\"./?sw=\000"
+ 23162      77696474 
+ 23162      683D3132 
+ 23162      253E3C61 
+ 23162      20687265 
+ 23163 0306 0000     		.space	2
+ 23164              	.LC10:
+ 23165 0308 223E3C66 		.ascii	"\"><font color=#\000"
+ 23165      6F6E7420 
+ 23165      636F6C6F 
+ 23165      723D2300 
+ 23166              	.LC11:
+ 23167 0318 30304646 		.ascii	"00FF00>ON\000"
+ 23167      30303E4F 
+ 23167      4E00
+ 23168 0322 0000     		.space	2
+ 23169              	.LC12:
+ 23170 0324 46463030 		.ascii	"FF0000>OFF\000"
+ 23170      30303E4F 
+ 23170      464600
+ 23171 032f 00       		.space	1
+ 23172              	.LC13:
+ 23173 0330 3C2F666F 		.ascii	"</font></a></td>\000"
+ 23173      6E743E3C 
+ 23173      2F613E3C 
+ 23173      2F74643E 
+ 23173      00
+ 23174 0341 000000   		.space	3
+ 23175              	.LC14:
+ 23176 0344 3C74643E 		.ascii	"<td></td><td width=15%>\000"
+ 23176      3C2F7464 
+ 23176      3E3C7464 
+ 23176      20776964 
+ 23176      74683D31 
+ 23177              	.LC15:
+ 23178 035c 3C2F7464 		.ascii	"</td><td width=15%>\000"
+ 23178      3E3C7464 
+ 23178      20776964 
+ 23178      74683D31 
+ 23178      35253E00 
+ 23179              	.LC16:
+ 23180 0370 3C2F7464 		.ascii	"</td></tr></table></br><p style=\"padding:10px;text"
+ 23180      3E3C2F74 
+ 23180      723E3C2F 
+ 23180      7461626C 
+ 23180      653E3C2F 
+ 23181 03a2 2D616C69 		.ascii	"-align:center;font-family:Arial,Helvetica,sans-seri"
+ 23181      676E3A63 
+ 23181      656E7465 
+ 23181      723B666F 
+ 23181      6E742D66 
+ 23182 03d5 66223E3C 		.ascii	"f\"><font>Obrazek:</font></p></br><p style=\"text-a"
+ 23182      666F6E74 
+ 23182      3E4F6272 
+ 23182      617A656B 
+ 23182      3A3C2F66 
+ 23183 0406 6C69676E 		.ascii	"lign:center;\"><img src=\"camera.jpg\" height=160 w"
+ 23183      3A63656E 
+ 23183      7465723B 
+ 23183      223E3C69 
+ 23183      6D672073 
+ 23184 0436 69647468 		.ascii	"idth=160/></p></br><hr><pre>Design & coding by Jaku"
+ 23184      3D313630 
+ 23184      2F3E3C2F 
+ 23184      703E3C2F 
+ 23184      62723E3C 
+ 23185 0469 62205A62 		.ascii	"b Zbydniewski 12.2012</br>Aktualny czas RTC: \000"
+ 23185      79646E69 
+ 23185      6577736B 
+ 23185      69203132 
+ 23185      2E323031 
+ 23186 0497 00       		.space	1
+ 23187              	.LC17:
+ 23188 0498 2000     		.ascii	" \000"
+ 23189 049a 0000     		.space	2
+ 23190              	.LC18:
+ 23191 049c 25643A25 		.ascii	"%d:%d\000"
+ 23191      6400
+ 23192 04a2 0000     		.space	2
+ 23193              	.LC19:
+ 23194 04a4 3C707265 		.ascii	"<pre></body></html>\000"
+ 23194      3E3C2F62 
+ 23194      6F64793E 
+ 23194      3C2F6874 
+ 23194      6D6C3E00 
+ 23195              	.LC20:
+ 23196 04b8 5779736C 		.ascii	"Wyslano DNS_IP_REQUEST\015\012\000"
+ 23196      616E6F20 
+ 23196      444E535F 
+ 23196      49505F52 
+ 23196      45515545 
+ 23197 04d1 000000   		.space	3
+ 23198              	.LC21:
+ 23199 04d4 6B756265 		.ascii	"kubeqz.cba.pl\000"
+ 23199      717A2E63 
+ 23199      62612E70 
+ 23199      6C00
+ 23200 04e2 0000     		.space	2
+ 23201              	.LC22:
+ 23202 04e4 4F646562 		.ascii	"Odebrano IP gateway'a\015\012\000"
+ 23202      72616E6F 
+ 23202      20495020 
+ 23202      67617465 
+ 23202      77617927 
+ 23203              	.LC23:
+ 23204 04fc 5779736C 		.ascii	"Wyslano request odswiezenia IP\015\012\000"
+ 23204      616E6F20 
+ 23204      72657175 
+ 23204      65737420 
+ 23204      6F647377 
+ 23205 051d 000000   		.space	3
+ 23206              	.LC24:
+ 23207 0520 2F757064 		.ascii	"/update_ip.php\000"
+ 23207      6174655F 
+ 23207      69702E70 
+ 23207      687000
+ 23208 052f 00       		.space	1
+ 23209              	.LC25:
+ 23210 0530 47455420 		.ascii	"GET /camera.jpg\000"
+ 23210      2F63616D 
+ 23210      6572612E 
+ 23210      6A706700 
+ 23211              	.LC26:
+ 23212 0540 47455420 		.ascii	"GET \000"
+ 23212      00
+ 23213 0545 000000   		.space	3
+ 23214              	.LC27:
+ 23215 0548 3C68313E 		.ascii	"<h1>200 OK</h1>\000"
+ 23215      32303020 
+ 23215      4F4B3C2F 
+ 23215      68313E00 
+ 23216              	.LC28:
+ 23217 0558 2F2000   		.ascii	"/ \000"
+ 23218 055b 00       		.space	1
+ 23219              	.LC29:
+ 23220 055c 57616974 		.ascii	"Waiting for NTP server\015\012\000"
+ 23220      696E6720 
+ 23220      666F7220 
+ 23220      4E545020 
+ 23220      73657276 
+ 23221 0575 000000   		.space	3
+ 23222              	.LC30:
+ 23223 0578 5A656761 		.ascii	"Zegar NTP: %s %s\015\012\000"
+ 23223      72204E54 
+ 23223      503A2025 
+ 23223      73202573 
+ 23223      0D0A00
+ 23224 058b 00       		.space	1
+ 23225              	.LC31:
+ 23226 058c 454E4332 		.ascii	"ENC28J60 wersja: %x\015\012\000"
+ 23226      384A3630 
+ 23226      20776572 
+ 23226      736A613A 
+ 23226      2025780D 
+ 23227 05a2 0000     		.section	.data.send_ntp_req_from_idle_loop,"aw",%progbits
+ 23228              		.set	.LANCHOR4,. + 0
+ 23231              	send_ntp_req_from_idle_loop:
+ 23232 0000 01       		.byte	1
+ 23233              		.section	.data.gwip,"aw",%progbits
+ 23234              		.align	2
+ 23235              		.set	.LANCHOR14,. + 0
+ 23238              	gwip:
+ 23239 0000 C0       		.byte	-64
+ 23240 0001 A8       		.byte	-88
+ 23241 0002 01       		.byte	1
+ 23242 0003 01       		.byte	1
+ 23243              		.section	.bss.clock,"aw",%nobits
+ 23244              		.align	2
+ 23245              		.set	.LANCHOR20,. + 0
+ 23248              	clock:
+ 23249 0000 00000000 		.space	16
+ 23249      00000000 
+ 23249      00000000 
+ 23249      00000000 
+ 23250              		.section	.data.ntpip,"aw",%progbits
+ 23251              		.align	2
+ 23252              		.set	.LANCHOR19,. + 0
+ 23255              	ntpip:
+ 23256 0000 11       		.byte	17
+ 23257 0001 FE       		.byte	-2
+ 23258 0002 00       		.byte	0
+ 23259 0003 1F       		.byte	31
+ 23260              		.section	.bss.sec,"aw",%nobits
+ 23261              		.set	.LANCHOR0,. + 0
+ 23264              	sec:
+ 23265 0000 00       		.space	1
+ 23266              		.section	.bss.otherside_www_ip,"aw",%nobits
+ 23267              		.align	2
+ 23268              		.set	.LANCHOR16,. + 0
+ 23271              	otherside_www_ip:
+ 23272 0000 00000000 		.space	4
+ 23273              		.section	.bss.web_client_sendok,"aw",%nobits
+ 23274              		.set	.LANCHOR6,. + 0
+ 23277              	web_client_sendok:
+ 23278 0000 00       		.space	1
+ 23279              		.section	.bss.haveNTPanswer,"aw",%nobits
+ 23280              		.set	.LANCHOR3,. + 0
+ 23283              	haveNTPanswer:
+ 23284 0000 00       		.space	1
+ 23285              		.section	.bss.gw_arp_state,"aw",%nobits
+ 23286              		.set	.LANCHOR13,. + 0
+ 23289              	gw_arp_state:
+ 23290 0000 00       		.space	1
+ 23291              		.section	.rodata.rawData,"a",%progbits
+ 23292              		.align	2
+ 23293              		.set	.LANCHOR12,. + 0
+ 23296              	rawData:
+ 23297 0000 FF       		.byte	-1
+ 23298 0001 D8       		.byte	-40
+ 23299 0002 FF       		.byte	-1
+ 23300 0003 E0       		.byte	-32
+ 23301 0004 00       		.byte	0
+ 23302 0005 10       		.byte	16
+ 23303 0006 4A       		.byte	74
+ 23304 0007 46       		.byte	70
+ 23305 0008 49       		.byte	73
+ 23306 0009 46       		.byte	70
+ 23307 000a 00       		.byte	0
+ 23308 000b 01       		.byte	1
+ 23309 000c 01       		.byte	1
+ 23310 000d 00       		.byte	0
+ 23311 000e 00       		.byte	0
+ 23312 000f 01       		.byte	1
+ 23313 0010 00       		.byte	0
+ 23314 0011 01       		.byte	1
+ 23315 0012 00       		.byte	0
+ 23316 0013 00       		.byte	0
+ 23317 0014 FF       		.byte	-1
+ 23318 0015 DB       		.byte	-37
+ 23319 0016 00       		.byte	0
+ 23320 0017 43       		.byte	67
+ 23321 0018 00       		.byte	0
+ 23322 0019 01       		.byte	1
+ 23323 001a 01       		.byte	1
+ 23324 001b 01       		.byte	1
+ 23325 001c 01       		.byte	1
+ 23326 001d 01       		.byte	1
+ 23327 001e 01       		.byte	1
+ 23328 001f 01       		.byte	1
+ 23329 0020 01       		.byte	1
+ 23330 0021 01       		.byte	1
+ 23331 0022 01       		.byte	1
+ 23332 0023 01       		.byte	1
+ 23333 0024 01       		.byte	1
+ 23334 0025 01       		.byte	1
+ 23335 0026 01       		.byte	1
+ 23336 0027 01       		.byte	1
+ 23337 0028 02       		.byte	2
+ 23338 0029 02       		.byte	2
+ 23339 002a 01       		.byte	1
+ 23340 002b 01       		.byte	1
+ 23341 002c 01       		.byte	1
+ 23342 002d 01       		.byte	1
+ 23343 002e 03       		.byte	3
+ 23344 002f 02       		.byte	2
+ 23345 0030 02       		.byte	2
+ 23346 0031 02       		.byte	2
+ 23347 0032 02       		.byte	2
+ 23348 0033 03       		.byte	3
+ 23349 0034 03       		.byte	3
+ 23350 0035 04       		.byte	4
+ 23351 0036 04       		.byte	4
+ 23352 0037 03       		.byte	3
+ 23353 0038 03       		.byte	3
+ 23354 0039 03       		.byte	3
+ 23355 003a 03       		.byte	3
+ 23356 003b 04       		.byte	4
+ 23357 003c 04       		.byte	4
+ 23358 003d 06       		.byte	6
+ 23359 003e 05       		.byte	5
+ 23360 003f 04       		.byte	4
+ 23361 0040 04       		.byte	4
+ 23362 0041 05       		.byte	5
+ 23363 0042 04       		.byte	4
+ 23364 0043 03       		.byte	3
+ 23365 0044 03       		.byte	3
+ 23366 0045 05       		.byte	5
+ 23367 0046 07       		.byte	7
+ 23368 0047 05       		.byte	5
+ 23369 0048 05       		.byte	5
+ 23370 0049 06       		.byte	6
+ 23371 004a 06       		.byte	6
+ 23372 004b 06       		.byte	6
+ 23373 004c 06       		.byte	6
+ 23374 004d 06       		.byte	6
+ 23375 004e 04       		.byte	4
+ 23376 004f 05       		.byte	5
+ 23377 0050 07       		.byte	7
+ 23378 0051 07       		.byte	7
+ 23379 0052 07       		.byte	7
+ 23380 0053 06       		.byte	6
+ 23381 0054 07       		.byte	7
+ 23382 0055 06       		.byte	6
+ 23383 0056 06       		.byte	6
+ 23384 0057 06       		.byte	6
+ 23385 0058 06       		.byte	6
+ 23386 0059 FF       		.byte	-1
+ 23387 005a C0       		.byte	-64
+ 23388 005b 00       		.byte	0
+ 23389 005c 0B       		.byte	11
+ 23390 005d 08       		.byte	8
+ 23391 005e 00       		.byte	0
+ 23392 005f 10       		.byte	16
+ 23393 0060 00       		.byte	0
+ 23394 0061 10       		.byte	16
+ 23395 0062 01       		.byte	1
+ 23396 0063 01       		.byte	1
+ 23397 0064 11       		.byte	17
+ 23398 0065 00       		.byte	0
+ 23399 0066 FF       		.byte	-1
+ 23400 0067 C4       		.byte	-60
+ 23401 0068 00       		.byte	0
+ 23402 0069 16       		.byte	22
+ 23403 006a 00       		.byte	0
+ 23404 006b 01       		.byte	1
+ 23405 006c 01       		.byte	1
+ 23406 006d 01       		.byte	1
+ 23407 006e 00       		.byte	0
+ 23408 006f 00       		.byte	0
+ 23409 0070 00       		.byte	0
+ 23410 0071 00       		.byte	0
+ 23411 0072 00       		.byte	0
+ 23412 0073 00       		.byte	0
+ 23413 0074 00       		.byte	0
+ 23414 0075 00       		.byte	0
+ 23415 0076 00       		.byte	0
+ 23416 0077 00       		.byte	0
+ 23417 0078 00       		.byte	0
+ 23418 0079 00       		.byte	0
+ 23419 007a 00       		.byte	0
+ 23420 007b 09       		.byte	9
+ 23421 007c 07       		.byte	7
+ 23422 007d 0A       		.byte	10
+ 23423 007e FF       		.byte	-1
+ 23424 007f C4       		.byte	-60
+ 23425 0080 00       		.byte	0
+ 23426 0081 20       		.byte	32
+ 23427 0082 10       		.byte	16
+ 23428 0083 00       		.byte	0
+ 23429 0084 02       		.byte	2
+ 23430 0085 03       		.byte	3
+ 23431 0086 01       		.byte	1
+ 23432 0087 00       		.byte	0
+ 23433 0088 02       		.byte	2
+ 23434 0089 02       		.byte	2
+ 23435 008a 03       		.byte	3
+ 23436 008b 00       		.byte	0
+ 23437 008c 00       		.byte	0
+ 23438 008d 00       		.byte	0
+ 23439 008e 00       		.byte	0
+ 23440 008f 00       		.byte	0
+ 23441 0090 00       		.byte	0
+ 23442 0091 00       		.byte	0
+ 23443 0092 00       		.byte	0
+ 23444 0093 02       		.byte	2
+ 23445 0094 03       		.byte	3
+ 23446 0095 01       		.byte	1
+ 23447 0096 04       		.byte	4
+ 23448 0097 05       		.byte	5
+ 23449 0098 06       		.byte	6
+ 23450 0099 07       		.byte	7
+ 23451 009a 11       		.byte	17
+ 23452 009b 00       		.byte	0
+ 23453 009c 13       		.byte	19
+ 23454 009d 12       		.byte	18
+ 23455 009e 14       		.byte	20
+ 23456 009f 21       		.byte	33
+ 23457 00a0 FF       		.byte	-1
+ 23458 00a1 DA       		.byte	-38
+ 23459 00a2 00       		.byte	0
+ 23460 00a3 08       		.byte	8
+ 23461 00a4 01       		.byte	1
+ 23462 00a5 01       		.byte	1
+ 23463 00a6 00       		.byte	0
+ 23464 00a7 00       		.byte	0
+ 23465 00a8 3F       		.byte	63
+ 23466 00a9 00       		.byte	0
+ 23467 00aa D3       		.byte	-45
+ 23468 00ab E7       		.byte	-25
+ 23469 00ac 99       		.byte	-103
+ 23470 00ad BB       		.byte	-69
+ 23471 00ae 87       		.byte	-121
+ 23472 00af 7D       		.byte	125
+ 23473 00b0 56       		.byte	86
+ 23474 00b1 B4       		.byte	-76
+ 23475 00b2 B9       		.byte	-71
+ 23476 00b3 3E       		.byte	62
+ 23477 00b4 AB       		.byte	-85
+ 23478 00b5 23       		.byte	35
+ 23479 00b6 53       		.byte	83
+ 23480 00b7 64       		.byte	100
+ 23481 00b8 F0       		.byte	-16
+ 23482 00b9 AC       		.byte	-84
+ 23483 00ba 6A       		.byte	106
+ 23484 00bb 75       		.byte	117
+ 23485 00bc 7D       		.byte	125
+ 23486 00bd BE       		.byte	-66
+ 23487 00be 66       		.byte	102
+ 23488 00bf AB       		.byte	-85
+ 23489 00c0 32       		.byte	50
+ 23490 00c1 06       		.byte	6
+ 23491 00c2 A3       		.byte	-93
+ 23492 00c3 FF       		.byte	-1
+ 23493 00c4 00       		.byte	0
+ 23494 00c5 70       		.byte	112
+ 23495 00c6 4E       		.byte	78
+ 23496 00c7 B5       		.byte	-75
+ 23497 00c8 1C       		.byte	28
+ 23498 00c9 EA       		.byte	-22
+ 23499 00ca ED       		.byte	-19
+ 23500 00cb 91       		.byte	-111
+ 23501 00cc 10       		.byte	16
+ 23502 00cd AD       		.byte	-83
+ 23503 00ce 5D       		.byte	93
+ 23504 00cf B1       		.byte	-79
+ 23505 00d0 FB       		.byte	-5
+ 23506 00d1 26       		.byte	38
+ 23507 00d2 72       		.byte	114
+ 23508 00d3 2D       		.byte	45
+ 23509 00d4 73       		.byte	115
+ 23510 00d5 19       		.byte	25
+ 23511 00d6 E9       		.byte	-23
+ 23512 00d7 C5       		.byte	-59
+ 23513 00d8 31       		.byte	49
+ 23514 00d9 02       		.byte	2
+ 23515 00da DF       		.byte	-33
+ 23516 00db 82       		.byte	-126
+ 23517 00dc 57       		.byte	87
+ 23518 00dd 91       		.byte	-111
+ 23519 00de BC       		.byte	-68
+ 23520 00df 95       		.byte	-107
+ 23521 00e0 89       		.byte	-119
+ 23522 00e1 6F       		.byte	111
+ 23523 00e2 9B       		.byte	-101
+ 23524 00e3 E8       		.byte	-24
+ 23525 00e4 FA       		.byte	-6
+ 23526 00e5 3B       		.byte	59
+ 23527 00e6 2F       		.byte	47
+ 23528 00e7 D5       		.byte	-43
+ 23529 00e8 EB       		.byte	-21
+ 23530 00e9 7A       		.byte	122
+ 23531 00ea 1E       		.byte	30
+ 23532 00eb D0       		.byte	-48
+ 23533 00ec 36       		.byte	54
+ 23534 00ed 68       		.byte	104
+ 23535 00ee E7       		.byte	-25
+ 23536 00ef 33       		.byte	51
+ 23537 00f0 57       		.byte	87
+ 23538 00f1 69       		.byte	105
+ 23539 00f2 B6       		.byte	-74
+ 23540 00f3 B6       		.byte	-74
+ 23541 00f4 E0       		.byte	-32
+ 23542 00f5 35       		.byte	53
+ 23543 00f6 E5       		.byte	-27
+ 23544 00f7 03       		.byte	3
+ 23545 00f8 A1       		.byte	-95
+ 23546 00f9 9C       		.byte	-100
+ 23547 00fa AD       		.byte	-83
+ 23548 00fb 05       		.byte	5
+ 23549 00fc 17       		.byte	23
+ 23550 00fd F5       		.byte	-11
+ 23551 00fe EC       		.byte	-20
+ 23552 00ff B2       		.byte	-78
+ 23553 0100 29       		.byte	41
+ 23554 0101 70       		.byte	112
+ 23555 0102 B0       		.byte	-80
+ 23556 0103 4A       		.byte	74
+ 23557 0104 42       		.byte	66
+ 23558 0105 7E       		.byte	126
+ 23559 0106 E3       		.byte	-29
+ 23560 0107 81       		.byte	-127
+ 23561 0108 FC       		.byte	-4
+ 23562 0109 E1       		.byte	-31
+ 23563 010a 93       		.byte	-109
+ 23564 010b 31       		.byte	49
+ 23565 010c 4A       		.byte	74
+ 23566 010d F2       		.byte	-14
+ 23567 010e B7       		.byte	-73
+ 23568 010f 6F       		.byte	111
+ 23569 0110 A5       		.byte	-91
+ 23570 0111 6E       		.byte	110
+ 23571 0112 B7       		.byte	-73
+ 23572 0113 7A       		.byte	122
+ 23573 0114 36       		.byte	54
+ 23574 0115 1B       		.byte	27
+ 23575 0116 C3       		.byte	-61
+ 23576 0117 F4       		.byte	-12
+ 23577 0118 3A       		.byte	58
+ 23578 0119 EB       		.byte	-21
+ 23579 011a E7       		.byte	-25
+ 23580 011b F5       		.byte	-11
+ 23581 011c 83       		.byte	-125
+ 23582 011d 33       		.byte	51
+ 23583 011e 56       		.byte	86
+ 23584 011f 2F       		.byte	47
+ 23585 0120 15       		.byte	21
+ 23586 0121 9C       		.byte	-100
+ 23587 0122 AC       		.byte	-84
+ 23588 0123 D5       		.byte	-43
+ 23589 0124 24       		.byte	36
+ 23590 0125 D9       		.byte	-39
+ 23591 0126 00       		.byte	0
+ 23592 0127 A6       		.byte	-90
+ 23593 0128 42       		.byte	66
+ 23594 0129 BD       		.byte	-67
+ 23595 012a 1B       		.byte	27
+ 23596 012b 8D       		.byte	-115
+ 23597 012c 6A       		.byte	106
+ 23598 012d 72       		.byte	114
+ 23599 012e 8D       		.byte	-115
+ 23600 012f 91       		.byte	-111
+ 23601 0130 F4       		.byte	-12
+ 23602 0131 B0       		.byte	-80
+ 23603 0132 4B       		.byte	75
+ 23604 0133 F8       		.byte	-8
+ 23605 0134 3E       		.byte	62
+ 23606 0135 FD       		.byte	-3
+ 23607 0136 CF       		.byte	-49
+ 23608 0137 AF       		.byte	-81
+ 23609 0138 85       		.byte	-123
+ 23610 0139 63       		.byte	99
+ 23611 013a BA       		.byte	-70
+ 23612 013b 5D       		.byte	93
+ 23613 013c E5       		.byte	-27
+ 23614 013d 73       		.byte	115
+ 23615 013e A8       		.byte	-88
+ 23616 013f C7       		.byte	-57
+ 23617 0140 DD       		.byte	-35
+ 23618 0141 D8       		.byte	-40
+ 23619 0142 D6       		.byte	-42
+ 23620 0143 A1       		.byte	-95
+ 23621 0144 77       		.byte	119
+ 23622 0145 36       		.byte	54
+ 23623 0146 E5       		.byte	-27
+ 23624 0147 7E       		.byte	126
+ 23625 0148 92       		.byte	-110
+ 23626 0149 D5       		.byte	-43
+ 23627 014a 9C       		.byte	-100
+ 23628 014b 8C       		.byte	-116
+ 23629 014c 75       		.byte	117
+ 23630 014d 5A       		.byte	90
+ 23631 014e 85       		.byte	-123
+ 23632 014f 55       		.byte	85
+ 23633 0150 86       		.byte	-122
+ 23634 0151 0B       		.byte	11
+ 23635 0152 86       		.byte	-122
+ 23636 0153 CA       		.byte	-54
+ 23637 0154 88       		.byte	-120
+ 23638 0155 0A       		.byte	10
+ 23639 0156 1B       		.byte	27
+ 23640 0157 5D       		.byte	93
+ 23641 0158 4B       		.byte	75
+ 23642 0159 05       		.byte	5
+ 23643 015a 55       		.byte	85
+ 23644 015b 41       		.byte	65
+ 23645 015c 43       		.byte	67
+ 23646 015d 08       		.byte	8
+ 23647 015e 0A       		.byte	10
+ 23648 015f 1C       		.byte	28
+ 23649 0160 C5       		.byte	-59
+ 23650 0161 FE       		.byte	-2
+ 23651 0162 20       		.byte	32
+ 23652 0163 52       		.byte	82
+ 23653 0164 25       		.byte	37
+ 23654 0165 23       		.byte	35
+ 23655 0166 FF       		.byte	-1
+ 23656 0167 D9       		.byte	-39
+ 23657              		.text
+ 23658              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 serverWWW.c
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21711  .text.www_clock_tick:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21716  .text.www_clock_tick:00000000 www_clock_tick
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23261  .bss.sec:00000000 .LANCHOR0
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21736  .text.enableWWWConfig:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21741  .text.enableWWWConfig:00000000 enableWWWConfig
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23027  .data.WWWConfig_status:00000000 .LANCHOR1
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21759  .text.disableWWWConfig:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21764  .text.disableWWWConfig:00000000 disableWWWConfig
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21782  .text.updateIP:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21787  .text.updateIP:00000000 updateIP
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23053  .data.start_web_client:00000000 .LANCHOR2
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21805  .text.resetNTPClient:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21810  .text.resetNTPClient:00000000 resetNTPClient
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23280  .bss.haveNTPanswer:00000000 .LANCHOR3
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23228  .data.send_ntp_req_from_idle_loop:00000000 .LANCHOR4
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21833  .text.arpresolver_result_callback:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21838  .text.arpresolver_result_callback:00000000 arpresolver_result_callback
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23122  .rodata.str1.4:00000000 .LC0
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23034  .bss.gwmac:00000000 .LANCHOR5
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21893  .text.browserresult_callback:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21898  .text.browserresult_callback:00000000 browserresult_callback
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23274  .bss.web_client_sendok:00000000 .LANCHOR6
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23125  .rodata.str1.4:00000028 .LC1
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21932  .text.http200image:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21937  .text.http200image:00000000 http200image
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23047  .bss.buf:00000000 .LANCHOR7
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23128  .rodata.str1.4:0000003c .LC2
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21961  .text.http200ok:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21966  .text.http200ok:00000000 http200ok
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23132  .rodata.str1.4:00000080 .LC3
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21990  .text.analyse_get_url:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:21995  .text.analyse_get_url:00000000 analyse_get_url
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23087  .bss.gStrbuf:00000000 .LANCHOR8
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23136  .rodata.str1.4:000000c0 .LC4
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23139  .rodata.str1.4:000000c4 .LC5
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23066  .bss.cmd_number:00000000 .LANCHOR9
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23142  .rodata.str1.4:000000cc .LC6
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23145  .rodata.str1.4:000000d4 .LC7
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22112  .text.print_webpage:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22117  .text.print_webpage:00000000 print_webpage
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23148  .rodata.str1.4:000000dc .LC8
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23161  .rodata.str1.4:000002e8 .LC9
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23164  .rodata.str1.4:00000308 .LC10
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23080  .bss.switch_state:00000000 .LANCHOR10
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23169  .rodata.str1.4:00000324 .LC12
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23166  .rodata.str1.4:00000318 .LC11
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23172  .rodata.str1.4:00000330 .LC13
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23175  .rodata.str1.4:00000344 .LC14
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23177  .rodata.str1.4:0000035c .LC15
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23179  .rodata.str1.4:00000370 .LC16
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23073  .bss.day:00000000 .LANCHOR11
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23187  .rodata.str1.4:00000498 .LC17
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23190  .rodata.str1.4:0000049c .LC18
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23193  .rodata.str1.4:000004a4 .LC19
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22297  .text.print_image:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22302  .text.print_image:00000000 print_image
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23293  .rodata.rawData:00000000 .LANCHOR12
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22331  .text.ServerCheckForJob:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22336  .text.ServerCheckForJob:00000000 ServerCheckForJob
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23286  .bss.gw_arp_state:00000000 .LANCHOR13
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23235  .data.gwip:00000000 .LANCHOR14
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23195  .rodata.str1.4:000004b8 .LC20
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23040  .bss.dns_state:00000000 .LANCHOR15
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23198  .rodata.str1.4:000004d4 .LC21
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23268  .bss.otherside_www_ip:00000000 .LANCHOR16
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23201  .rodata.str1.4:000004e4 .LC22
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23203  .rodata.str1.4:000004fc .LC23
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23115  .bss.web_client_attempts:00000000 .LANCHOR17
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23060  .bss.pingsrcip:00000000 .LANCHOR18
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23206  .rodata.str1.4:00000520 .LC24
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23209  .rodata.str1.4:00000530 .LC25
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23211  .rodata.str1.4:00000540 .LC26
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23214  .rodata.str1.4:00000548 .LC27
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23216  .rodata.str1.4:00000558 .LC28
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22667  .text.ServerCheckForJob:00000300 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22671  .text.ServerCheckForJob:00000304 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23252  .data.ntpip:00000000 .LANCHOR19
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23219  .rodata.str1.4:0000055c .LC29
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23245  .bss.clock:00000000 .LANCHOR20
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23222  .rodata.str1.4:00000578 .LC30
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22924  .text.ServerCheckForJob:00000554 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22929  .text.changeIP:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22934  .text.changeIP:00000000 changeIP
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23094  .data.myip:00000000 .LANCHOR21
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23104  .data.mymac:00000000 .LANCHOR22
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22966  .text.InitServer:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:22971  .text.InitServer:00000000 InitServer
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23225  .rodata.str1.4:0000058c .LC31
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23296  .rodata.rawData:00000000 rawData
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23107  .data.mymac:00000000 mymac
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23283  .bss.haveNTPanswer:00000000 haveNTPanswer
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23231  .data.send_ntp_req_from_idle_loop:00000000 send_ntp_req_from_idle_loop
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23030  .data.WWWConfig_status:00000000 WWWConfig_status
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23033  .bss.gwmac:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23037  .bss.gwmac:00000000 gwmac
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23043  .bss.dns_state:00000000 dns_state
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23044  .bss.dns_state:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23046  .bss.buf:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23050  .bss.buf:00000000 buf
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23056  .data.start_web_client:00000000 start_web_client
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23059  .bss.pingsrcip:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23063  .bss.pingsrcip:00000000 pingsrcip
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23069  .bss.cmd_number:00000000 cmd_number
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23070  .bss.cmd_number:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23072  .bss.day:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23076  .bss.day:00000000 day
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23079  .bss.switch_state:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23083  .bss.switch_state:00000000 switch_state
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23086  .bss.gStrbuf:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23090  .bss.gStrbuf:00000000 gStrbuf
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23093  .data.myip:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23097  .data.myip:00000000 myip
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23103  .data.mymac:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23118  .bss.web_client_attempts:00000000 web_client_attempts
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23119  .bss.web_client_attempts:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23121  .rodata.str1.4:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23234  .data.gwip:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23238  .data.gwip:00000000 gwip
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23244  .bss.clock:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23248  .bss.clock:00000000 clock
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23251  .data.ntpip:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23255  .data.ntpip:00000000 ntpip
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23264  .bss.sec:00000000 sec
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23265  .bss.sec:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23267  .bss.otherside_www_ip:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23271  .bss.otherside_www_ip:00000000 otherside_www_ip
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23277  .bss.web_client_sendok:00000000 web_client_sendok
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23278  .bss.web_client_sendok:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23284  .bss.haveNTPanswer:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23289  .bss.gw_arp_state:00000000 gw_arp_state
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23290  .bss.gw_arp_state:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccA1Thq7.s:23292  .rodata.rawData:00000000 $d
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+min_printf
+usart_printf
+fill_tcp_data_p
+find_key_val
+myatoi
+RTCgetTime
+itoa
+temperatura
+sprintf
+fill_tcp_data_len
+enc28j60PacketReceive
+packetloop_arp_icmp_tcp
+get_mac_with_arp
+get_mac_with_arp_wait
+enc28j60linkup
+dnslkup_request
+dnslkup_haveanswer
+dnslkup_get_ip
+mk_net_str
+urlencode
+client_browse_url
+udp_client_check_for_dns_answer
+strncmp
+www_server_reply
+client_ntp_request
+client_ntp_process_answer
+gmtime
+RTC_SetCounter
+memcpy
+init_udp_or_www_server
+enc28j60Init
+Delay
+enc28j60clkout
+enc28j60PhyWrite
+enc28j60getrev
+www_server_port

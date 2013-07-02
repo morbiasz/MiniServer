@@ -1,0 +1,582 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"conversion.c"
+  23              	.Ltext0:
+  24              		.file 1 "../src/conversion.c"
+ 19194              		.align	2
+ 19195              		.global	itoa
+ 19196              		.thumb
+ 19197              		.thumb_func
+ 19199              	itoa:
+ 19200              	.LFB30:
+   1:../src/conversion.c **** #include "usart.h"
+   2:../src/conversion.c **** #include <string.h>
+   3:../src/conversion.c **** #include "conversion.h"
+   4:../src/conversion.c **** void dec2hex(unsigned int number)
+   5:../src/conversion.c **** {
+   6:../src/conversion.c **** 
+   7:../src/conversion.c **** int r[10],i=0,j=0;
+   8:../src/conversion.c **** 
+   9:../src/conversion.c **** 	while(number>0)
+  10:../src/conversion.c **** 	{
+  11:../src/conversion.c **** 		r[i]=number%16;
+  12:../src/conversion.c **** 		number=number/16;
+  13:../src/conversion.c **** 		i++;
+  14:../src/conversion.c **** 		j++;
+  15:../src/conversion.c **** 	}
+  16:../src/conversion.c **** 	//usart_printf("The unsigned decimal equivalent is:  ");
+  17:../src/conversion.c **** 	for(i=j-1;i>=0;i--)
+  18:../src/conversion.c **** 	{
+  19:../src/conversion.c **** 		switch (r[i])
+  20:../src/conversion.c **** 		{
+  21:../src/conversion.c **** 		case 10:
+  22:../src/conversion.c **** 			SendChar('A');
+  23:../src/conversion.c **** 			break;
+  24:../src/conversion.c **** 
+  25:../src/conversion.c **** 		case 11:
+  26:../src/conversion.c **** 			SendChar('B');
+  27:../src/conversion.c **** 			break;
+  28:../src/conversion.c **** 
+  29:../src/conversion.c **** 		case 12:
+  30:../src/conversion.c **** 			SendChar('C');
+  31:../src/conversion.c **** 			break;
+  32:../src/conversion.c **** 
+  33:../src/conversion.c **** 		case 13:
+  34:../src/conversion.c **** 			SendChar('D');
+  35:../src/conversion.c **** 			break;
+  36:../src/conversion.c **** 
+  37:../src/conversion.c **** 		case 14:
+  38:../src/conversion.c **** 			SendChar('E');
+  39:../src/conversion.c **** 			break;
+  40:../src/conversion.c **** 
+  41:../src/conversion.c **** 		case 15:
+  42:../src/conversion.c **** 			SendChar('F');
+  43:../src/conversion.c ****     		break;
+  44:../src/conversion.c **** 
+  45:../src/conversion.c **** 		default:
+  46:../src/conversion.c **** 			SendChar(r[i]+48);
+  47:../src/conversion.c **** 			break;
+  48:../src/conversion.c **** 		}//switch
+  49:../src/conversion.c **** 
+  50:../src/conversion.c **** 	}//for
+  51:../src/conversion.c **** 
+  52:../src/conversion.c **** }
+  53:../src/conversion.c **** 
+  54:../src/conversion.c **** /* The Itoa code is in the public domain */
+  55:../src/conversion.c **** char* itoa(int value, char* str, int radix) {
+ 19201              		.loc 1 55 0
+ 19202              		.cfi_startproc
+ 19203              		@ args = 0, pretend = 0, frame = 0
+ 19204              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19205              		@ link register save eliminated.
+ 19206              	.LVL0:
+ 19207 0000 30B4     		push	{r4, r5}
+ 19208              	.LCFI0:
+ 19209              		.cfi_def_cfa_offset 8
+  56:../src/conversion.c ****     static char dig[] =
+  57:../src/conversion.c ****         "0123456789"
+  58:../src/conversion.c ****         "abcdefghijklmnopqrstuvwxyz";
+  59:../src/conversion.c ****     int n = 0, neg = 0;
+  60:../src/conversion.c ****     unsigned int v;
+  61:../src/conversion.c ****     char* p, *q;
+  62:../src/conversion.c ****     char c;
+  63:../src/conversion.c **** 
+  64:../src/conversion.c ****     if (radix == 10 && value < 0) {
+ 19210              		.loc 1 64 0
+ 19211 0002 4FEAD073 		lsr	r3, r0, #31
+ 19212 0006 0A2A     		cmp	r2, #10
+ 19213 0008 14BF     		ite	ne
+ 19214 000a 0023     		movne	r3, #0
+ 19215 000c 03F00103 		andeq	r3, r3, #1
+ 19216 0010 13B9     		cbnz	r3, .L2
+ 19217              		.cfi_offset 5, -4
+ 19218              		.cfi_offset 4, -8
+ 19219 0012 4FF00005 		mov	r5, #0
+ 19220              	.LVL1:
+ 19221 0016 03E0     		b	.L3
+ 19222              	.LVL2:
+ 19223              	.L2:
+  65:../src/conversion.c ****         value = -value;
+ 19224              		.loc 1 65 0
+ 19225 0018 C0F10000 		rsb	r0, r0, #0
+ 19226              	.LVL3:
+ 19227 001c 4FF00105 		mov	r5, #1
+ 19228              	.LVL4:
+ 19229              	.L3:
+  66:../src/conversion.c ****         neg = 1;
+  67:../src/conversion.c ****     }
+  68:../src/conversion.c ****     v = value;
+ 19230              		.loc 1 68 0
+ 19231 0020 4FF0000C 		mov	ip, #0
+ 19232              	.LVL5:
+  69:../src/conversion.c ****     do {
+  70:../src/conversion.c ****         str[n++] = dig[v%radix];
+ 19233              		.loc 1 70 0
+ 19234 0024 40F20004 		movw	r4, #:lower16:.LANCHOR0
+ 19235 0028 C0F20004 		movt	r4, #:upper16:.LANCHOR0
+ 19236              	.L4:
+ 19237 002c B0FBF2F3 		udiv	r3, r0, r2
+ 19238              	.LVL6:
+ 19239 0030 02FB1300 		mls	r0, r2, r3, r0
+ 19240              	.LVL7:
+ 19241 0034 205C     		ldrb	r0, [r4, r0]	@ zero_extendqisi2
+ 19242 0036 01F80C00 		strb	r0, [r1, ip]
+ 19243 003a 0CF1010C 		add	ip, ip, #1
+  71:../src/conversion.c ****         v /= radix;
+  72:../src/conversion.c ****     } while (v);
+ 19244              		.loc 1 72 0
+ 19245 003e 1846     		mov	r0, r3
+ 19246              	.LVL8:
+ 19247 0040 002B     		cmp	r3, #0
+ 19248 0042 F3D1     		bne	.L4
+  73:../src/conversion.c ****     if (neg)
+ 19249              		.loc 1 73 0
+ 19250 0044 2DB1     		cbz	r5, .L5
+  74:../src/conversion.c ****         str[n++] = '-';
+ 19251              		.loc 1 74 0
+ 19252 0046 4FF02D02 		mov	r2, #45
+ 19253              	.LVL9:
+ 19254 004a 01F80C20 		strb	r2, [r1, ip]
+ 19255 004e 0CF1010C 		add	ip, ip, #1
+ 19256              	.LVL10:
+ 19257              	.L5:
+  75:../src/conversion.c ****     str[n] = '\0';
+ 19258              		.loc 1 75 0
+ 19259 0052 4FF00003 		mov	r3, #0
+ 19260 0056 01F80C30 		strb	r3, [r1, ip]
+  76:../src/conversion.c **** 
+  77:../src/conversion.c ****     for (p = str, q = p + (n-1); p < q; ++p, --q)
+ 19261              		.loc 1 77 0
+ 19262 005a 0CF1FF33 		add	r3, ip, #-1
+ 19263 005e 0B44     		add	r3, r1, r3
+ 19264              	.LVL11:
+ 19265 0060 9942     		cmp	r1, r3
+ 19266 0062 09D2     		bcs	.L6
+ 19267 0064 0A46     		mov	r2, r1
+ 19268              	.LVL12:
+ 19269              	.L7:
+  78:../src/conversion.c ****         c = *p, *p = *q, *q = c;
+ 19270              		.loc 1 78 0
+ 19271 0066 1078     		ldrb	r0, [r2, #0]	@ zero_extendqisi2
+ 19272              	.LVL13:
+ 19273 0068 93F800C0 		ldrb	ip, [r3, #0]	@ zero_extendqisi2
+ 19274              	.LVL14:
+ 19275 006c 02F801CB 		strb	ip, [r2], #1
+ 19276 0070 03F80109 		strb	r0, [r3], #-1
+ 19277              		.loc 1 77 0
+ 19278 0074 9A42     		cmp	r2, r3
+ 19279 0076 F6D3     		bcc	.L7
+ 19280              	.LVL15:
+ 19281              	.L6:
+  79:../src/conversion.c ****     return str;
+  80:../src/conversion.c **** }
+ 19282              		.loc 1 80 0
+ 19283 0078 0846     		mov	r0, r1
+ 19284              	.LVL16:
+ 19285 007a 30BC     		pop	{r4, r5}
+ 19286 007c 7047     		bx	lr
+ 19287              		.cfi_endproc
+ 19288              	.LFE30:
+ 19290 007e 00BF     		.section	.text.myatoi,"ax",%progbits
+ 19291              		.align	2
+ 19292              		.global	myatoi
+ 19293              		.thumb
+ 19294              		.thumb_func
+ 19296              	myatoi:
+ 19297              	.LFB32:
+  81:../src/conversion.c **** 
+  82:../src/conversion.c **** int xtoi(const char* xs, unsigned int* result)
+  83:../src/conversion.c **** {
+  84:../src/conversion.c ****  size_t szlen = strlen(xs);
+  85:../src/conversion.c ****  int i, xv, fact;
+  86:../src/conversion.c **** 
+  87:../src/conversion.c ****  if (szlen > 0)
+  88:../src/conversion.c ****  {
+  89:../src/conversion.c ****   // Converting more than 32bit hexadecimal value?
+  90:../src/conversion.c ****   if (szlen>8) return 2; // exit
+  91:../src/conversion.c **** 
+  92:../src/conversion.c ****   // Begin conversion here
+  93:../src/conversion.c ****   *result = 0;
+  94:../src/conversion.c ****   fact = 1;
+  95:../src/conversion.c **** 
+  96:../src/conversion.c ****   // Run until no more character to convert
+  97:../src/conversion.c ****   for(i=szlen-1; i>=0 ;i--)
+  98:../src/conversion.c ****   {
+  99:../src/conversion.c ****    if (isxdigit(*(xs+i)))
+ 100:../src/conversion.c ****    {
+ 101:../src/conversion.c ****     if (*(xs+i)>=97)
+ 102:../src/conversion.c ****     {
+ 103:../src/conversion.c ****      xv = ( *(xs+i) - 97) + 10;
+ 104:../src/conversion.c ****     }
+ 105:../src/conversion.c ****     else if ( *(xs+i) >= 65)
+ 106:../src/conversion.c ****     {
+ 107:../src/conversion.c ****      xv = (*(xs+i) - 65) + 10;
+ 108:../src/conversion.c ****     }
+ 109:../src/conversion.c ****     else
+ 110:../src/conversion.c ****     {
+ 111:../src/conversion.c ****      xv = *(xs+i) - 48;
+ 112:../src/conversion.c ****     }
+ 113:../src/conversion.c ****     *result += (xv * fact);
+ 114:../src/conversion.c ****     fact *= 16;
+ 115:../src/conversion.c ****    }
+ 116:../src/conversion.c ****    else
+ 117:../src/conversion.c ****    {
+ 118:../src/conversion.c ****     // Conversion was abnormally terminated
+ 119:../src/conversion.c ****     // by non hexadecimal digit, hence
+ 120:../src/conversion.c ****     // returning only the converted with
+ 121:../src/conversion.c ****     // an error value 4 (illegal hex character)
+ 122:../src/conversion.c ****     return 4;
+ 123:../src/conversion.c ****    }
+ 124:../src/conversion.c ****   }
+ 125:../src/conversion.c ****  }
+ 126:../src/conversion.c **** 
+ 127:../src/conversion.c ****  // Nothing to convert
+ 128:../src/conversion.c ****  return 1;
+ 129:../src/conversion.c **** }
+ 130:../src/conversion.c **** 
+ 131:../src/conversion.c **** uint16_t myatoi(const char *string)
+ 132:../src/conversion.c **** {
+ 19298              		.loc 1 132 0
+ 19299              		.cfi_startproc
+ 19300              		@ args = 0, pretend = 0, frame = 0
+ 19301              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19302              		@ link register save eliminated.
+ 19303              	.LVL17:
+ 133:../src/conversion.c ****  uint16_t i =0;
+ 134:../src/conversion.c **** 	
+ 135:../src/conversion.c ****  while(*string)
+ 19304              		.loc 1 135 0
+ 19305 0000 0378     		ldrb	r3, [r0, #0]	@ zero_extendqisi2
+ 19306 0002 13B9     		cbnz	r3, .L12
+ 19307 0004 4FF00000 		mov	r0, #0
+ 19308              	.LVL18:
+ 19309 0008 7047     		bx	lr
+ 19310              	.LVL19:
+ 19311              	.L12:
+ 19312 000a 0246     		mov	r2, r0
+ 19313 000c 4FF00000 		mov	r0, #0
+ 19314              	.LVL20:
+ 19315              	.L14:
+ 136:../src/conversion.c ****  {
+ 137:../src/conversion.c ****  i=(i<<3) + (i<<1) + (*string - '0');
+ 19316              		.loc 1 137 0
+ 19317 0010 4FEA4001 		lsl	r1, r0, #1
+ 19318 0014 01EBC000 		add	r0, r1, r0, lsl #3
+ 19319              	.LVL21:
+ 19320 0018 A0F13000 		sub	r0, r0, #48
+ 19321 001c 0344     		add	r3, r0, r3
+ 19322 001e 98B2     		uxth	r0, r3
+ 19323              	.LVL22:
+ 19324              		.loc 1 135 0
+ 19325 0020 12F8013F 		ldrb	r3, [r2, #1]!	@ zero_extendqisi2
+ 19326 0024 002B     		cmp	r3, #0
+ 19327 0026 F3D1     		bne	.L14
+ 19328              	.LVL23:
+ 138:../src/conversion.c ****  string++;
+ 139:../src/conversion.c **** 
+ 140:../src/conversion.c ****  // Dont increment i!
+ 141:../src/conversion.c **** 
+ 142:../src/conversion.c ****  }
+ 143:../src/conversion.c ****  return(i);
+ 144:../src/conversion.c **** }
+ 19329              		.loc 1 144 0
+ 19330 0028 7047     		bx	lr
+ 19331              		.cfi_endproc
+ 19332              	.LFE32:
+ 19334 002a 00BF     		.section	.text.xtoi,"ax",%progbits
+ 19335              		.align	2
+ 19336              		.global	xtoi
+ 19337              		.thumb
+ 19338              		.thumb_func
+ 19340              	xtoi:
+ 19341              	.LFB31:
+ 19342              		.loc 1 83 0
+ 19343              		.cfi_startproc
+ 19344              		@ args = 0, pretend = 0, frame = 0
+ 19345              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19346              	.LVL24:
+ 19347 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 19348              	.LCFI1:
+ 19349              		.cfi_def_cfa_offset 24
+ 19350 0002 0546     		mov	r5, r0
+ 19351              		.cfi_offset 14, -4
+ 19352              		.cfi_offset 7, -8
+ 19353              		.cfi_offset 6, -12
+ 19354              		.cfi_offset 5, -16
+ 19355              		.cfi_offset 4, -20
+ 19356              		.cfi_offset 3, -24
+ 19357 0004 0C46     		mov	r4, r1
+ 19358              		.loc 1 84 0
+ 19359 0006 FFF7FEFF 		bl	strlen
+ 19360              	.LVL25:
+ 19361              		.loc 1 87 0
+ 19362 000a 0346     		mov	r3, r0
+ 19363              	.LVL26:
+ 19364 000c 0028     		cmp	r0, #0
+ 19365 000e 41D0     		beq	.L18
+ 19366              		.loc 1 90 0
+ 19367 0010 0828     		cmp	r0, #8
+ 19368 0012 02D9     		bls	.L19
+ 19369              	.LVL27:
+ 19370 0014 4FF00200 		mov	r0, #2
+ 19371              	.LVL28:
+ 19372 0018 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 19373              	.LVL29:
+ 19374              	.L19:
+ 19375              		.loc 1 93 0
+ 19376 001a 4FF00002 		mov	r2, #0
+ 19377 001e 2260     		str	r2, [r4, #0]
+ 19378              		.loc 1 97 0
+ 19379 0020 00F1FF32 		add	r2, r0, #-1
+ 19380 0024 1146     		mov	r1, r2
+ 19381              	.LVL30:
+ 19382 0026 002A     		cmp	r2, #0
+ 19383 0028 34DB     		blt	.L18
+ 19384              		.loc 1 99 0
+ 19385 002a AA5C     		ldrb	r2, [r5, r2]	@ zero_extendqisi2
+ 19386 002c 1046     		mov	r0, r2
+ 19387              	.LVL31:
+ 19388 002e 40F20006 		movw	r6, #:lower16:__ctype_ptr__
+ 19389 0032 C0F20006 		movt	r6, #:upper16:__ctype_ptr__
+ 19390 0036 3668     		ldr	r6, [r6, #0]
+ 19391 0038 1644     		add	r6, r2, r6
+ 19392 003a 96F801C0 		ldrb	ip, [r6, #1]	@ zero_extendqisi2
+ 19393 003e 1CF0440F 		tst	ip, #68
+ 19394 0042 24D0     		beq	.L21
+ 19395 0044 1D44     		add	r5, r5, r3
+ 19396              	.LVL32:
+ 19397 0046 4FF00103 		mov	r3, #1
+ 19398              	.LVL33:
+ 19399 004a 40F20007 		movw	r7, #:lower16:__ctype_ptr__
+ 19400 004e C0F20007 		movt	r7, #:upper16:__ctype_ptr__
+ 19401 0052 0DE0     		b	.L22
+ 19402              	.L26:
+ 19403 0054 15F8022C 		ldrb	r2, [r5, #-2]	@ zero_extendqisi2
+ 19404 0058 1046     		mov	r0, r2
+ 19405 005a 05F1FF35 		add	r5, r5, #-1
+ 19406 005e 3E68     		ldr	r6, [r7, #0]
+ 19407 0060 1644     		add	r6, r2, r6
+ 19408 0062 96F801C0 		ldrb	ip, [r6, #1]	@ zero_extendqisi2
+ 19409 0066 1CF0440F 		tst	ip, #68
+ 19410 006a 10D0     		beq	.L21
+ 19411              		.loc 1 114 0
+ 19412 006c 4FEA0313 		lsl	r3, r3, #4
+ 19413              	.L22:
+ 19414              		.loc 1 101 0
+ 19415 0070 602A     		cmp	r2, #96
+ 19416              		.loc 1 103 0
+ 19417 0072 88BF     		it	hi
+ 19418 0074 5738     		subhi	r0, r0, #87
+ 19419              	.LVL34:
+ 19420              		.loc 1 101 0
+ 19421 0076 03D8     		bhi	.L24
+ 19422              		.loc 1 105 0
+ 19423 0078 402A     		cmp	r2, #64
+ 19424              		.loc 1 107 0
+ 19425 007a 8CBF     		ite	hi
+ 19426 007c 3738     		subhi	r0, r0, #55
+ 19427              	.LVL35:
+ 19428              		.loc 1 111 0
+ 19429 007e 3038     		subls	r0, r0, #48
+ 19430              	.LVL36:
+ 19431              	.L24:
+ 19432              		.loc 1 113 0
+ 19433 0080 2268     		ldr	r2, [r4, #0]
+ 19434 0082 03FB0020 		mla	r0, r3, r0, r2
+ 19435              	.LVL37:
+ 19436 0086 2060     		str	r0, [r4, #0]
+ 19437              		.loc 1 97 0
+ 19438 0088 0139     		subs	r1, r1, #1
+ 19439 008a E3D5     		bpl	.L26
+ 19440 008c 02E0     		b	.L18
+ 19441              	.LVL38:
+ 19442              	.L21:
+ 19443 008e 4FF00400 		mov	r0, #4
+ 19444 0092 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 19445              	.LVL39:
+ 19446              	.L18:
+ 19447 0094 4FF00100 		mov	r0, #1
+ 19448              		.loc 1 129 0
+ 19449 0098 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 19450              		.cfi_endproc
+ 19451              	.LFE31:
+ 19453 009a 00BF     		.section	.text.dec2hex,"ax",%progbits
+ 19454              		.align	2
+ 19455              		.global	dec2hex
+ 19456              		.thumb
+ 19457              		.thumb_func
+ 19459              	dec2hex:
+ 19460              	.LFB29:
+ 19461              		.loc 1 5 0
+ 19462              		.cfi_startproc
+ 19463              		@ args = 0, pretend = 0, frame = 40
+ 19464              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19465              	.LVL40:
+ 19466 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 19467              	.LCFI2:
+ 19468              		.cfi_def_cfa_offset 36
+ 19469 0004 8BB0     		sub	sp, sp, #44
+ 19470              	.LCFI3:
+ 19471              		.cfi_def_cfa_offset 80
+ 19472              		.loc 1 9 0
+ 19473 0006 0346     		mov	r3, r0
+ 19474 0008 0028     		cmp	r0, #0
+ 19475 000a 48D0     		beq	.L42
+ 19476              		.cfi_offset 14, -4
+ 19477              		.cfi_offset 11, -8
+ 19478              		.cfi_offset 10, -12
+ 19479              		.cfi_offset 9, -16
+ 19480              		.cfi_offset 8, -20
+ 19481              		.cfi_offset 7, -24
+ 19482              		.cfi_offset 6, -28
+ 19483              		.cfi_offset 5, -32
+ 19484              		.cfi_offset 4, -36
+ 19485 000c 4FF00004 		mov	r4, #0
+ 19486              	.LVL41:
+ 19487              		.loc 1 11 0
+ 19488 0010 6946     		mov	r1, sp
+ 19489              	.LVL42:
+ 19490              	.L31:
+ 19491 0012 03F00F02 		and	r2, r3, #15
+ 19492 0016 41F82420 		str	r2, [r1, r4, lsl #2]
+ 19493              		.loc 1 13 0
+ 19494 001a 04F10102 		add	r2, r4, #1
+ 19495              	.LVL43:
+ 19496              		.loc 1 9 0
+ 19497 001e 1B09     		lsrs	r3, r3, #4
+ 19498 0020 01D0     		beq	.L30
+ 19499 0022 1446     		mov	r4, r2
+ 19500 0024 F5E7     		b	.L31
+ 19501              	.LVL44:
+ 19502              	.L30:
+ 19503              		.loc 1 17 0
+ 19504 0026 002C     		cmp	r4, #0
+ 19505 0028 39DB     		blt	.L42
+ 19506              	.LVL45:
+ 19507 002a 6D46     		mov	r5, sp
+ 19508 002c 05EB8405 		add	r5, r5, r4, lsl #2
+ 19509              	.LVL46:
+ 19510              		.loc 1 42 0
+ 19511 0030 4FF04606 		mov	r6, #70
+ 19512              		.loc 1 38 0
+ 19513 0034 4FF04507 		mov	r7, #69
+ 19514              		.loc 1 34 0
+ 19515 0038 4FF04408 		mov	r8, #68
+ 19516              		.loc 1 30 0
+ 19517 003c 4FF0430A 		mov	sl, #67
+ 19518              		.loc 1 26 0
+ 19519 0040 4FF04209 		mov	r9, #66
+ 19520              		.loc 1 22 0
+ 19521 0044 4FF0410B 		mov	fp, #65
+ 19522              	.L41:
+ 19523              		.loc 1 19 0
+ 19524 0048 2A68     		ldr	r2, [r5, #0]
+ 19525 004a A2F10A03 		sub	r3, r2, #10
+ 19526              	.LVL47:
+ 19527 004e 052B     		cmp	r3, #5
+ 19528 0050 1CD8     		bhi	.L32
+ 19529 0052 DFE803F0 		tbb	[pc, r3]
+ 19530              	.L39:
+ 19531 0056 03       		.byte	(.L33-.L39)/2
+ 19532 0057 07       		.byte	(.L34-.L39)/2
+ 19533 0058 0B       		.byte	(.L35-.L39)/2
+ 19534 0059 0F       		.byte	(.L36-.L39)/2
+ 19535 005a 13       		.byte	(.L37-.L39)/2
+ 19536 005b 17       		.byte	(.L38-.L39)/2
+ 19537              		.align	1
+ 19538              	.L33:
+ 19539              		.loc 1 22 0
+ 19540 005c 5846     		mov	r0, fp
+ 19541 005e FFF7FEFF 		bl	SendChar
+ 19542              		.loc 1 23 0
+ 19543 0062 18E0     		b	.L40
+ 19544              	.L34:
+ 19545              		.loc 1 26 0
+ 19546 0064 4846     		mov	r0, r9
+ 19547 0066 FFF7FEFF 		bl	SendChar
+ 19548              		.loc 1 27 0
+ 19549 006a 14E0     		b	.L40
+ 19550              	.L35:
+ 19551              		.loc 1 30 0
+ 19552 006c 5046     		mov	r0, sl
+ 19553 006e FFF7FEFF 		bl	SendChar
+ 19554              		.loc 1 31 0
+ 19555 0072 10E0     		b	.L40
+ 19556              	.L36:
+ 19557              		.loc 1 34 0
+ 19558 0074 4046     		mov	r0, r8
+ 19559 0076 FFF7FEFF 		bl	SendChar
+ 19560              		.loc 1 35 0
+ 19561 007a 0CE0     		b	.L40
+ 19562              	.L37:
+ 19563              		.loc 1 38 0
+ 19564 007c 3846     		mov	r0, r7
+ 19565 007e FFF7FEFF 		bl	SendChar
+ 19566              		.loc 1 39 0
+ 19567 0082 08E0     		b	.L40
+ 19568              	.L38:
+ 19569              		.loc 1 42 0
+ 19570 0084 3046     		mov	r0, r6
+ 19571 0086 FFF7FEFF 		bl	SendChar
+ 19572              		.loc 1 43 0
+ 19573 008a 04E0     		b	.L40
+ 19574              	.L32:
+ 19575              		.loc 1 46 0
+ 19576 008c 02F13002 		add	r2, r2, #48
+ 19577 0090 50B2     		sxtb	r0, r2
+ 19578 0092 FFF7FEFF 		bl	SendChar
+ 19579              	.L40:
+ 19580              		.loc 1 17 0
+ 19581 0096 A5F10405 		sub	r5, r5, #4
+ 19582 009a 013C     		subs	r4, r4, #1
+ 19583              	.LVL48:
+ 19584 009c D4D5     		bpl	.L41
+ 19585              	.LVL49:
+ 19586              	.L42:
+ 19587              		.loc 1 52 0
+ 19588 009e 0BB0     		add	sp, sp, #44
+ 19589 00a0 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, sl, fp, pc}
+ 19590              		.cfi_endproc
+ 19591              	.LFE29:
+ 19593              		.section	.rodata.dig.3467,"a",%progbits
+ 19594              		.align	2
+ 19595              		.set	.LANCHOR0,. + 0
+ 19598              	dig.3467:
+ 19599 0000 30313233 		.ascii	"0123456789abcdefghijklmnopqrstuvwxyz\000"
+ 19599      34353637 
+ 19599      38396162 
+ 19599      63646566 
+ 19599      6768696A 
+ 19600 0025 000000   		.text
+ 19601              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 conversion.c
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19194  .text.itoa:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19199  .text.itoa:00000000 itoa
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19595  .rodata.dig.3467:00000000 .LANCHOR0
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19291  .text.myatoi:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19296  .text.myatoi:00000000 myatoi
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19335  .text.xtoi:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19340  .text.xtoi:00000000 xtoi
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19454  .text.dec2hex:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19459  .text.dec2hex:00000000 dec2hex
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19531  .text.dec2hex:00000056 $d
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19537  .text.dec2hex:0000005c $t
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19594  .rodata.dig.3467:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccZKHu17.s:19598  .rodata.dig.3467:00000000 dig.3467
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+strlen
+__ctype_ptr__
+SendChar

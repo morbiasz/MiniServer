@@ -1,0 +1,427 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"timeconversions.c"
+  23              	.Ltext0:
+  24              		.file 1 "../SERVER/timeconversions.c"
+ 2157              		.align	2
+ 2158              		.global	monthlen
+ 2159              		.thumb
+ 2160              		.thumb_func
+ 2162              	monthlen:
+ 2163              	.LFB0:
+   1:../SERVER/timeconversions.c **** /*********************************************
+   2:../SERVER/timeconversions.c ****  * vim:sw=8:ts=8:si:et
+   3:../SERVER/timeconversions.c ****  * To use the above modeline in vim you must have "set modeline" in your .vimrc
+   4:../SERVER/timeconversions.c ****  * Author: Guido Socher
+   5:../SERVER/timeconversions.c ****  * Copyright: GPL V2
+   6:../SERVER/timeconversions.c ****  * See http://www.gnu.org/licenses/gpl.html
+   7:../SERVER/timeconversions.c ****  *
+   8:../SERVER/timeconversions.c ****  * functions to convert ntp timestamps into time and date
+   9:../SERVER/timeconversions.c ****  *********************************************/
+  10:../SERVER/timeconversions.c **** 
+  11:../SERVER/timeconversions.c **** #include <stdio.h>
+  12:../SERVER/timeconversions.c **** #include <inttypes.h> 
+  13:../SERVER/timeconversions.c **** 
+  14:../SERVER/timeconversions.c **** // EPOCH = Jan 1 1970 00:00:00
+  15:../SERVER/timeconversions.c **** #define	EPOCH_YR	1970
+  16:../SERVER/timeconversions.c **** //(24L * 60L * 60L)
+  17:../SERVER/timeconversions.c **** #define	SECS_DAY	86400UL  
+  18:../SERVER/timeconversions.c **** #define	LEAPYEAR(year)	(!((year) % 4) && (((year) % 100) || !((year) % 400)))
+  19:../SERVER/timeconversions.c **** #define	YEARSIZE(year)	(LEAPYEAR(year) ? 366 : 365)
+  20:../SERVER/timeconversions.c **** 
+  21:../SERVER/timeconversions.c **** static const char day_abbrev[] = "SunMonTueWedThuFriSat";
+  22:../SERVER/timeconversions.c **** 
+  23:../SERVER/timeconversions.c **** // isleapyear = 0-1
+  24:../SERVER/timeconversions.c **** // month=0-11
+  25:../SERVER/timeconversions.c **** // return: how many days a month has
+  26:../SERVER/timeconversions.c **** //
+  27:../SERVER/timeconversions.c **** // We could do this if ram was no issue:
+  28:../SERVER/timeconversions.c **** //uint8_t monthlen(uint8_t isleapyear,uint8_t month){
+  29:../SERVER/timeconversions.c **** //const uint8_t mlen[2][12] = {
+  30:../SERVER/timeconversions.c **** //		{ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 },
+  31:../SERVER/timeconversions.c **** //		{ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 }
+  32:../SERVER/timeconversions.c **** //	};
+  33:../SERVER/timeconversions.c **** //	return(mlen[isleapyear][month]);
+  34:../SERVER/timeconversions.c **** //}
+  35:../SERVER/timeconversions.c **** //
+  36:../SERVER/timeconversions.c **** uint8_t monthlen(uint8_t isleapyear,uint8_t month){
+ 2164              		.loc 1 36 0
+ 2165              		.cfi_startproc
+ 2166              		@ args = 0, pretend = 0, frame = 0
+ 2167              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2168              		@ link register save eliminated.
+ 2169              	.LVL0:
+  37:../SERVER/timeconversions.c **** 	if(month==1){
+ 2170              		.loc 1 37 0
+ 2171 0000 0129     		cmp	r1, #1
+ 2172 0002 03D1     		bne	.L2
+  38:../SERVER/timeconversions.c **** 		return(28+isleapyear);
+ 2173              		.loc 1 38 0
+ 2174 0004 00F11C00 		add	r0, r0, #28
+ 2175              	.LVL1:
+ 2176 0008 C0B2     		uxtb	r0, r0
+ 2177 000a 7047     		bx	lr
+ 2178              	.LVL2:
+ 2179              	.L2:
+  39:../SERVER/timeconversions.c **** 	}
+  40:../SERVER/timeconversions.c **** 	if (month>6){
+ 2180              		.loc 1 40 0
+ 2181 000c 0629     		cmp	r1, #6
+  41:../SERVER/timeconversions.c **** 		month--;
+ 2182              		.loc 1 41 0
+ 2183 000e 84BF     		itt	hi
+ 2184 0010 01F1FF31 		addhi	r1, r1, #-1
+ 2185              	.LVL3:
+ 2186 0014 C9B2     		uxtbhi	r1, r1
+ 2187              	.LVL4:
+  42:../SERVER/timeconversions.c **** 	}
+  43:../SERVER/timeconversions.c **** 	if (month%2==1){
+ 2188              		.loc 1 43 0
+ 2189 0016 11F0010F 		tst	r1, #1
+ 2190 001a 14BF     		ite	ne
+ 2191 001c 1E20     		movne	r0, #30
+ 2192 001e 1F20     		moveq	r0, #31
+ 2193              	.LVL5:
+  44:../SERVER/timeconversions.c **** 		return(30);
+  45:../SERVER/timeconversions.c **** 	}
+  46:../SERVER/timeconversions.c **** 	return(31);
+  47:../SERVER/timeconversions.c **** }
+ 2194              		.loc 1 47 0
+ 2195 0020 7047     		bx	lr
+ 2196              		.cfi_endproc
+ 2197              	.LFE0:
+ 2199 0022 00BF     		.section	.text.gmtime,"ax",%progbits
+ 2200              		.align	2
+ 2201              		.global	gmtime
+ 2202              		.thumb
+ 2203              		.thumb_func
+ 2205              	gmtime:
+ 2206              	.LFB1:
+  48:../SERVER/timeconversions.c **** 
+  49:../SERVER/timeconversions.c **** // gmtime -- convert calendar time (sec since 1970) into broken down time
+  50:../SERVER/timeconversions.c **** // returns something like Fri 2007-10-19 in day and 01:02:21 in clock
+  51:../SERVER/timeconversions.c **** // The return values is the minutes as integer. This way you can update
+  52:../SERVER/timeconversions.c **** // the entire display when the minutes have changed and otherwise just
+  53:../SERVER/timeconversions.c **** // write current time (clock). That way an LCD display needs complete
+  54:../SERVER/timeconversions.c **** // re-write only every minute.
+  55:../SERVER/timeconversions.c **** uint8_t gmtime(const uint32_t time,char *day, char *clock)
+  56:../SERVER/timeconversions.c **** {
+ 2207              		.loc 1 56 0
+ 2208              		.cfi_startproc
+ 2209              		@ args = 0, pretend = 0, frame = 24
+ 2210              		@ frame_needed = 0, uses_anonymous_args = 0
+ 2211              	.LVL6:
+ 2212 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 2213              	.LCFI0:
+ 2214              		.cfi_def_cfa_offset 36
+ 2215 0004 89B0     		sub	sp, sp, #36
+ 2216              	.LCFI1:
+ 2217              		.cfi_def_cfa_offset 72
+ 2218 0006 0491     		str	r1, [sp, #16]
+ 2219 0008 0592     		str	r2, [sp, #20]
+  57:../SERVER/timeconversions.c ****    char dstr[4];
+  58:../SERVER/timeconversions.c ****    uint8_t i;
+  59:../SERVER/timeconversions.c ****    uint32_t dayclock;
+  60:../SERVER/timeconversions.c ****    uint16_t dayno;
+  61:../SERVER/timeconversions.c ****    uint16_t tm_year = EPOCH_YR;
+  62:../SERVER/timeconversions.c ****    uint8_t tm_sec,tm_min,tm_hour,tm_wday,tm_mon;
+  63:../SERVER/timeconversions.c **** 
+  64:../SERVER/timeconversions.c **** 	dayclock = time % SECS_DAY;
+ 2220              		.loc 1 64 0
+ 2221 000a 44F20754 		movw	r4, #:lower16:-1037155065
+ 2222              		.cfi_offset 14, -4
+ 2223              		.cfi_offset 11, -8
+ 2224              		.cfi_offset 10, -12
+ 2225              		.cfi_offset 9, -16
+ 2226              		.cfi_offset 8, -20
+ 2227              		.cfi_offset 7, -24
+ 2228              		.cfi_offset 6, -28
+ 2229              		.cfi_offset 5, -32
+ 2230              		.cfi_offset 4, -36
+ 2231 000e CCF22E24 		movt	r4, #:upper16:-1037155065
+ 2232 0012 A4FB0014 		umull	r1, r4, r4, r0
+ 2233              	.LVL7:
+ 2234 0016 4FEA1449 		lsr	r9, r4, #16
+ 2235              	.LVL8:
+ 2236 001a 45F28013 		movw	r3, #:lower16:86400
+ 2237 001e C0F20103 		movt	r3, #:upper16:86400
+ 2238 0022 03FB1909 		mls	r9, r3, r9, r0
+  65:../SERVER/timeconversions.c **** 	dayno = time / SECS_DAY;
+ 2239              		.loc 1 65 0
+ 2240 0026 4FEA1444 		lsr	r4, r4, #16
+ 2241              	.LVL9:
+  66:../SERVER/timeconversions.c **** 
+  67:../SERVER/timeconversions.c **** 	tm_sec = dayclock % 60UL;
+  68:../SERVER/timeconversions.c **** 	tm_min = (dayclock % 3600UL) / 60;
+ 2242              		.loc 1 68 0
+ 2243 002a 4BF2C533 		movw	r3, #:lower16:-1851608123
+ 2244 002e C9F2A213 		movt	r3, #:upper16:-1851608123
+ 2245 0032 A3FB0923 		umull	r2, r3, r3, r9
+ 2246              	.LVL10:
+ 2247 0036 4FEAD323 		lsr	r3, r3, #11
+ 2248 003a 4FF46162 		mov	r2, #3600
+ 2249 003e 02FB1392 		mls	r2, r2, r3, r9
+ 2250 0042 48F68903 		movw	r3, #:lower16:-2004318071
+ 2251 0046 C8F68803 		movt	r3, #:upper16:-2004318071
+ 2252 004a A3FB0253 		umull	r5, r3, r3, r2
+ 2253 004e C3F34713 		ubfx	r3, r3, #5, #8
+ 2254 0052 0393     		str	r3, [sp, #12]
+  69:../SERVER/timeconversions.c **** 	tm_hour = dayclock / 3600UL;
+  70:../SERVER/timeconversions.c **** 	tm_wday = (dayno + 4) % 7;	/* day 0 was a thursday */
+ 2255              		.loc 1 70 0
+ 2256 0054 04F10403 		add	r3, r4, #4
+ 2257 0058 42F29342 		movw	r2, #:lower16:-1840700269
+ 2258 005c C9F24922 		movt	r2, #:upper16:-1840700269
+ 2259 0060 82FB0312 		smull	r1, r2, r2, r3
+ 2260 0064 1A44     		add	r2, r2, r3
+ 2261 0066 4FEAA202 		asr	r2, r2, #2
+ 2262 006a C2EBC202 		rsb	r2, r2, r2, lsl #3
+ 2263 006e C2EB0303 		rsb	r3, r2, r3
+ 2264 0072 DBB2     		uxtb	r3, r3
+ 2265 0074 0293     		str	r3, [sp, #8]
+ 2266 0076 40F2B27B 		movw	fp, #1970
+ 2267              	.LVL11:
+  71:../SERVER/timeconversions.c **** 	while (dayno >= YEARSIZE(tm_year)) {
+ 2268              		.loc 1 71 0
+ 2269 007a 40F26D11 		movw	r1, #365
+ 2270 007e 48F21F52 		movw	r2, #:lower16:1374389535
+ 2271 0082 C5F2EB12 		movt	r2, #:upper16:1374389535
+ 2272 0086 4FF06400 		mov	r0, #100
+ 2273              	.LVL12:
+ 2274 008a 4FF4B77C 		mov	ip, #366
+ 2275 008e 4FF4C87E 		mov	lr, #400
+ 2276 0092 1AE0     		b	.L8
+ 2277              	.L15:
+  72:../SERVER/timeconversions.c **** 		dayno -= YEARSIZE(tm_year);
+ 2278              		.loc 1 72 0
+ 2279 0094 8EB9     		cbnz	r6, .L9
+ 2280 0096 A2FB0B53 		umull	r5, r3, r2, fp
+ 2281 009a 4FEA5313 		lsr	r3, r3, #5
+ 2282 009e 00FB13B3 		mls	r3, r0, r3, fp
+ 2283 00a2 9BB2     		uxth	r3, r3
+ 2284 00a4 3BB9     		cbnz	r3, .L10
+ 2285 00a6 A2FB0B53 		umull	r5, r3, r2, fp
+ 2286 00aa 4FEAD313 		lsr	r3, r3, #7
+ 2287 00ae 0EFB13B3 		mls	r3, lr, r3, fp
+ 2288 00b2 9BB2     		uxth	r3, r3
+ 2289 00b4 0BB9     		cbnz	r3, .L9
+ 2290              	.L10:
+ 2291 00b6 6346     		mov	r3, ip
+ 2292 00b8 00E0     		b	.L11
+ 2293              	.L9:
+ 2294 00ba 0B46     		mov	r3, r1
+ 2295              	.L11:
+ 2296 00bc C3EB0404 		rsb	r4, r3, r4
+ 2297              	.LVL13:
+ 2298 00c0 A4B2     		uxth	r4, r4
+ 2299              	.LVL14:
+  73:../SERVER/timeconversions.c **** 		tm_year++;
+ 2300              		.loc 1 73 0
+ 2301 00c2 0BF1010B 		add	fp, fp, #1
+ 2302              	.LVL15:
+ 2303 00c6 1FFA8BFB 		uxth	fp, fp
+ 2304              	.LVL16:
+ 2305              	.L8:
+ 2306              		.loc 1 71 0
+ 2307 00ca 5F46     		mov	r7, fp
+ 2308 00cc 1BF00306 		ands	r6, fp, #3
+ 2309 00d0 11D1     		bne	.L12
+ 2310 00d2 A2FB0B53 		umull	r5, r3, r2, fp
+ 2311 00d6 4FEA5313 		lsr	r3, r3, #5
+ 2312 00da 00FB13B3 		mls	r3, r0, r3, fp
+ 2313 00de 9BB2     		uxth	r3, r3
+ 2314 00e0 3BB9     		cbnz	r3, .L13
+ 2315 00e2 A2FB0B53 		umull	r5, r3, r2, fp
+ 2316 00e6 4FEAD313 		lsr	r3, r3, #7
+ 2317 00ea 0EFB13B3 		mls	r3, lr, r3, fp
+ 2318 00ee 9BB2     		uxth	r3, r3
+ 2319 00f0 0BB9     		cbnz	r3, .L12
+ 2320              	.L13:
+ 2321 00f2 6346     		mov	r3, ip
+ 2322 00f4 00E0     		b	.L14
+ 2323              	.L12:
+ 2324 00f6 0B46     		mov	r3, r1
+ 2325              	.L14:
+ 2326 00f8 A342     		cmp	r3, r4
+ 2327 00fa CBDD     		ble	.L15
+  74:../SERVER/timeconversions.c **** 	}
+  75:../SERVER/timeconversions.c **** 	tm_mon = 0;
+  76:../SERVER/timeconversions.c **** 	while (dayno >= monthlen(LEAPYEAR(tm_year),tm_mon)) {
+ 2328              		.loc 1 76 0
+ 2329 00fc 48F21F53 		movw	r3, #:lower16:1374389535
+ 2330 0100 C5F2EB13 		movt	r3, #:upper16:1374389535
+ 2331 0104 A3FB0B13 		umull	r1, r3, r3, fp
+ 2332 0108 4FEA5312 		lsr	r2, r3, #5
+ 2333 010c 4FF06408 		mov	r8, #100
+ 2334 0110 08FB12B8 		mls	r8, r8, r2, fp
+ 2335 0114 1FFA88F8 		uxth	r8, r8
+ 2336 0118 4FEAD313 		lsr	r3, r3, #7
+ 2337 011c 4FF4C872 		mov	r2, #400
+ 2338 0120 02FB13BB 		mls	fp, r2, r3, fp
+ 2339              	.LVL17:
+ 2340 0124 1FFA8BFB 		uxth	fp, fp
+ 2341 0128 4FF00005 		mov	r5, #0
+ 2342              	.LVL18:
+ 2343 012c AA46     		mov	sl, r5
+ 2344 012e 3B46     		mov	r3, r7
+ 2345 0130 4746     		mov	r7, r8
+ 2346 0132 9846     		mov	r8, r3
+ 2347 0134 13E0     		b	.L16
+ 2348              	.L23:
+  77:../SERVER/timeconversions.c **** 		dayno -= monthlen(LEAPYEAR(tm_year),tm_mon);
+ 2349              		.loc 1 77 0
+ 2350 0136 0EB1     		cbz	r6, .L17
+ 2351 0138 5046     		mov	r0, sl
+ 2352 013a 07E0     		b	.L18
+ 2353              	.L17:
+ 2354 013c 17B1     		cbz	r7, .L19
+ 2355 013e 4FF00100 		mov	r0, #1
+ 2356 0142 03E0     		b	.L18
+ 2357              	.L19:
+ 2358 0144 DBF10100 		rsbs	r0, fp, #1
+ 2359 0148 38BF     		it	cc
+ 2360 014a 0020     		movcc	r0, #0
+ 2361              	.L18:
+ 2362 014c 2946     		mov	r1, r5
+ 2363 014e FFF7FEFF 		bl	monthlen
+ 2364 0152 C0EB0404 		rsb	r4, r0, r4
+ 2365              	.LVL19:
+ 2366 0156 A4B2     		uxth	r4, r4
+ 2367              	.LVL20:
+  78:../SERVER/timeconversions.c **** 		tm_mon++;
+ 2368              		.loc 1 78 0
+ 2369 0158 05F10105 		add	r5, r5, #1
+ 2370              	.LVL21:
+ 2371 015c EDB2     		uxtb	r5, r5
+ 2372              	.LVL22:
+ 2373              	.L16:
+ 2374              		.loc 1 76 0
+ 2375 015e 0EB1     		cbz	r6, .L20
+ 2376 0160 5046     		mov	r0, sl
+ 2377 0162 07E0     		b	.L21
+ 2378              	.L20:
+ 2379 0164 17B1     		cbz	r7, .L22
+ 2380 0166 4FF00100 		mov	r0, #1
+ 2381 016a 03E0     		b	.L21
+ 2382              	.L22:
+ 2383 016c DBF10100 		rsbs	r0, fp, #1
+ 2384 0170 38BF     		it	cc
+ 2385 0172 0020     		movcc	r0, #0
+ 2386              	.L21:
+ 2387 0174 2946     		mov	r1, r5
+ 2388 0176 FFF7FEFF 		bl	monthlen
+ 2389 017a 8442     		cmp	r4, r0
+ 2390 017c DBD2     		bcs	.L23
+ 2391 017e 4746     		mov	r7, r8
+  79:../SERVER/timeconversions.c **** 	}
+  80:../SERVER/timeconversions.c ****         i=0;
+  81:../SERVER/timeconversions.c ****         while (i<3){
+  82:../SERVER/timeconversions.c ****                 dstr[i]= (day_abbrev[tm_wday*3 + i]); 
+ 2392              		.loc 1 82 0
+ 2393 0180 029B     		ldr	r3, [sp, #8]
+ 2394 0182 03EB4302 		add	r2, r3, r3, lsl #1
+ 2395 0186 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 2396 018a C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 2397 018e 995C     		ldrb	r1, [r3, r2]	@ zero_extendqisi2
+ 2398 0190 8DF81C10 		strb	r1, [sp, #28]
+ 2399 0194 1344     		add	r3, r2, r3
+ 2400 0196 5A78     		ldrb	r2, [r3, #1]	@ zero_extendqisi2
+ 2401 0198 8DF81D20 		strb	r2, [sp, #29]
+ 2402 019c 9B78     		ldrb	r3, [r3, #2]	@ zero_extendqisi2
+ 2403 019e 8DF81E30 		strb	r3, [sp, #30]
+  83:../SERVER/timeconversions.c ****                 i++;
+  84:../SERVER/timeconversions.c ****         }
+  85:../SERVER/timeconversions.c ****         dstr[3]='\0';
+ 2404              		.loc 1 85 0
+ 2405 01a2 4FF00003 		mov	r3, #0
+ 2406 01a6 8DF81F30 		strb	r3, [sp, #31]
+  86:../SERVER/timeconversions.c **** 	sprintf(day,"%s %u-%02u-%02u",dstr,tm_year,tm_mon+1,dayno + 1);
+ 2407              		.loc 1 86 0
+ 2408 01aa 05F10105 		add	r5, r5, #1
+ 2409              	.LVL23:
+ 2410 01ae 0095     		str	r5, [sp, #0]
+ 2411 01b0 04F10104 		add	r4, r4, #1
+ 2412              	.LVL24:
+ 2413 01b4 0194     		str	r4, [sp, #4]
+ 2414 01b6 0498     		ldr	r0, [sp, #16]
+ 2415 01b8 40F20001 		movw	r1, #:lower16:.LC0
+ 2416 01bc C0F20001 		movt	r1, #:upper16:.LC0
+ 2417 01c0 07AA     		add	r2, sp, #28
+ 2418 01c2 4346     		mov	r3, r8
+ 2419 01c4 FFF7FEFF 		bl	sprintf
+  87:../SERVER/timeconversions.c **** 	sprintf(clock,"%02u:%02u:%02u",tm_hour,tm_min,tm_sec);
+ 2420              		.loc 1 87 0
+ 2421 01c8 4BF2C532 		movw	r2, #:lower16:-1851608123
+ 2422 01cc C9F2A212 		movt	r2, #:upper16:-1851608123
+ 2423 01d0 A2FB0952 		umull	r5, r2, r2, r9
+ 2424 01d4 48F68903 		movw	r3, #:lower16:-2004318071
+ 2425 01d8 C8F68803 		movt	r3, #:upper16:-2004318071
+ 2426 01dc A3FB0913 		umull	r1, r3, r3, r9
+ 2427 01e0 4FEA5313 		lsr	r3, r3, #5
+ 2428 01e4 C3EB0313 		rsb	r3, r3, r3, lsl #4
+ 2429 01e8 A9EB8303 		sub	r3, r9, r3, lsl #2
+ 2430 01ec DBB2     		uxtb	r3, r3
+ 2431 01ee 0093     		str	r3, [sp, #0]
+ 2432 01f0 0598     		ldr	r0, [sp, #20]
+ 2433 01f2 40F20001 		movw	r1, #:lower16:.LC1
+ 2434 01f6 C0F20001 		movt	r1, #:upper16:.LC1
+ 2435 01fa C2F3C722 		ubfx	r2, r2, #11, #8
+ 2436 01fe 039B     		ldr	r3, [sp, #12]
+ 2437 0200 FFF7FEFF 		bl	sprintf
+  88:../SERVER/timeconversions.c ****         return(tm_min);
+  89:../SERVER/timeconversions.c **** }
+ 2438              		.loc 1 89 0
+ 2439 0204 0398     		ldr	r0, [sp, #12]
+ 2440 0206 09B0     		add	sp, sp, #36
+ 2441 0208 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, sl, fp, pc}
+ 2442              		.cfi_endproc
+ 2443              	.LFE1:
+ 2445              		.section	.rodata.day_abbrev,"a",%progbits
+ 2446              		.align	2
+ 2447              		.set	.LANCHOR0,. + 0
+ 2450              	day_abbrev:
+ 2451 0000 53756E4D 		.ascii	"SunMonTueWedThuFriSat\000"
+ 2451      6F6E5475 
+ 2451      65576564 
+ 2451      54687546 
+ 2451      72695361 
+ 2452 0016 0000     		.section	.rodata.str1.4,"aMS",%progbits,1
+ 2453              		.align	2
+ 2454              	.LC0:
+ 2455 0000 25732025 		.ascii	"%s %u-%02u-%02u\000"
+ 2455      752D2530 
+ 2455      32752D25 
+ 2455      30327500 
+ 2456              	.LC1:
+ 2457 0010 25303275 		.ascii	"%02u:%02u:%02u\000"
+ 2457      3A253032 
+ 2457      753A2530 
+ 2457      327500
+ 2458 001f 00       		.text
+ 2459              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 timeconversions.c
+C:\Users\user\AppData\Local\Temp\ccPABjtY.s:2157   .text.monthlen:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccPABjtY.s:2162   .text.monthlen:00000000 monthlen
+C:\Users\user\AppData\Local\Temp\ccPABjtY.s:2200   .text.gmtime:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccPABjtY.s:2205   .text.gmtime:00000000 gmtime
+C:\Users\user\AppData\Local\Temp\ccPABjtY.s:2447   .rodata.day_abbrev:00000000 .LANCHOR0
+C:\Users\user\AppData\Local\Temp\ccPABjtY.s:2454   .rodata.str1.4:00000000 .LC0
+C:\Users\user\AppData\Local\Temp\ccPABjtY.s:2456   .rodata.str1.4:00000010 .LC1
+C:\Users\user\AppData\Local\Temp\ccPABjtY.s:2446   .rodata.day_abbrev:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccPABjtY.s:2450   .rodata.day_abbrev:00000000 day_abbrev
+C:\Users\user\AppData\Local\Temp\ccPABjtY.s:2453   .rodata.str1.4:00000000 $d
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+sprintf

@@ -1,0 +1,832 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"dnslkup.c"
+  23              	.Ltext0:
+  24              		.file 1 "../SERVER/dnslkup.c"
+ 19893              		.align	2
+ 19894              		.global	dnslkup_haveanswer
+ 19895              		.thumb
+ 19896              		.thumb_func
+ 19898              	dnslkup_haveanswer:
+ 19899              	.LFB29:
+   1:../SERVER/dnslkup.c **** /*********************************************
+   2:../SERVER/dnslkup.c ****  * vim:sw=8:ts=8:si:et
+   3:../SERVER/dnslkup.c ****  * To use the above modeline in vim you must have "set modeline" in your .vimrc
+   4:../SERVER/dnslkup.c ****  * Author: Guido Socher
+   5:../SERVER/dnslkup.c ****  * Copyright:LGPL V2
+   6:../SERVER/dnslkup.c ****  * See http://www.gnu.org/licenses/old-licenses/lgpl-2.0.html
+   7:../SERVER/dnslkup.c ****  *
+   8:../SERVER/dnslkup.c ****  * DNS look-up functions based on the udp client
+   9:../SERVER/dnslkup.c ****  *
+  10:../SERVER/dnslkup.c ****  *********************************************/
+  11:../SERVER/dnslkup.c **** 
+  12:../SERVER/dnslkup.c **** // http://www.nongnu.org/avr-libc/changes-1.8.html:
+  13:../SERVER/dnslkup.c **** 
+  14:../SERVER/dnslkup.c **** #include <string.h>
+  15:../SERVER/dnslkup.c **** #include <ctype.h>
+  16:../SERVER/dnslkup.c **** #include <stdlib.h>
+  17:../SERVER/dnslkup.c **** #include "tcpip/net.h"
+  18:../SERVER/dnslkup.c **** #include "../enc28j60/enc28j60.h"
+  19:../SERVER/dnslkup.c **** #include "tcpip/ip_arp_udp_tcp.h"
+  20:../SERVER/dnslkup.c **** #include "ip_config.h"
+  21:../SERVER/dnslkup.c **** 
+  22:../SERVER/dnslkup.c **** #ifndef UDP_client
+  23:../SERVER/dnslkup.c **** #error "ERROR: you need to enable UDP_client support in ip_config.h to use the DNS look-up"
+  24:../SERVER/dnslkup.c **** #endif
+  25:../SERVER/dnslkup.c **** 
+  26:../SERVER/dnslkup.c **** static uint8_t dnstid_l=0; // a counter for transaction ID
+  27:../SERVER/dnslkup.c **** // src port high byte must be a a0 or higher:
+  28:../SERVER/dnslkup.c **** #define DNSCLIENT_SRC_PORT_H 0xe0 
+  29:../SERVER/dnslkup.c **** static uint8_t dnsip[4]={8,8,8,8}; // the google public DNS, don't change unless there is a real ne
+  30:../SERVER/dnslkup.c **** static uint8_t haveDNSanswer=0;
+  31:../SERVER/dnslkup.c **** static uint8_t dns_answerip[4];
+  32:../SERVER/dnslkup.c **** static uint8_t dns_ansError=0;
+  33:../SERVER/dnslkup.c **** 
+  34:../SERVER/dnslkup.c **** 
+  35:../SERVER/dnslkup.c **** uint8_t dnslkup_haveanswer(void)
+  36:../SERVER/dnslkup.c **** {       
+ 19900              		.loc 1 36 0
+ 19901              		.cfi_startproc
+ 19902              		@ args = 0, pretend = 0, frame = 0
+ 19903              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19904              		@ link register save eliminated.
+ 19905              		.loc 1 36 0
+ 19906 0000 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 19907 0004 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+  37:../SERVER/dnslkup.c ****         return(haveDNSanswer);
+  38:../SERVER/dnslkup.c **** }
+ 19908              		.loc 1 38 0
+ 19909 0008 1878     		ldrb	r0, [r3, #0]	@ zero_extendqisi2
+ 19910 000a 7047     		bx	lr
+ 19911              		.cfi_endproc
+ 19912              	.LFE29:
+ 19914              		.section	.text.dnslkup_get_error_info,"ax",%progbits
+ 19915              		.align	2
+ 19916              		.global	dnslkup_get_error_info
+ 19917              		.thumb
+ 19918              		.thumb_func
+ 19920              	dnslkup_get_error_info:
+ 19921              	.LFB30:
+  39:../SERVER/dnslkup.c **** 
+  40:../SERVER/dnslkup.c **** uint8_t dnslkup_get_error_info(void)
+  41:../SERVER/dnslkup.c **** {       
+ 19922              		.loc 1 41 0
+ 19923              		.cfi_startproc
+ 19924              		@ args = 0, pretend = 0, frame = 0
+ 19925              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19926              		@ link register save eliminated.
+ 19927              		.loc 1 41 0
+ 19928 0000 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 19929 0004 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+  42:../SERVER/dnslkup.c ****         return(dns_ansError);
+  43:../SERVER/dnslkup.c **** }
+ 19930              		.loc 1 43 0
+ 19931 0008 1878     		ldrb	r0, [r3, #0]	@ zero_extendqisi2
+ 19932 000a 7047     		bx	lr
+ 19933              		.cfi_endproc
+ 19934              	.LFE30:
+ 19936              		.section	.text.dnslkup_get_ip,"ax",%progbits
+ 19937              		.align	2
+ 19938              		.global	dnslkup_get_ip
+ 19939              		.thumb
+ 19940              		.thumb_func
+ 19942              	dnslkup_get_ip:
+ 19943              	.LFB31:
+  44:../SERVER/dnslkup.c **** 
+  45:../SERVER/dnslkup.c **** // ip is the return value
+  46:../SERVER/dnslkup.c **** void dnslkup_get_ip(uint8_t *ip)
+  47:../SERVER/dnslkup.c **** {       
+ 19944              		.loc 1 47 0
+ 19945              		.cfi_startproc
+ 19946              		@ args = 0, pretend = 0, frame = 0
+ 19947              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19948              		@ link register save eliminated.
+ 19949              	.LVL0:
+ 19950              		.loc 1 47 0
+ 19951 0000 4FF00003 		mov	r3, #0
+  48:../SERVER/dnslkup.c ****         uint8_t i=0;
+  49:../SERVER/dnslkup.c ****         while(i<4){ip[i]=dns_answerip[i];i++;}
+ 19952              		.loc 1 49 0
+ 19953 0004 40F20002 		movw	r2, #:lower16:.LANCHOR2
+ 19954 0008 C0F20002 		movt	r2, #:upper16:.LANCHOR2
+ 19955              	.L6:
+ 19956 000c D15C     		ldrb	r1, [r2, r3]	@ zero_extendqisi2
+ 19957 000e C154     		strb	r1, [r0, r3]
+ 19958 0010 03F10103 		add	r3, r3, #1
+ 19959 0014 042B     		cmp	r3, #4
+ 19960 0016 F9D1     		bne	.L6
+  50:../SERVER/dnslkup.c **** }
+ 19961              		.loc 1 50 0
+ 19962 0018 7047     		bx	lr
+ 19963              		.cfi_endproc
+ 19964              	.LFE31:
+ 19966 001a 00BF     		.section	.text.string_is_ipv4,"ax",%progbits
+ 19967              		.align	2
+ 19968              		.global	string_is_ipv4
+ 19969              		.thumb
+ 19970              		.thumb_func
+ 19972              	string_is_ipv4:
+ 19973              	.LFB32:
+  51:../SERVER/dnslkup.c **** 
+  52:../SERVER/dnslkup.c **** // Determine if the string is a hostname or an IP address
+  53:../SERVER/dnslkup.c **** // A valid IP is e.g. "10.0.11.22"
+  54:../SERVER/dnslkup.c **** uint8_t string_is_ipv4(const char *str){
+ 19974              		.loc 1 54 0
+ 19975              		.cfi_startproc
+ 19976              		@ args = 0, pretend = 0, frame = 0
+ 19977              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19978              		@ link register save eliminated.
+ 19979              	.LVL1:
+ 19980 0000 70B4     		push	{r4, r5, r6}
+ 19981              	.LCFI0:
+ 19982              		.cfi_def_cfa_offset 12
+  55:../SERVER/dnslkup.c ****         uint8_t previous_char_was_digit=0;
+  56:../SERVER/dnslkup.c ****         uint8_t dotcnt=0;
+  57:../SERVER/dnslkup.c ****         while(*str){
+ 19983              		.loc 1 57 0
+ 19984 0002 0378     		ldrb	r3, [r0, #0]	@ zero_extendqisi2
+ 19985 0004 1BB9     		cbnz	r3, .L10
+ 19986              		.cfi_offset 6, -4
+ 19987              		.cfi_offset 5, -8
+ 19988              		.cfi_offset 4, -12
+ 19989 0006 4FF0000C 		mov	ip, #0
+ 19990              	.LVL2:
+ 19991 000a 6146     		mov	r1, ip
+ 19992              	.LVL3:
+ 19993 000c 24E0     		b	.L11
+ 19994              	.LVL4:
+ 19995              	.L10:
+  58:../SERVER/dnslkup.c ****                 if (isdigit(*str)){
+ 19996              		.loc 1 58 0
+ 19997 000e 40F20002 		movw	r2, #:lower16:__ctype_ptr__
+ 19998 0012 C0F20002 		movt	r2, #:upper16:__ctype_ptr__
+ 19999 0016 1468     		ldr	r4, [r2, #0]
+ 20000 0018 4FF0000C 		mov	ip, #0
+ 20001              	.LVL5:
+ 20002 001c 6146     		mov	r1, ip
+ 20003              	.LVL6:
+  59:../SERVER/dnslkup.c ****                         previous_char_was_digit=1;
+  60:../SERVER/dnslkup.c ****                 }else if (*str=='.' && previous_char_was_digit==1){
+  61:../SERVER/dnslkup.c ****                         previous_char_was_digit=0;
+  62:../SERVER/dnslkup.c ****                         dotcnt++;
+ 20004              		.loc 1 62 0
+ 20005 001e 6646     		mov	r6, ip
+ 20006              		.loc 1 58 0
+ 20007 0020 4FF00105 		mov	r5, #1
+ 20008              	.LVL7:
+ 20009              	.L16:
+ 20010 0024 03EB0402 		add	r2, r3, r4
+ 20011 0028 5278     		ldrb	r2, [r2, #1]	@ zero_extendqisi2
+ 20012 002a 12F0040F 		tst	r2, #4
+ 20013 002e 18BF     		it	ne
+ 20014 0030 2946     		movne	r1, r5
+ 20015 0032 0DD1     		bne	.L13
+ 20016              	.LVL8:
+ 20017              		.loc 1 60 0
+ 20018 0034 2E2B     		cmp	r3, #46
+ 20019 0036 14BF     		ite	ne
+ 20020 0038 0023     		movne	r3, #0
+ 20021 003a 01F00103 		andeq	r3, r1, #1
+ 20022 003e 13B9     		cbnz	r3, .L14
+ 20023 0040 4FF00000 		mov	r0, #0
+ 20024              	.LVL9:
+ 20025 0044 0EE0     		b	.L15
+ 20026              	.LVL10:
+ 20027              	.L14:
+ 20028              		.loc 1 62 0
+ 20029 0046 0CF1010C 		add	ip, ip, #1
+ 20030              	.LVL11:
+ 20031 004a 5FFA8CFC 		uxtb	ip, ip
+ 20032              	.LVL12:
+ 20033 004e 3146     		mov	r1, r6
+ 20034              	.L13:
+ 20035              		.loc 1 57 0
+ 20036 0050 10F8013F 		ldrb	r3, [r0, #1]!	@ zero_extendqisi2
+ 20037              	.LVL13:
+ 20038 0054 002B     		cmp	r3, #0
+ 20039 0056 E5D1     		bne	.L16
+ 20040              	.LVL14:
+ 20041              	.L11:
+ 20042 0058 BCF1030F 		cmp	ip, #3
+ 20043 005c 14BF     		ite	ne
+ 20044 005e 0020     		movne	r0, #0
+ 20045 0060 01F00100 		andeq	r0, r1, #1
+ 20046              	.LVL15:
+ 20047              	.L15:
+  63:../SERVER/dnslkup.c ****                 }else{
+  64:../SERVER/dnslkup.c ****                         return(0); // any other char: not an IP
+  65:../SERVER/dnslkup.c ****                 }
+  66:../SERVER/dnslkup.c ****                 str++;
+  67:../SERVER/dnslkup.c ****         }
+  68:../SERVER/dnslkup.c ****         if (previous_char_was_digit==1 && dotcnt==3){
+  69:../SERVER/dnslkup.c ****                 return(1); // ok looks like a numeric IP
+  70:../SERVER/dnslkup.c ****         }
+  71:../SERVER/dnslkup.c ****         return(0); // not an IP: did not end in a digit
+  72:../SERVER/dnslkup.c **** }
+ 20048              		.loc 1 72 0
+ 20049 0064 70BC     		pop	{r4, r5, r6}
+ 20050 0066 7047     		bx	lr
+ 20051              		.cfi_endproc
+ 20052              	.LFE32:
+ 20054              		.section	.text.udp_client_check_for_dns_answer,"ax",%progbits
+ 20055              		.align	2
+ 20056              		.global	udp_client_check_for_dns_answer
+ 20057              		.thumb
+ 20058              		.thumb_func
+ 20060              	udp_client_check_for_dns_answer:
+ 20061              	.LFB34:
+  73:../SERVER/dnslkup.c **** 
+  74:../SERVER/dnslkup.c **** // send a DNS udp request packet
+  75:../SERVER/dnslkup.c **** // See http://www.ietf.org/rfc/rfc1034.txt 
+  76:../SERVER/dnslkup.c **** // and http://www.ietf.org/rfc/rfc1035.txt
+  77:../SERVER/dnslkup.c **** // gwmac is the internal mac addess of your router
+  78:../SERVER/dnslkup.c **** // because we use 8.8.8.8 as a DNS server
+  79:../SERVER/dnslkup.c **** uint8_t dnslkup_request(uint8_t *buf,const char *hostname,const uint8_t *gwmac)
+  80:../SERVER/dnslkup.c **** {
+  81:../SERVER/dnslkup.c ****         uint8_t i,lenpos,lencnt;
+  82:../SERVER/dnslkup.c ****         haveDNSanswer=0;
+  83:../SERVER/dnslkup.c ****         if(!enc28j60linkup()){
+  84:../SERVER/dnslkup.c ****                 dns_ansError=4; // could not send request, link down
+  85:../SERVER/dnslkup.c ****                 return(1);
+  86:../SERVER/dnslkup.c ****         }
+  87:../SERVER/dnslkup.c ****         dns_ansError=0;
+  88:../SERVER/dnslkup.c ****         dnstid_l++; // increment for next request, finally wrap
+  89:../SERVER/dnslkup.c ****         send_udp_prepare(buf,(DNSCLIENT_SRC_PORT_H<<8)|(dnstid_l&0xff),dnsip,53,gwmac);
+  90:../SERVER/dnslkup.c ****         // fill tid:
+  91:../SERVER/dnslkup.c ****         //buf[UDP_DATA_P] see below
+  92:../SERVER/dnslkup.c ****         buf[UDP_DATA_P+1]=dnstid_l;
+  93:../SERVER/dnslkup.c ****         buf[UDP_DATA_P+2]=1; // flags, standard recursive query
+  94:../SERVER/dnslkup.c ****         i=3;
+  95:../SERVER/dnslkup.c ****         // most fields are zero, here we zero everything and fill later
+  96:../SERVER/dnslkup.c ****         while(i<12){ 
+  97:../SERVER/dnslkup.c ****                 buf[UDP_DATA_P+i]=0;
+  98:../SERVER/dnslkup.c ****                 i++;
+  99:../SERVER/dnslkup.c ****         }
+ 100:../SERVER/dnslkup.c ****         buf[UDP_DATA_P+5]=1; // 1 question
+ 101:../SERVER/dnslkup.c ****         // the structure of the domain name
+ 102:../SERVER/dnslkup.c ****         // we ask for is always length, string, length, string, ...
+ 103:../SERVER/dnslkup.c ****         // for earch portion of the name.
+ 104:../SERVER/dnslkup.c ****         // www.twitter.com would become: 3www7twitter3com
+ 105:../SERVER/dnslkup.c ****         // 
+ 106:../SERVER/dnslkup.c ****         // the first len starts at i=12
+ 107:../SERVER/dnslkup.c ****         lenpos=12;
+ 108:../SERVER/dnslkup.c ****         i=13;
+ 109:../SERVER/dnslkup.c ****         lencnt=1; // need to start with one as there is no dot before the domain name and the below
+ 110:../SERVER/dnslkup.c ****         while(*hostname){
+ 111:../SERVER/dnslkup.c ****                 if (*hostname=='\0') break;
+ 112:../SERVER/dnslkup.c ****                 if (*hostname=='.'){
+ 113:../SERVER/dnslkup.c ****                         buf[UDP_DATA_P+lenpos]=lencnt-1; // fill the length field
+ 114:../SERVER/dnslkup.c ****                         lencnt=0;
+ 115:../SERVER/dnslkup.c ****                         lenpos=i;
+ 116:../SERVER/dnslkup.c ****                 }
+ 117:../SERVER/dnslkup.c ****                 buf[UDP_DATA_P+i]=*hostname;
+ 118:../SERVER/dnslkup.c ****                 lencnt++;
+ 119:../SERVER/dnslkup.c ****                 i++;
+ 120:../SERVER/dnslkup.c ****                 hostname++;
+ 121:../SERVER/dnslkup.c ****         }
+ 122:../SERVER/dnslkup.c ****         buf[UDP_DATA_P+lenpos]=lencnt-1;
+ 123:../SERVER/dnslkup.c ****         buf[UDP_DATA_P+i]=0; // terminate with zero, means root domain.
+ 124:../SERVER/dnslkup.c ****         i++;
+ 125:../SERVER/dnslkup.c ****         buf[UDP_DATA_P+i]=0;
+ 126:../SERVER/dnslkup.c ****         i++;
+ 127:../SERVER/dnslkup.c ****         buf[UDP_DATA_P+i]=1; // type A
+ 128:../SERVER/dnslkup.c ****         i++;
+ 129:../SERVER/dnslkup.c ****         buf[UDP_DATA_P+i]=0; 
+ 130:../SERVER/dnslkup.c ****         i++;
+ 131:../SERVER/dnslkup.c ****         buf[UDP_DATA_P+i]=1; // class IN
+ 132:../SERVER/dnslkup.c ****         i++;
+ 133:../SERVER/dnslkup.c ****         // we encode the length into the upper byte of the TID
+ 134:../SERVER/dnslkup.c ****         // this way we can easily jump over the query section
+ 135:../SERVER/dnslkup.c ****         // of the answer:
+ 136:../SERVER/dnslkup.c ****         buf[UDP_DATA_P]=i-12;
+ 137:../SERVER/dnslkup.c ****         send_udp_transmit(buf,i);
+ 138:../SERVER/dnslkup.c ****         return(0);
+ 139:../SERVER/dnslkup.c **** }
+ 140:../SERVER/dnslkup.c **** 
+ 141:../SERVER/dnslkup.c **** // process the answer from the dns server:
+ 142:../SERVER/dnslkup.c **** // return 1 on sucessful processing of answer.
+ 143:../SERVER/dnslkup.c **** // We set also the variable haveDNSanswer
+ 144:../SERVER/dnslkup.c **** uint8_t udp_client_check_for_dns_answer(uint8_t *buf,uint16_t plen){
+ 20062              		.loc 1 144 0
+ 20063              		.cfi_startproc
+ 20064              		@ args = 0, pretend = 0, frame = 0
+ 20065              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20066              		@ link register save eliminated.
+ 20067              	.LVL16:
+ 145:../SERVER/dnslkup.c ****         uint8_t j,i;
+ 146:../SERVER/dnslkup.c ****         if (plen<70){
+ 20068              		.loc 1 146 0
+ 20069 0000 4529     		cmp	r1, #69
+ 20070 0002 40F29080 		bls	.L20
+ 147:../SERVER/dnslkup.c ****                 return(0);
+ 148:../SERVER/dnslkup.c ****         }
+ 149:../SERVER/dnslkup.c ****         if (buf[UDP_SRC_PORT_L_P]!=53){
+ 20071              		.loc 1 149 0
+ 20072 0006 90F82330 		ldrb	r3, [r0, #35]	@ zero_extendqisi2
+ 20073 000a 352B     		cmp	r3, #53
+ 20074 000c 40F08B80 		bne	.L20
+ 150:../SERVER/dnslkup.c ****                 // not from a DNS
+ 151:../SERVER/dnslkup.c ****                 return(0);
+ 152:../SERVER/dnslkup.c ****         }
+ 153:../SERVER/dnslkup.c ****         if (buf[UDP_DST_PORT_H_P]!=DNSCLIENT_SRC_PORT_H){ 
+ 20075              		.loc 1 153 0
+ 20076 0010 90F82430 		ldrb	r3, [r0, #36]	@ zero_extendqisi2
+ 20077 0014 E02B     		cmp	r3, #224
+ 20078 0016 40F08680 		bne	.L20
+ 154:../SERVER/dnslkup.c ****                 return(0);
+ 155:../SERVER/dnslkup.c ****         }
+ 156:../SERVER/dnslkup.c ****         // we use the TID also as port:
+ 157:../SERVER/dnslkup.c ****         if (buf[UDP_DST_PORT_L_P]!=dnstid_l){ 
+ 20079              		.loc 1 157 0
+ 20080 001a 90F82520 		ldrb	r2, [r0, #37]	@ zero_extendqisi2
+ 20081 001e 40F20003 		movw	r3, #:lower16:.LANCHOR3
+ 20082 0022 C0F20003 		movt	r3, #:upper16:.LANCHOR3
+ 20083 0026 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 20084 0028 9342     		cmp	r3, r2
+ 20085 002a 7CD1     		bne	.L20
+ 158:../SERVER/dnslkup.c ****                 return(0);
+ 159:../SERVER/dnslkup.c ****         }
+ 160:../SERVER/dnslkup.c ****         /* we can skip this check, it is quite unlikely that we
+ 161:../SERVER/dnslkup.c ****          * get a packet with the right tid from a DNS. Save some 
+ 162:../SERVER/dnslkup.c ****          * processing:
+ 163:../SERVER/dnslkup.c ****         // is the packet for my IP:
+ 164:../SERVER/dnslkup.c ****         if(eth_type_is_ip_and_my_ip(buf,plen)==0){
+ 165:../SERVER/dnslkup.c ****                 return(0);
+ 166:../SERVER/dnslkup.c ****         }
+ 167:../SERVER/dnslkup.c ****         */
+ 168:../SERVER/dnslkup.c ****         if (buf[UDP_DATA_P+1]!=dnstid_l){ 
+ 20086              		.loc 1 168 0
+ 20087 002c 90F82B30 		ldrb	r3, [r0, #43]	@ zero_extendqisi2
+ 20088 0030 9342     		cmp	r3, r2
+ 20089 0032 78D1     		bne	.L20
+ 169:../SERVER/dnslkup.c ****                 return(0);
+ 170:../SERVER/dnslkup.c ****         }
+ 171:../SERVER/dnslkup.c ****         // check flags lower byte:
+ 172:../SERVER/dnslkup.c ****         if ((buf[UDP_DATA_P+3]&0x8F)!=0x80){ 
+ 20090              		.loc 1 172 0
+ 20091 0034 90F82D30 		ldrb	r3, [r0, #45]	@ zero_extendqisi2
+ 20092 0038 03F08F03 		and	r3, r3, #143
+ 20093 003c 802B     		cmp	r3, #128
+ 20094 003e 09D0     		beq	.L21
+ 173:../SERVER/dnslkup.c ****                 // there is an error or server does not support recursive
+ 174:../SERVER/dnslkup.c ****                 // queries. We can only work with servers that support recursive
+ 175:../SERVER/dnslkup.c ****                 // queries.
+ 176:../SERVER/dnslkup.c ****                 dns_ansError=1;
+ 20095              		.loc 1 176 0
+ 20096 0040 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20097 0044 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20098 0048 4FF00102 		mov	r2, #1
+ 20099 004c 1A70     		strb	r2, [r3, #0]
+ 20100 004e 4FF00000 		mov	r0, #0
+ 20101              	.LVL17:
+ 177:../SERVER/dnslkup.c ****                 return(0);
+ 20102              		.loc 1 177 0
+ 20103 0052 7047     		bx	lr
+ 20104              	.LVL18:
+ 20105              	.L21:
+ 178:../SERVER/dnslkup.c ****         }
+ 179:../SERVER/dnslkup.c ****         // there might be multiple answers, we use only the first one
+ 180:../SERVER/dnslkup.c ****         //
+ 181:../SERVER/dnslkup.c ****         // UDP_DATA_P+12+querylen is first byte of first answer.
+ 182:../SERVER/dnslkup.c ****         // The answer contains again the domain name and we need to
+ 183:../SERVER/dnslkup.c ****         // jump over it to find the IP. This part can be abbreviated by
+ 184:../SERVER/dnslkup.c ****         // the use of 2 byte pointers. See RFC 1035.
+ 185:../SERVER/dnslkup.c ****         i=12+buf[UDP_DATA_P]; // we encoded the query len into tid
+ 20106              		.loc 1 185 0
+ 20107 0054 90F82A30 		ldrb	r3, [r0, #42]	@ zero_extendqisi2
+ 20108 0058 03F10C03 		add	r3, r3, #12
+ 20109 005c DBB2     		uxtb	r3, r3
+ 20110              	.LVL19:
+ 186:../SERVER/dnslkup.c **** ChecNextResp:
+ 187:../SERVER/dnslkup.c ****         if (buf[UDP_DATA_P+i] & 0xc0){
+ 188:../SERVER/dnslkup.c ****                 // pointer
+ 189:../SERVER/dnslkup.c ****                 i+=2;
+ 190:../SERVER/dnslkup.c ****         }else{
+ 191:../SERVER/dnslkup.c ****                 // we just search for the first, zero=root domain
+ 192:../SERVER/dnslkup.c ****                 // all other octets must be non zero
+ 193:../SERVER/dnslkup.c ****                 while(i<plen-UDP_DATA_P-7){
+ 20111              		.loc 1 193 0
+ 20112 005e A1F13101 		sub	r1, r1, #49
+ 20113              	.LVL20:
+ 20114              	.L23:
+ 20115              		.loc 1 187 0
+ 20116 0062 03EB0002 		add	r2, r3, r0
+ 20117 0066 92F82A20 		ldrb	r2, [r2, #42]	@ zero_extendqisi2
+ 20118 006a 12F0C00F 		tst	r2, #192
+ 20119              		.loc 1 189 0
+ 20120 006e 1CBF     		itt	ne
+ 20121 0070 0233     		addne	r3, r3, #2
+ 20122              	.LVL21:
+ 20123 0072 DBB2     		uxtbne	r3, r3
+ 20124              	.LVL22:
+ 20125              		.loc 1 187 0
+ 20126 0074 0ED1     		bne	.L25
+ 20127 0076 0BE0     		b	.L31
+ 20128              	.L26:
+ 194:../SERVER/dnslkup.c ****                         i++;
+ 20129              		.loc 1 194 0
+ 20130 0078 03F10103 		add	r3, r3, #1
+ 20131              	.LVL23:
+ 20132 007c DBB2     		uxtb	r3, r3
+ 20133              	.LVL24:
+ 195:../SERVER/dnslkup.c ****                         if (buf[UDP_DATA_P+i]==0){
+ 20134              		.loc 1 195 0
+ 20135 007e 03EB0002 		add	r2, r3, r0
+ 20136 0082 92F82A20 		ldrb	r2, [r2, #42]	@ zero_extendqisi2
+ 20137 0086 1AB9     		cbnz	r2, .L31
+ 196:../SERVER/dnslkup.c ****                                 i++;
+ 20138              		.loc 1 196 0
+ 20139 0088 03F10103 		add	r3, r3, #1
+ 20140              	.LVL25:
+ 20141 008c DBB2     		uxtb	r3, r3
+ 20142              	.LVL26:
+ 197:../SERVER/dnslkup.c ****                                 break;
+ 20143              		.loc 1 197 0
+ 20144 008e 01E0     		b	.L25
+ 20145              	.L31:
+ 20146              		.loc 1 193 0
+ 20147 0090 8B42     		cmp	r3, r1
+ 20148 0092 F1DB     		blt	.L26
+ 20149              	.L25:
+ 198:../SERVER/dnslkup.c ****                         }
+ 199:../SERVER/dnslkup.c ****                 }
+ 200:../SERVER/dnslkup.c ****         }
+ 201:../SERVER/dnslkup.c ****         // There might be multipe records in the answer. 
+ 202:../SERVER/dnslkup.c ****         // We are searching for an A record (contains IP).
+ 203:../SERVER/dnslkup.c ****         // Contributed by Andras Tucsni
+ 204:../SERVER/dnslkup.c ****         if (buf[UDP_DATA_P+i+1] != 1){    // check type == 1 for "A"
+ 20150              		.loc 1 204 0
+ 20151 0094 03EB0002 		add	r2, r3, r0
+ 20152 0098 92F82B20 		ldrb	r2, [r2, #43]	@ zero_extendqisi2
+ 20153 009c 012A     		cmp	r2, #1
+ 20154 009e 17D0     		beq	.L27
+ 205:../SERVER/dnslkup.c ****                 i += 2 + 2 + 4;    // skip type & class & TTL
+ 20155              		.loc 1 205 0
+ 20156 00a0 03F10803 		add	r3, r3, #8
+ 20157              	.LVL27:
+ 20158 00a4 DBB2     		uxtb	r3, r3
+ 20159              	.LVL28:
+ 206:../SERVER/dnslkup.c ****                 i += buf[UDP_DATA_P+i+1] + 2;    // skip datalength bytes
+ 20160              		.loc 1 206 0
+ 20161 00a6 03EB0002 		add	r2, r3, r0
+ 20162 00aa 92F82B20 		ldrb	r2, [r2, #43]	@ zero_extendqisi2
+ 20163 00ae 03F10203 		add	r3, r3, #2
+ 20164              	.LVL29:
+ 20165 00b2 1344     		add	r3, r3, r2
+ 20166 00b4 03F0FF03 		and	r3, r3, #255
+ 20167              	.LVL30:
+ 207:../SERVER/dnslkup.c ****                 if (i < plen-UDP_DATA_P-7){
+ 20168              		.loc 1 207 0
+ 20169 00b8 8B42     		cmp	r3, r1
+ 20170 00ba D2DB     		blt	.L23
+ 208:../SERVER/dnslkup.c ****                         goto ChecNextResp;
+ 209:../SERVER/dnslkup.c ****                 }
+ 210:../SERVER/dnslkup.c ****                 dns_ansError=3; // no A record found but packet ends 
+ 20171              		.loc 1 210 0
+ 20172 00bc 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20173              	.LVL31:
+ 20174 00c0 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20175 00c4 4FF00302 		mov	r2, #3
+ 20176 00c8 1A70     		strb	r2, [r3, #0]
+ 20177 00ca 4FF00000 		mov	r0, #0
+ 20178              	.LVL32:
+ 211:../SERVER/dnslkup.c ****                 return(0);
+ 20179              		.loc 1 211 0
+ 20180 00ce 7047     		bx	lr
+ 20181              	.LVL33:
+ 20182              	.L27:
+ 212:../SERVER/dnslkup.c ****         } 
+ 213:../SERVER/dnslkup.c ****         // We have an A record
+ 214:../SERVER/dnslkup.c ****         // i is now pointing to the high octet of the type field
+ 215:../SERVER/dnslkup.c ****         if (buf[UDP_DATA_P+i+9] !=4 ){
+ 20183              		.loc 1 215 0
+ 20184 00d0 03EB0002 		add	r2, r3, r0
+ 20185              	.LVL34:
+ 20186 00d4 92F83320 		ldrb	r2, [r2, #51]	@ zero_extendqisi2
+ 20187 00d8 042A     		cmp	r2, #4
+ 20188 00da 09D0     		beq	.L28
+ 216:../SERVER/dnslkup.c ****                 dns_ansError=2; // not IPv4
+ 20189              		.loc 1 216 0
+ 20190 00dc 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20191 00e0 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20192 00e4 4FF00202 		mov	r2, #2
+ 20193 00e8 1A70     		strb	r2, [r3, #0]
+ 20194 00ea 4FF00000 		mov	r0, #0
+ 20195              	.LVL35:
+ 217:../SERVER/dnslkup.c ****                 return(0);
+ 20196              		.loc 1 217 0
+ 20197 00ee 7047     		bx	lr
+ 20198              	.LVL36:
+ 20199              	.L28:
+ 20200 00f0 03F10A03 		add	r3, r3, #10
+ 20201              	.LVL37:
+ 20202 00f4 DBB2     		uxtb	r3, r3
+ 20203 00f6 1844     		add	r0, r0, r3
+ 20204              	.LVL38:
+ 20205 00f8 4FF00003 		mov	r3, #0
+ 218:../SERVER/dnslkup.c ****         }
+ 219:../SERVER/dnslkup.c ****         i+=10;
+ 220:../SERVER/dnslkup.c ****         j=0;
+ 221:../SERVER/dnslkup.c ****         while(j<4){
+ 222:../SERVER/dnslkup.c ****                 dns_answerip[j]=buf[UDP_DATA_P+i+j];
+ 20206              		.loc 1 222 0
+ 20207 00fc 40F20002 		movw	r2, #:lower16:.LANCHOR2
+ 20208 0100 C0F20002 		movt	r2, #:upper16:.LANCHOR2
+ 20209              	.L29:
+ 20210 0104 90F82A10 		ldrb	r1, [r0, #42]	@ zero_extendqisi2
+ 20211 0108 D154     		strb	r1, [r2, r3]
+ 20212 010a 03F10103 		add	r3, r3, #1
+ 20213 010e 00F10100 		add	r0, r0, #1
+ 20214              		.loc 1 221 0
+ 20215 0112 042B     		cmp	r3, #4
+ 20216 0114 F6D1     		bne	.L29
+ 223:../SERVER/dnslkup.c ****                 j++;
+ 224:../SERVER/dnslkup.c ****         }
+ 225:../SERVER/dnslkup.c ****         haveDNSanswer=1;
+ 20217              		.loc 1 225 0
+ 20218 0116 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 20219 011a C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 20220 011e 4FF00100 		mov	r0, #1
+ 20221 0122 1870     		strb	r0, [r3, #0]
+ 226:../SERVER/dnslkup.c ****         return(1);
+ 20222              		.loc 1 226 0
+ 20223 0124 7047     		bx	lr
+ 20224              	.LVL39:
+ 20225              	.L20:
+ 20226 0126 4FF00000 		mov	r0, #0
+ 20227              	.LVL40:
+ 227:../SERVER/dnslkup.c **** }
+ 20228              		.loc 1 227 0
+ 20229 012a 7047     		bx	lr
+ 20230              		.cfi_endproc
+ 20231              	.LFE34:
+ 20233              		.section	.text.dnslkup_request,"ax",%progbits
+ 20234              		.align	2
+ 20235              		.global	dnslkup_request
+ 20236              		.thumb
+ 20237              		.thumb_func
+ 20239              	dnslkup_request:
+ 20240              	.LFB33:
+ 20241              		.loc 1 80 0
+ 20242              		.cfi_startproc
+ 20243              		@ args = 0, pretend = 0, frame = 0
+ 20244              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20245              	.LVL41:
+ 20246 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 20247              	.LCFI1:
+ 20248              		.cfi_def_cfa_offset 24
+ 20249 0004 82B0     		sub	sp, sp, #8
+ 20250              	.LCFI2:
+ 20251              		.cfi_def_cfa_offset 32
+ 20252 0006 0446     		mov	r4, r0
+ 20253              		.cfi_offset 14, -4
+ 20254              		.cfi_offset 8, -8
+ 20255              		.cfi_offset 7, -12
+ 20256              		.cfi_offset 6, -16
+ 20257              		.cfi_offset 5, -20
+ 20258              		.cfi_offset 4, -24
+ 20259 0008 0E46     		mov	r6, r1
+ 20260 000a 1746     		mov	r7, r2
+ 20261              		.loc 1 82 0
+ 20262 000c 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 20263 0010 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 20264 0014 4FF00002 		mov	r2, #0
+ 20265              	.LVL42:
+ 20266 0018 1A70     		strb	r2, [r3, #0]
+ 20267              		.loc 1 83 0
+ 20268 001a FFF7FEFF 		bl	enc28j60linkup
+ 20269              	.LVL43:
+ 20270 001e 48B9     		cbnz	r0, .L36
+ 20271              		.loc 1 84 0
+ 20272 0020 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20273 0024 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20274 0028 4FF00402 		mov	r2, #4
+ 20275 002c 1A70     		strb	r2, [r3, #0]
+ 20276 002e 4FF00100 		mov	r0, #1
+ 20277              		.loc 1 85 0
+ 20278 0032 8EE0     		b	.L37
+ 20279              	.L36:
+ 20280              		.loc 1 87 0
+ 20281 0034 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 20282 0038 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 20283 003c 4FF00008 		mov	r8, #0
+ 20284 0040 83F80080 		strb	r8, [r3, #0]
+ 20285              		.loc 1 88 0
+ 20286 0044 40F20005 		movw	r5, #:lower16:.LANCHOR3
+ 20287 0048 C0F20005 		movt	r5, #:upper16:.LANCHOR3
+ 20288 004c 2978     		ldrb	r1, [r5, #0]	@ zero_extendqisi2
+ 20289 004e 01F10101 		add	r1, r1, #1
+ 20290 0052 C9B2     		uxtb	r1, r1
+ 20291 0054 2970     		strb	r1, [r5, #0]
+ 20292              		.loc 1 89 0
+ 20293 0056 0097     		str	r7, [sp, #0]
+ 20294 0058 2046     		mov	r0, r4
+ 20295 005a 41F46041 		orr	r1, r1, #57344
+ 20296 005e 40F20002 		movw	r2, #:lower16:.LANCHOR4
+ 20297 0062 C0F20002 		movt	r2, #:upper16:.LANCHOR4
+ 20298 0066 4FF03503 		mov	r3, #53
+ 20299 006a FFF7FEFF 		bl	send_udp_prepare
+ 20300              		.loc 1 92 0
+ 20301 006e 2B78     		ldrb	r3, [r5, #0]	@ zero_extendqisi2
+ 20302 0070 84F82B30 		strb	r3, [r4, #43]
+ 20303              		.loc 1 93 0
+ 20304 0074 4FF00103 		mov	r3, #1
+ 20305 0078 84F82C30 		strb	r3, [r4, #44]
+ 20306              		.loc 1 97 0
+ 20307 007c 4246     		mov	r2, r8
+ 20308              	.L38:
+ 20309 007e 04EB0803 		add	r3, r4, r8
+ 20310 0082 83F82D20 		strb	r2, [r3, #45]
+ 20311 0086 08F10108 		add	r8, r8, #1
+ 20312              		.loc 1 96 0
+ 20313 008a B8F1090F 		cmp	r8, #9
+ 20314 008e F6D1     		bne	.L38
+ 20315              		.loc 1 100 0
+ 20316 0090 4FF00103 		mov	r3, #1
+ 20317 0094 84F82F30 		strb	r3, [r4, #47]
+ 20318              		.loc 1 110 0
+ 20319 0098 3278     		ldrb	r2, [r6, #0]	@ zero_extendqisi2
+ 20320 009a 32B9     		cbnz	r2, .L39
+ 20321 009c 4FF00C0C 		mov	ip, #12
+ 20322              	.LVL44:
+ 20323 00a0 4FF00D03 		mov	r3, #13
+ 20324              	.LVL45:
+ 20325 00a4 4FF00101 		mov	r1, #1
+ 20326              	.LVL46:
+ 20327 00a8 21E0     		b	.L40
+ 20328              	.LVL47:
+ 20329              	.L39:
+ 20330 00aa 4FF00C0C 		mov	ip, #12
+ 20331              	.LVL48:
+ 20332 00ae 4FF00D03 		mov	r3, #13
+ 20333              	.LVL49:
+ 20334 00b2 4FF00101 		mov	r1, #1
+ 20335              	.LVL50:
+ 20336              		.loc 1 113 0
+ 20337 00b6 4FF0000E 		mov	lr, #0
+ 20338              	.LVL51:
+ 20339              	.L42:
+ 20340              		.loc 1 112 0
+ 20341 00ba 2E2A     		cmp	r2, #46
+ 20342              		.loc 1 113 0
+ 20343 00bc 01BF     		itttt	eq
+ 20344 00be 0CEB0402 		addeq	r2, ip, r4
+ 20345 00c2 01F1FF31 		addeq	r1, r1, #-1
+ 20346 00c6 82F82A10 		strbeq	r1, [r2, #42]
+ 20347 00ca 9C46     		moveq	ip, r3
+ 20348              	.LVL52:
+ 20349 00cc 08BF     		it	eq
+ 20350 00ce 7146     		moveq	r1, lr
+ 20351              		.loc 1 117 0
+ 20352 00d0 03EB0402 		add	r2, r3, r4
+ 20353 00d4 3078     		ldrb	r0, [r6, #0]	@ zero_extendqisi2
+ 20354              	.LVL53:
+ 20355 00d6 82F82A00 		strb	r0, [r2, #42]
+ 20356              		.loc 1 118 0
+ 20357 00da 01F10101 		add	r1, r1, #1
+ 20358 00de C9B2     		uxtb	r1, r1
+ 20359              	.LVL54:
+ 20360              		.loc 1 119 0
+ 20361 00e0 03F10103 		add	r3, r3, #1
+ 20362              	.LVL55:
+ 20363 00e4 DBB2     		uxtb	r3, r3
+ 20364              	.LVL56:
+ 20365              		.loc 1 110 0
+ 20366 00e6 16F8012F 		ldrb	r2, [r6, #1]!	@ zero_extendqisi2
+ 20367 00ea 002A     		cmp	r2, #0
+ 20368 00ec E5D1     		bne	.L42
+ 20369              	.LVL57:
+ 20370              	.L40:
+ 20371              		.loc 1 122 0
+ 20372 00ee 0CEB0402 		add	r2, ip, r4
+ 20373 00f2 01F1FF31 		add	r1, r1, #-1
+ 20374              	.LVL58:
+ 20375 00f6 82F82A10 		strb	r1, [r2, #42]
+ 20376              		.loc 1 123 0
+ 20377 00fa 03EB0402 		add	r2, r3, r4
+ 20378 00fe 4FF00005 		mov	r5, #0
+ 20379 0102 82F82A50 		strb	r5, [r2, #42]
+ 20380              		.loc 1 124 0
+ 20381 0106 03F10103 		add	r3, r3, #1
+ 20382              	.LVL59:
+ 20383 010a DBB2     		uxtb	r3, r3
+ 20384              	.LVL60:
+ 20385              		.loc 1 125 0
+ 20386 010c 03EB0402 		add	r2, r3, r4
+ 20387 0110 82F82A50 		strb	r5, [r2, #42]
+ 20388              		.loc 1 126 0
+ 20389 0114 03F10101 		add	r1, r3, #1
+ 20390 0118 C9B2     		uxtb	r1, r1
+ 20391              	.LVL61:
+ 20392              		.loc 1 127 0
+ 20393 011a 01EB0402 		add	r2, r1, r4
+ 20394 011e 4FF00103 		mov	r3, #1
+ 20395 0122 82F82A30 		strb	r3, [r2, #42]
+ 20396              		.loc 1 128 0
+ 20397 0126 1944     		add	r1, r1, r3
+ 20398              	.LVL62:
+ 20399 0128 C9B2     		uxtb	r1, r1
+ 20400              	.LVL63:
+ 20401              		.loc 1 129 0
+ 20402 012a 01EB0402 		add	r2, r1, r4
+ 20403 012e 82F82A50 		strb	r5, [r2, #42]
+ 20404              		.loc 1 130 0
+ 20405 0132 1944     		add	r1, r1, r3
+ 20406              	.LVL64:
+ 20407 0134 C9B2     		uxtb	r1, r1
+ 20408              	.LVL65:
+ 20409              		.loc 1 131 0
+ 20410 0136 01EB0402 		add	r2, r1, r4
+ 20411 013a 82F82A30 		strb	r3, [r2, #42]
+ 20412              		.loc 1 132 0
+ 20413 013e 1944     		add	r1, r1, r3
+ 20414              	.LVL66:
+ 20415 0140 C9B2     		uxtb	r1, r1
+ 20416              	.LVL67:
+ 20417              		.loc 1 136 0
+ 20418 0142 A1F10C03 		sub	r3, r1, #12
+ 20419 0146 84F82A30 		strb	r3, [r4, #42]
+ 20420              		.loc 1 137 0
+ 20421 014a 2046     		mov	r0, r4
+ 20422 014c FFF7FEFF 		bl	send_udp_transmit
+ 20423              	.LVL68:
+ 20424 0150 2846     		mov	r0, r5
+ 20425              	.L37:
+ 20426              		.loc 1 139 0
+ 20427 0152 02B0     		add	sp, sp, #8
+ 20428 0154 BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 20429              		.cfi_endproc
+ 20430              	.LFE33:
+ 20432              		.section	.bss.dns_answerip,"aw",%nobits
+ 20433              		.align	2
+ 20434              		.set	.LANCHOR2,. + 0
+ 20437              	dns_answerip:
+ 20438 0000 00000000 		.space	4
+ 20439              		.section	.data.dnsip,"aw",%progbits
+ 20440              		.align	2
+ 20441              		.set	.LANCHOR4,. + 0
+ 20444              	dnsip:
+ 20445 0000 08       		.byte	8
+ 20446 0001 08       		.byte	8
+ 20447 0002 08       		.byte	8
+ 20448 0003 08       		.byte	8
+ 20449              		.section	.bss.dnstid_l,"aw",%nobits
+ 20450              		.set	.LANCHOR3,. + 0
+ 20453              	dnstid_l:
+ 20454 0000 00       		.space	1
+ 20455              		.section	.bss.dns_ansError,"aw",%nobits
+ 20456              		.set	.LANCHOR1,. + 0
+ 20459              	dns_ansError:
+ 20460 0000 00       		.space	1
+ 20461              		.section	.bss.haveDNSanswer,"aw",%nobits
+ 20462              		.set	.LANCHOR0,. + 0
+ 20465              	haveDNSanswer:
+ 20466 0000 00       		.space	1
+ 20467              		.text
+ 20468              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 dnslkup.c
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:19893  .text.dnslkup_haveanswer:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:19898  .text.dnslkup_haveanswer:00000000 dnslkup_haveanswer
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20462  .bss.haveDNSanswer:00000000 .LANCHOR0
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:19915  .text.dnslkup_get_error_info:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:19920  .text.dnslkup_get_error_info:00000000 dnslkup_get_error_info
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20456  .bss.dns_ansError:00000000 .LANCHOR1
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:19937  .text.dnslkup_get_ip:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:19942  .text.dnslkup_get_ip:00000000 dnslkup_get_ip
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20434  .bss.dns_answerip:00000000 .LANCHOR2
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:19967  .text.string_is_ipv4:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:19972  .text.string_is_ipv4:00000000 string_is_ipv4
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20055  .text.udp_client_check_for_dns_answer:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20060  .text.udp_client_check_for_dns_answer:00000000 udp_client_check_for_dns_answer
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20450  .bss.dnstid_l:00000000 .LANCHOR3
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20234  .text.dnslkup_request:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20239  .text.dnslkup_request:00000000 dnslkup_request
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20441  .data.dnsip:00000000 .LANCHOR4
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20433  .bss.dns_answerip:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20437  .bss.dns_answerip:00000000 dns_answerip
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20440  .data.dnsip:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20444  .data.dnsip:00000000 dnsip
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20453  .bss.dnstid_l:00000000 dnstid_l
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20454  .bss.dnstid_l:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20459  .bss.dns_ansError:00000000 dns_ansError
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20460  .bss.dns_ansError:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20465  .bss.haveDNSanswer:00000000 haveDNSanswer
+C:\Users\user\AppData\Local\Temp\ccgDfKMb.s:20466  .bss.haveDNSanswer:00000000 $d
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+__ctype_ptr__
+enc28j60linkup
+send_udp_prepare
+send_udp_transmit

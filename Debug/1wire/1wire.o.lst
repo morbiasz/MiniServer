@@ -1,0 +1,1187 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"1wire.c"
+  23              	.Ltext0:
+  24              		.file 1 "../1wire/1wire.c"
+ 18575              		.align	2
+ 18576              		.global	ow_parasite_on
+ 18577              		.thumb
+ 18578              		.thumb_func
+ 18580              	ow_parasite_on:
+ 18581              	.LFB36:
+   1:../1wire/1wire.c **** #include "stm32f10x.h"
+   2:../1wire/1wire.c **** #include "delay.h"
+   3:../1wire/1wire.c **** #include "1wire.h"
+   4:../1wire/1wire.c **** #include <usart.h>
+   5:../1wire/1wire.c **** 
+   6:../1wire/1wire.c **** extern volatile uint32_t TimingDelay;			//zmienna potrzebna po to aby mo¿na by³o przerwaæ czekanie 
+   7:../1wire/1wire.c **** extern volatile char menu;
+   8:../1wire/1wire.c **** 
+   9:../1wire/1wire.c **** unsigned int gSensorIDs[MAXSENSORS][8];
+  10:../1wire/1wire.c **** 
+  11:../1wire/1wire.c **** GPIO_InitTypeDef GPIO_InitStructure;
+  12:../1wire/1wire.c **** 
+  13:../1wire/1wire.c **** void wOut(void)
+  14:../1wire/1wire.c **** {
+  15:../1wire/1wire.c ****    GPIO_InitStructure.GPIO_Pin = OW_PIN;
+  16:../1wire/1wire.c ****    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  17:../1wire/1wire.c ****    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+  18:../1wire/1wire.c ****    GPIO_Init(OW_GPIO, &GPIO_InitStructure);
+  19:../1wire/1wire.c **** }
+  20:../1wire/1wire.c **** 
+  21:../1wire/1wire.c **** void wIn(void)
+  22:../1wire/1wire.c **** {
+  23:../1wire/1wire.c ****    GPIO_InitStructure.GPIO_Pin = OW_PIN;
+  24:../1wire/1wire.c ****    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  25:../1wire/1wire.c ****    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  26:../1wire/1wire.c ****    GPIO_Init(OW_GPIO, &GPIO_InitStructure);
+  27:../1wire/1wire.c **** 
+  28:../1wire/1wire.c **** }
+  29:../1wire/1wire.c **** 
+  30:../1wire/1wire.c **** unsigned char ow_reset (void) 		//reset magistrali 1wire
+  31:../1wire/1wire.c **** {
+  32:../1wire/1wire.c **** 	unsigned char present;
+  33:../1wire/1wire.c **** 	unsigned char i=4;
+  34:../1wire/1wire.c **** 	while(i--) ;
+  35:../1wire/1wire.c **** 
+  36:../1wire/1wire.c **** 	wL;
+  37:../1wire/1wire.c **** 	wOut();
+  38:../1wire/1wire.c **** 	Delay_us( 500 ); 						// 480 us
+  39:../1wire/1wire.c **** 	wIn();
+  40:../1wire/1wire.c **** 	Delay_us(60); 							// 70 us
+  41:../1wire/1wire.c **** 	present = wR;
+  42:../1wire/1wire.c **** 	Delay_us(500); 							// 410 us
+  43:../1wire/1wire.c **** 											// !! 0 jesli jest obecny !!
+  44:../1wire/1wire.c **** 	return present;
+  45:../1wire/1wire.c **** }
+  46:../1wire/1wire.c **** 
+  47:../1wire/1wire.c **** 
+  48:../1wire/1wire.c **** unsigned char ow_read_bit (void) {            //czytanie bitu
+  49:../1wire/1wire.c **** 
+  50:../1wire/1wire.c **** 	unsigned char data=0;
+  51:../1wire/1wire.c **** 
+  52:../1wire/1wire.c **** 	wOut();
+  53:../1wire/1wire.c **** 	wL;
+  54:../1wire/1wire.c **** 	Delay_us(4); // 6 us
+  55:../1wire/1wire.c **** 	wIn();
+  56:../1wire/1wire.c **** 	Delay_us(4); // 9 us
+  57:../1wire/1wire.c **** 
+  58:../1wire/1wire.c **** 	if (wR) data=1;
+  59:../1wire/1wire.c **** 
+  60:../1wire/1wire.c **** 	Delay_us(60); // 55 us
+  61:../1wire/1wire.c **** 
+  62:../1wire/1wire.c **** 	return data;
+  63:../1wire/1wire.c **** 
+  64:../1wire/1wire.c **** }
+  65:../1wire/1wire.c **** 
+  66:../1wire/1wire.c **** void ow_write_bit (unsigned char bit) {   //wysylanie bitu
+  67:../1wire/1wire.c **** 
+  68:../1wire/1wire.c **** 	wOut();                            	  //wyjscie
+  69:../1wire/1wire.c **** 	wL;                                	  //stan niski
+  70:../1wire/1wire.c **** 
+  71:../1wire/1wire.c **** 	if (bit)                       		  //procedura wprost z datasheeta ds18b20
+  72:../1wire/1wire.c **** 	{
+  73:../1wire/1wire.c **** 		Delay_us(6);            		  // 6 us
+  74:../1wire/1wire.c **** 		wIn();                            // zwolnienie linii
+  75:../1wire/1wire.c **** 		Delay_us(62);            		  // 64 us
+  76:../1wire/1wire.c **** 	}
+  77:../1wire/1wire.c **** 	else
+  78:../1wire/1wire.c **** 	{
+  79:../1wire/1wire.c **** 		Delay_us(62);           		  // 60 us
+  80:../1wire/1wire.c **** 		wIn();             				  // zwolnienie linii
+  81:../1wire/1wire.c **** 		Delay_us(6);        			  // 10 us
+  82:../1wire/1wire.c **** 	}
+  83:../1wire/1wire.c **** 
+  84:../1wire/1wire.c **** }
+  85:../1wire/1wire.c **** 
+  86:../1wire/1wire.c **** void ow_write_byte (unsigned char data) {    //wysylanie bajtu
+  87:../1wire/1wire.c **** 
+  88:../1wire/1wire.c **** 	unsigned char i;
+  89:../1wire/1wire.c **** 
+  90:../1wire/1wire.c **** 	for (i=0;i<8;i++)
+  91:../1wire/1wire.c ****     {
+  92:../1wire/1wire.c ****         ow_write_bit(data & 0x01);          //najmlodszy bit pobrany i wyslany na linie 1wire
+  93:../1wire/1wire.c ****         data>>=1;                    		//nastepnie bajt przesuwamy w prawo aby pobrac kolejny bit
+  94:../1wire/1wire.c ****                                     		//i tak w kolko az przeslemy wszystkie bity
+  95:../1wire/1wire.c ****     }
+  96:../1wire/1wire.c **** 
+  97:../1wire/1wire.c **** }
+  98:../1wire/1wire.c **** 
+  99:../1wire/1wire.c **** 
+ 100:../1wire/1wire.c **** unsigned char ow_read_byte(void) {          //czytanie bajtu
+ 101:../1wire/1wire.c **** 
+ 102:../1wire/1wire.c ****     unsigned char i, bit, data;
+ 103:../1wire/1wire.c **** 
+ 104:../1wire/1wire.c ****     data=0;                            		//aby nie bylo zadnych smieci
+ 105:../1wire/1wire.c ****     for (i=0; i<8; i++)            			//bajt to 8 bitow
+ 106:../1wire/1wire.c ****     {
+ 107:../1wire/1wire.c ****     	bit=ow_read_bit();             		//po kolei czytamy bit po bicie
+ 108:../1wire/1wire.c ****     	data|=bit<<i;               	    //pierwszy odczytany bit jest ostatnim w bajcie
+ 109:../1wire/1wire.c ****     }
+ 110:../1wire/1wire.c **** 
+ 111:../1wire/1wire.c ****     return data;
+ 112:../1wire/1wire.c **** 
+ 113:../1wire/1wire.c **** }
+ 114:../1wire/1wire.c **** 
+ 115:../1wire/1wire.c **** void ow_parasite_on(void) {            			//stronger pull up on
+ 18582              		.loc 1 115 0
+ 18583              		.cfi_startproc
+ 18584              		@ args = 0, pretend = 0, frame = 0
+ 18585              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18586              		@ link register save eliminated.
+ 116:../1wire/1wire.c **** 
+ 117:../1wire/1wire.c **** 	wH_parasite;
+ 18587              		.loc 1 117 0
+ 18588 0000 41F20003 		movw	r3, #:lower16:1073811456
+ 18589 0004 C4F20103 		movt	r3, #:upper16:1073811456
+ 18590 0008 4FF48062 		mov	r2, #1024
+ 18591 000c 1A61     		str	r2, [r3, #16]
+ 118:../1wire/1wire.c **** }
+ 18592              		.loc 1 118 0
+ 18593 000e 7047     		bx	lr
+ 18594              		.cfi_endproc
+ 18595              	.LFE36:
+ 18597              		.section	.text.ow_parasite_off,"ax",%progbits
+ 18598              		.align	2
+ 18599              		.global	ow_parasite_off
+ 18600              		.thumb
+ 18601              		.thumb_func
+ 18603              	ow_parasite_off:
+ 18604              	.LFB37:
+ 119:../1wire/1wire.c **** 
+ 120:../1wire/1wire.c **** void ow_parasite_off(void) {        				//stronger pull up off
+ 18605              		.loc 1 120 0
+ 18606              		.cfi_startproc
+ 18607              		@ args = 0, pretend = 0, frame = 0
+ 18608              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18609              		@ link register save eliminated.
+ 121:../1wire/1wire.c **** 
+ 122:../1wire/1wire.c **** 	wL_parasite;
+ 18610              		.loc 1 122 0
+ 18611 0000 41F20003 		movw	r3, #:lower16:1073811456
+ 18612 0004 C4F20103 		movt	r3, #:upper16:1073811456
+ 18613 0008 4FF48062 		mov	r2, #1024
+ 18614 000c 5A61     		str	r2, [r3, #20]
+ 123:../1wire/1wire.c **** }
+ 18615              		.loc 1 123 0
+ 18616 000e 7047     		bx	lr
+ 18617              		.cfi_endproc
+ 18618              	.LFE37:
+ 18620              		.section	.text.crc8,"ax",%progbits
+ 18621              		.align	2
+ 18622              		.global	crc8
+ 18623              		.thumb
+ 18624              		.thumb_func
+ 18626              	crc8:
+ 18627              	.LFB43:
+ 124:../1wire/1wire.c **** 
+ 125:../1wire/1wire.c **** 
+ 126:../1wire/1wire.c **** void ow_command( unsigned int command, unsigned int *id )
+ 127:../1wire/1wire.c **** {
+ 128:../1wire/1wire.c ****     uint8_t i;
+ 129:../1wire/1wire.c **** 
+ 130:../1wire/1wire.c ****     ow_reset();
+ 131:../1wire/1wire.c **** 
+ 132:../1wire/1wire.c ****     if( id ) {
+ 133:../1wire/1wire.c ****         ow_write_byte( 0x55 );            // to a single device MATCH ROM command
+ 134:../1wire/1wire.c ****         i = 8;
+ 135:../1wire/1wire.c ****         do {
+ 136:../1wire/1wire.c ****             ow_write_byte( *id );
+ 137:../1wire/1wire.c ****             id++;
+ 138:../1wire/1wire.c ****         } while( --i );
+ 139:../1wire/1wire.c ****     }
+ 140:../1wire/1wire.c ****     else {
+ 141:../1wire/1wire.c ****         ow_write_byte( 0xcc );            // to all devices SKIP ROM command
+ 142:../1wire/1wire.c ****     }
+ 143:../1wire/1wire.c ****     
+ 144:../1wire/1wire.c ****     ow_write_byte( command );
+ 145:../1wire/1wire.c **** }
+ 146:../1wire/1wire.c **** 
+ 147:../1wire/1wire.c **** unsigned int ow_rom_search( uint8_t diff, uint8_t *id )
+ 148:../1wire/1wire.c **** {
+ 149:../1wire/1wire.c ****     uint8_t i, j, next_diff;
+ 150:../1wire/1wire.c ****     uint8_t b;
+ 151:../1wire/1wire.c ****     
+ 152:../1wire/1wire.c ****     if( ow_reset() ) return(0);            // error, no device found
+ 153:../1wire/1wire.c ****     
+ 154:../1wire/1wire.c ****     ow_write_byte(0xf0);                    // ROM search command
+ 155:../1wire/1wire.c ****     next_diff = 0;                            // unchanged on last device
+ 156:../1wire/1wire.c ****     
+ 157:../1wire/1wire.c ****     i = 64;                                    // 8 bytes
+ 158:../1wire/1wire.c ****     
+ 159:../1wire/1wire.c ****     do {
+ 160:../1wire/1wire.c ****         j = 8;                                // 8 bits
+ 161:../1wire/1wire.c ****         do {
+ 162:../1wire/1wire.c ****             b = ow_read_bit();                // read bit
+ 163:../1wire/1wire.c ****             if( ow_read_bit() ) {            // read complement bit
+ 164:../1wire/1wire.c ****                 if( b )                        // 11
+ 165:../1wire/1wire.c ****                 return(0);                    // data error
+ 166:../1wire/1wire.c ****             }
+ 167:../1wire/1wire.c ****             else {
+ 168:../1wire/1wire.c ****                 if( !b ) {                    // 00 = 2 devices
+ 169:../1wire/1wire.c ****                     if( diff > i || ((*id & 1) && diff != i) ) {
+ 170:../1wire/1wire.c ****                     b = 1;                    // now 1
+ 171:../1wire/1wire.c ****                     next_diff = i;            // next pass 0
+ 172:../1wire/1wire.c ****                     }
+ 173:../1wire/1wire.c ****                 }
+ 174:../1wire/1wire.c ****             }
+ 175:../1wire/1wire.c ****             ow_write_bit( b );             // write bit
+ 176:../1wire/1wire.c ****             *id >>= 1;
+ 177:../1wire/1wire.c ****             if( b ) *id |= 0x80;            // store bit
+ 178:../1wire/1wire.c ****             
+ 179:../1wire/1wire.c ****             i--;
+ 180:../1wire/1wire.c ****             
+ 181:../1wire/1wire.c ****         } while( --j );
+ 182:../1wire/1wire.c ****         
+ 183:../1wire/1wire.c ****         id++;                                // next byte
+ 184:../1wire/1wire.c ****     
+ 185:../1wire/1wire.c ****     } while( i );
+ 186:../1wire/1wire.c ****     
+ 187:../1wire/1wire.c ****     return next_diff;                        // to continue search
+ 188:../1wire/1wire.c **** }
+ 189:../1wire/1wire.c **** 
+ 190:../1wire/1wire.c **** void DS18X20_find_sensor(uint8_t *diff, uint8_t id[])
+ 191:../1wire/1wire.c **** {
+ 192:../1wire/1wire.c **** 	
+ 193:../1wire/1wire.c **** 		uint16_t i =0;
+ 194:../1wire/1wire.c **** 	
+ 195:../1wire/1wire.c ****     for (;;) {
+ 196:../1wire/1wire.c **** 			i++;
+ 197:../1wire/1wire.c ****         *diff = ow_rom_search( *diff, &id[0] );
+ 198:../1wire/1wire.c ****         if ( *diff== 0xFF || *diff==0xFE ||
+ 199:../1wire/1wire.c ****          *diff == 0 ) return;
+ 200:../1wire/1wire.c ****         if ( id[0] == DS18B20_ID || id[0] == DS18S20_ID ) return;
+ 201:../1wire/1wire.c **** 				
+ 202:../1wire/1wire.c **** 				if (i > 10) return;
+ 203:../1wire/1wire.c ****     }
+ 204:../1wire/1wire.c **** }
+ 205:../1wire/1wire.c **** 
+ 206:../1wire/1wire.c **** 
+ 207:../1wire/1wire.c **** uint8_t search_sensors(void)
+ 208:../1wire/1wire.c **** {
+ 209:../1wire/1wire.c ****     uint8_t i;
+ 210:../1wire/1wire.c ****     uint8_t id[8];
+ 211:../1wire/1wire.c **** 	  uint8_t j = 100;
+ 212:../1wire/1wire.c ****     uint8_t diff, nSensors;
+ 213:../1wire/1wire.c ****     #if UART_DEBUG
+ 214:../1wire/1wire.c **** 		usart_printf("Bus scanning..\r");
+ 215:../1wire/1wire.c **** 		#endif
+ 216:../1wire/1wire.c ****     nSensors = 0;
+ 217:../1wire/1wire.c ****     
+ 218:../1wire/1wire.c ****     for( diff = 0xff; diff !=0 && nSensors < MAXSENSORS && j-- ; )
+ 219:../1wire/1wire.c ****     {
+ 220:../1wire/1wire.c ****         DS18X20_find_sensor( &diff, &id[0] );
+ 221:../1wire/1wire.c **** 
+ 222:../1wire/1wire.c ****         if( diff == 0xff ) {
+ 223:../1wire/1wire.c ****             #if UART_DEBUG
+ 224:../1wire/1wire.c **** 						usart_printf("No sensor found\r");
+ 225:../1wire/1wire.c **** 						#endif
+ 226:../1wire/1wire.c ****             break;
+ 227:../1wire/1wire.c ****         }
+ 228:../1wire/1wire.c ****         
+ 229:../1wire/1wire.c ****         if( diff == 0xfe ) {
+ 230:../1wire/1wire.c ****             #if UART_DEBUG
+ 231:../1wire/1wire.c **** 						usart_printf("Bus error\r");
+ 232:../1wire/1wire.c **** 						#endif
+ 233:../1wire/1wire.c ****             break;
+ 234:../1wire/1wire.c ****         }
+ 235:../1wire/1wire.c ****         
+ 236:../1wire/1wire.c ****         for (i=0;i<8;i++)
+ 237:../1wire/1wire.c ****             gSensorIDs[nSensors][i]=id[i];
+ 238:../1wire/1wire.c ****         
+ 239:../1wire/1wire.c ****         nSensors++;
+ 240:../1wire/1wire.c ****     }
+ 241:../1wire/1wire.c ****     
+ 242:../1wire/1wire.c ****     return nSensors;
+ 243:../1wire/1wire.c **** }
+ 244:../1wire/1wire.c **** 
+ 245:../1wire/1wire.c **** 
+ 246:../1wire/1wire.c **** //odczytuje temp.
+ 247:../1wire/1wire.c **** uint8_t read_temp(int8_t * calkowita_temp, int8_t * ulamkowa_temp)
+ 248:../1wire/1wire.c **** {
+ 249:../1wire/1wire.c **** 	uint8_t scratchpad[9];
+ 250:../1wire/1wire.c **** 	uint8_t i=0;
+ 251:../1wire/1wire.c **** 	uint8_t msb = 0, lsb = 0, minus = 0;
+ 252:../1wire/1wire.c **** 
+ 253:../1wire/1wire.c **** 	for(i=0;i< SCRATCHPAD_SIZE;i++)
+ 254:../1wire/1wire.c **** 		scratchpad[i] = ow_read_byte();
+ 255:../1wire/1wire.c **** 		
+ 256:../1wire/1wire.c **** 	if (crc8(scratchpad, 8) != scratchpad[8])
+ 257:../1wire/1wire.c **** 		return 1;
+ 258:../1wire/1wire.c **** 
+ 259:../1wire/1wire.c **** 	lsb = scratchpad[0]; 				  //czytamy LSB i MSB przechowujace temperature
+ 260:../1wire/1wire.c **** 	msb = scratchpad[1];
+ 261:../1wire/1wire.c **** 	
+ 262:../1wire/1wire.c **** 	if (msb & 0x80)        			  //dla liczb ujemnych negacja i +1
+ 263:../1wire/1wire.c **** 	{
+ 264:../1wire/1wire.c **** 		msb=~msb;
+ 265:../1wire/1wire.c **** 		lsb=~lsb+1;
+ 266:../1wire/1wire.c **** 		minus=1;
+ 267:../1wire/1wire.c **** 	}
+ 268:../1wire/1wire.c **** 	else 
+ 269:../1wire/1wire.c **** 		minus=0;				// in case of changing from + to -
+ 270:../1wire/1wire.c **** 	
+ 271:../1wire/1wire.c **** 	*calkowita_temp = (uint8_t) ((uint8_t) (msb&0x7)<<4 ) | ((uint8_t) (lsb&0xf0)>>4 );    //wyodrêbni
+ 272:../1wire/1wire.c **** 	if(minus)
+ 273:../1wire/1wire.c **** 		*calkowita_temp = - *calkowita_temp;
+ 274:../1wire/1wire.c **** 		
+ 275:../1wire/1wire.c **** 	*ulamkowa_temp = ((lsb & 0x0F)*625)/1000;            //wyodrebnia ulamkowa czesc temperatury
+ 276:../1wire/1wire.c **** 	
+ 277:../1wire/1wire.c **** 	return 0; 					//everything ok
+ 278:../1wire/1wire.c **** 	
+ 279:../1wire/1wire.c **** }
+ 280:../1wire/1wire.c **** 
+ 281:../1wire/1wire.c **** unsigned char crc8 ( uint8_t *data_in, uint16_t number_of_bytes_to_read )
+ 282:../1wire/1wire.c **** {
+ 18628              		.loc 1 282 0
+ 18629              		.cfi_startproc
+ 18630              		@ args = 0, pretend = 0, frame = 0
+ 18631              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18632              		@ link register save eliminated.
+ 18633              	.LVL0:
+ 18634 0000 F0B4     		push	{r4, r5, r6, r7}
+ 18635              	.LCFI0:
+ 18636              		.cfi_def_cfa_offset 16
+ 18637 0002 0346     		mov	r3, r0
+ 283:../1wire/1wire.c **** 	uint8_t	 crc;
+ 284:../1wire/1wire.c **** 	uint16_t loop_count;
+ 285:../1wire/1wire.c **** 	uint8_t  bit_counter;
+ 286:../1wire/1wire.c **** 	uint8_t  data;
+ 287:../1wire/1wire.c **** 	uint8_t  feedback_bit;
+ 288:../1wire/1wire.c **** 
+ 289:../1wire/1wire.c **** 	crc = CRC8INIT;
+ 290:../1wire/1wire.c **** 
+ 291:../1wire/1wire.c **** 	for (loop_count = 0; loop_count != number_of_bytes_to_read; loop_count++)
+ 18638              		.loc 1 291 0
+ 18639 0004 0A46     		mov	r2, r1
+ 18640 0006 11B9     		cbnz	r1, .L6
+ 18641              		.cfi_offset 7, -4
+ 18642              		.cfi_offset 6, -8
+ 18643              		.cfi_offset 5, -12
+ 18644              		.cfi_offset 4, -16
+ 18645              	.LVL1:
+ 18646 0008 4FF00000 		mov	r0, #0
+ 18647              	.LVL2:
+ 18648 000c 20E0     		b	.L7
+ 18649              	.LVL3:
+ 18650              	.L6:
+ 18651 000e 4FF00005 		mov	r5, #0
+ 18652              	.LVL4:
+ 18653 0012 2846     		mov	r0, r5
+ 18654              	.LVL5:
+ 292:../1wire/1wire.c **** 	{
+ 293:../1wire/1wire.c **** 		data = data_in[loop_count];
+ 18655              		.loc 1 293 0
+ 18656 0014 4FF00807 		mov	r7, #8
+ 18657              	.LVL6:
+ 294:../1wire/1wire.c **** 
+ 295:../1wire/1wire.c **** 		bit_counter = 8;
+ 296:../1wire/1wire.c **** 		do {
+ 297:../1wire/1wire.c **** 			feedback_bit = (crc ^ data) & 0x01;
+ 298:../1wire/1wire.c **** 
+ 299:../1wire/1wire.c **** 			if ( feedback_bit == 0x01 ) {
+ 300:../1wire/1wire.c **** 				crc = crc ^ CRC8POLY;
+ 301:../1wire/1wire.c **** 			}
+ 302:../1wire/1wire.c **** 			crc = (crc >> 1) & 0x7F;
+ 303:../1wire/1wire.c **** 			if ( feedback_bit == 0x01 ) {
+ 304:../1wire/1wire.c **** 				crc = crc | 0x80;
+ 18658              		.loc 1 304 0
+ 18659 0018 6FF07F06 		mvn	r6, #127
+ 18660              	.LVL7:
+ 18661              	.L12:
+ 18662              		.loc 1 293 0
+ 18663 001c 13F805C0 		ldrb	ip, [r3, r5]	@ zero_extendqisi2
+ 18664 0020 3946     		mov	r1, r7
+ 18665              	.L11:
+ 18666              		.loc 1 299 0
+ 18667 0022 8CEA0004 		eor	r4, ip, r0
+ 18668 0026 14F0010F 		tst	r4, #1
+ 18669              		.loc 1 300 0
+ 18670 002a 1DBF     		ittte	ne
+ 18671 002c 80F01800 		eorne	r0, r0, #24
+ 18672              	.LVL8:
+ 18673              		.loc 1 304 0
+ 18674 0030 46EA5000 		orrne	r0, r6, r0, lsr #1
+ 18675              	.LVL9:
+ 18676 0034 C0B2     		uxtbne	r0, r0
+ 18677              	.LVL10:
+ 18678              		.loc 1 302 0
+ 18679 0036 4008     		lsreq	r0, r0, #1
+ 18680              	.LVL11:
+ 305:../1wire/1wire.c **** 			}
+ 306:../1wire/1wire.c **** 
+ 307:../1wire/1wire.c **** 			data = data >> 1;
+ 308:../1wire/1wire.c **** 			bit_counter--;
+ 18681              		.loc 1 308 0
+ 18682 0038 01F1FF31 		add	r1, r1, #-1
+ 18683              	.LVL12:
+ 18684 003c C9B2     		uxtb	r1, r1
+ 18685              	.LVL13:
+ 309:../1wire/1wire.c **** 
+ 310:../1wire/1wire.c **** 		} while (bit_counter > 0);
+ 18686              		.loc 1 310 0
+ 18687 003e 11B1     		cbz	r1, .L10
+ 18688              		.loc 1 307 0
+ 18689 0040 4FEA5C0C 		lsr	ip, ip, #1
+ 18690              	.LVL14:
+ 18691 0044 EDE7     		b	.L11
+ 18692              	.L10:
+ 18693              		.loc 1 291 0
+ 18694 0046 05F10105 		add	r5, r5, #1
+ 18695              	.LVL15:
+ 18696 004a ADB2     		uxth	r5, r5
+ 18697              	.LVL16:
+ 18698 004c AA42     		cmp	r2, r5
+ 18699 004e E5D1     		bne	.L12
+ 18700              	.LVL17:
+ 18701              	.L7:
+ 18702              	.LVL18:
+ 311:../1wire/1wire.c **** 	}
+ 312:../1wire/1wire.c **** 
+ 313:../1wire/1wire.c **** 	return crc;
+ 314:../1wire/1wire.c **** }
+ 18703              		.loc 1 314 0
+ 18704 0050 F0BC     		pop	{r4, r5, r6, r7}
+ 18705 0052 7047     		bx	lr
+ 18706              		.cfi_endproc
+ 18707              	.LFE43:
+ 18709              		.section	.text.wIn,"ax",%progbits
+ 18710              		.align	2
+ 18711              		.global	wIn
+ 18712              		.thumb
+ 18713              		.thumb_func
+ 18715              	wIn:
+ 18716              	.LFB30:
+ 18717              		.loc 1 22 0
+ 18718              		.cfi_startproc
+ 18719              		@ args = 0, pretend = 0, frame = 0
+ 18720              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18721 0000 08B5     		push	{r3, lr}
+ 18722              	.LCFI1:
+ 18723              		.cfi_def_cfa_offset 8
+ 18724              		.loc 1 23 0
+ 18725 0002 40F20001 		movw	r1, #:lower16:GPIO_InitStructure
+ 18726 0006 C0F20001 		movt	r1, #:upper16:GPIO_InitStructure
+ 18727 000a 4FF48063 		mov	r3, #1024	@ movhi
+ 18728              		.cfi_offset 14, -4
+ 18729              		.cfi_offset 3, -8
+ 18730 000e 0B80     		strh	r3, [r1, #0]	@ movhi
+ 18731              		.loc 1 24 0
+ 18732 0010 4FF00303 		mov	r3, #3
+ 18733 0014 8B70     		strb	r3, [r1, #2]
+ 18734              		.loc 1 25 0
+ 18735 0016 4FF00403 		mov	r3, #4
+ 18736 001a CB70     		strb	r3, [r1, #3]
+ 18737              		.loc 1 26 0
+ 18738 001c 41F20000 		movw	r0, #:lower16:1073811456
+ 18739 0020 C4F20100 		movt	r0, #:upper16:1073811456
+ 18740 0024 FFF7FEFF 		bl	GPIO_Init
+ 18741              		.loc 1 28 0
+ 18742 0028 08BD     		pop	{r3, pc}
+ 18743              		.cfi_endproc
+ 18744              	.LFE30:
+ 18746 002a 00BF     		.section	.text.wOut,"ax",%progbits
+ 18747              		.align	2
+ 18748              		.global	wOut
+ 18749              		.thumb
+ 18750              		.thumb_func
+ 18752              	wOut:
+ 18753              	.LFB29:
+ 18754              		.loc 1 14 0
+ 18755              		.cfi_startproc
+ 18756              		@ args = 0, pretend = 0, frame = 0
+ 18757              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18758 0000 08B5     		push	{r3, lr}
+ 18759              	.LCFI2:
+ 18760              		.cfi_def_cfa_offset 8
+ 18761              		.loc 1 15 0
+ 18762 0002 40F20001 		movw	r1, #:lower16:GPIO_InitStructure
+ 18763 0006 C0F20001 		movt	r1, #:upper16:GPIO_InitStructure
+ 18764 000a 4FF48063 		mov	r3, #1024	@ movhi
+ 18765              		.cfi_offset 14, -4
+ 18766              		.cfi_offset 3, -8
+ 18767 000e 0B80     		strh	r3, [r1, #0]	@ movhi
+ 18768              		.loc 1 16 0
+ 18769 0010 4FF00303 		mov	r3, #3
+ 18770 0014 8B70     		strb	r3, [r1, #2]
+ 18771              		.loc 1 17 0
+ 18772 0016 4FF01403 		mov	r3, #20
+ 18773 001a CB70     		strb	r3, [r1, #3]
+ 18774              		.loc 1 18 0
+ 18775 001c 41F20000 		movw	r0, #:lower16:1073811456
+ 18776 0020 C4F20100 		movt	r0, #:upper16:1073811456
+ 18777 0024 FFF7FEFF 		bl	GPIO_Init
+ 18778              		.loc 1 19 0
+ 18779 0028 08BD     		pop	{r3, pc}
+ 18780              		.cfi_endproc
+ 18781              	.LFE29:
+ 18783 002a 00BF     		.section	.text.ow_write_bit,"ax",%progbits
+ 18784              		.align	2
+ 18785              		.global	ow_write_bit
+ 18786              		.thumb
+ 18787              		.thumb_func
+ 18789              	ow_write_bit:
+ 18790              	.LFB33:
+ 18791              		.loc 1 66 0
+ 18792              		.cfi_startproc
+ 18793              		@ args = 0, pretend = 0, frame = 0
+ 18794              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18795              	.LVL19:
+ 18796 0000 10B5     		push	{r4, lr}
+ 18797              	.LCFI3:
+ 18798              		.cfi_def_cfa_offset 8
+ 18799 0002 0446     		mov	r4, r0
+ 18800              		.cfi_offset 14, -4
+ 18801              		.cfi_offset 4, -8
+ 18802              		.loc 1 68 0
+ 18803 0004 FFF7FEFF 		bl	wOut
+ 18804              	.LVL20:
+ 18805              		.loc 1 69 0
+ 18806 0008 41F20003 		movw	r3, #:lower16:1073811456
+ 18807 000c C4F20103 		movt	r3, #:upper16:1073811456
+ 18808 0010 4FF48062 		mov	r2, #1024
+ 18809 0014 5A61     		str	r2, [r3, #20]
+ 18810              		.loc 1 71 0
+ 18811 0016 54B1     		cbz	r4, .L20
+ 18812              		.loc 1 73 0
+ 18813 0018 4FF00600 		mov	r0, #6
+ 18814 001c FFF7FEFF 		bl	Delay_us
+ 18815              		.loc 1 74 0
+ 18816 0020 FFF7FEFF 		bl	wIn
+ 18817              		.loc 1 75 0
+ 18818 0024 4FF03E00 		mov	r0, #62
+ 18819 0028 FFF7FEFF 		bl	Delay_us
+ 18820 002c 10BD     		pop	{r4, pc}
+ 18821              	.L20:
+ 18822              		.loc 1 79 0
+ 18823 002e 4FF03E00 		mov	r0, #62
+ 18824 0032 FFF7FEFF 		bl	Delay_us
+ 18825              		.loc 1 80 0
+ 18826 0036 FFF7FEFF 		bl	wIn
+ 18827              		.loc 1 81 0
+ 18828 003a 4FF00600 		mov	r0, #6
+ 18829 003e FFF7FEFF 		bl	Delay_us
+ 18830 0042 10BD     		pop	{r4, pc}
+ 18831              		.cfi_endproc
+ 18832              	.LFE33:
+ 18834              		.section	.text.ow_write_byte,"ax",%progbits
+ 18835              		.align	2
+ 18836              		.global	ow_write_byte
+ 18837              		.thumb
+ 18838              		.thumb_func
+ 18840              	ow_write_byte:
+ 18841              	.LFB34:
+ 18842              		.loc 1 86 0
+ 18843              		.cfi_startproc
+ 18844              		@ args = 0, pretend = 0, frame = 0
+ 18845              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18846              	.LVL21:
+ 18847 0000 38B5     		push	{r3, r4, r5, lr}
+ 18848              	.LCFI4:
+ 18849              		.cfi_def_cfa_offset 16
+ 18850 0002 0546     		mov	r5, r0
+ 18851              		.cfi_offset 14, -4
+ 18852              		.cfi_offset 5, -8
+ 18853              		.cfi_offset 4, -12
+ 18854              		.cfi_offset 3, -16
+ 18855              		.loc 1 86 0
+ 18856 0004 4FF00004 		mov	r4, #0
+ 18857              	.LVL22:
+ 18858              	.L24:
+ 18859              		.loc 1 92 0
+ 18860 0008 05F00100 		and	r0, r5, #1
+ 18861 000c FFF7FEFF 		bl	ow_write_bit
+ 18862              		.loc 1 93 0
+ 18863 0010 4FEA5505 		lsr	r5, r5, #1
+ 18864              	.LVL23:
+ 18865 0014 04F10104 		add	r4, r4, #1
+ 18866              		.loc 1 90 0
+ 18867 0018 082C     		cmp	r4, #8
+ 18868 001a F5D1     		bne	.L24
+ 18869              		.loc 1 97 0
+ 18870 001c 38BD     		pop	{r3, r4, r5, pc}
+ 18871              		.cfi_endproc
+ 18872              	.LFE34:
+ 18874 001e 00BF     		.section	.text.ow_read_bit,"ax",%progbits
+ 18875              		.align	2
+ 18876              		.global	ow_read_bit
+ 18877              		.thumb
+ 18878              		.thumb_func
+ 18880              	ow_read_bit:
+ 18881              	.LFB32:
+ 18882              		.loc 1 48 0
+ 18883              		.cfi_startproc
+ 18884              		@ args = 0, pretend = 0, frame = 0
+ 18885              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18886 0000 10B5     		push	{r4, lr}
+ 18887              	.LCFI5:
+ 18888              		.cfi_def_cfa_offset 8
+ 18889              		.loc 1 52 0
+ 18890              		.cfi_offset 14, -4
+ 18891              		.cfi_offset 4, -8
+ 18892 0002 FFF7FEFF 		bl	wOut
+ 18893              		.loc 1 53 0
+ 18894 0006 41F20004 		movw	r4, #:lower16:1073811456
+ 18895 000a C4F20104 		movt	r4, #:upper16:1073811456
+ 18896 000e 4FF48063 		mov	r3, #1024
+ 18897 0012 6361     		str	r3, [r4, #20]
+ 18898              		.loc 1 54 0
+ 18899 0014 4FF00400 		mov	r0, #4
+ 18900 0018 FFF7FEFF 		bl	Delay_us
+ 18901              		.loc 1 55 0
+ 18902 001c FFF7FEFF 		bl	wIn
+ 18903              		.loc 1 56 0
+ 18904 0020 4FF00400 		mov	r0, #4
+ 18905 0024 FFF7FEFF 		bl	Delay_us
+ 18906              		.loc 1 58 0
+ 18907 0028 A468     		ldr	r4, [r4, #8]
+ 18908              		.loc 1 60 0
+ 18909 002a 4FF03C00 		mov	r0, #60
+ 18910 002e FFF7FEFF 		bl	Delay_us
+ 18911              		.loc 1 64 0
+ 18912 0032 C4F38020 		ubfx	r0, r4, #10, #1
+ 18913 0036 10BD     		pop	{r4, pc}
+ 18914              		.cfi_endproc
+ 18915              	.LFE32:
+ 18917              		.section	.text.ow_read_byte,"ax",%progbits
+ 18918              		.align	2
+ 18919              		.global	ow_read_byte
+ 18920              		.thumb
+ 18921              		.thumb_func
+ 18923              	ow_read_byte:
+ 18924              	.LFB35:
+ 18925              		.loc 1 100 0
+ 18926              		.cfi_startproc
+ 18927              		@ args = 0, pretend = 0, frame = 0
+ 18928              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18929 0000 38B5     		push	{r3, r4, r5, lr}
+ 18930              	.LCFI6:
+ 18931              		.cfi_def_cfa_offset 16
+ 18932              		.loc 1 100 0
+ 18933 0002 4FF00004 		mov	r4, #0
+ 18934              		.cfi_offset 14, -4
+ 18935              		.cfi_offset 5, -8
+ 18936              		.cfi_offset 4, -12
+ 18937              		.cfi_offset 3, -16
+ 18938 0006 2546     		mov	r5, r4
+ 18939              	.LVL24:
+ 18940              	.L30:
+ 18941              		.loc 1 107 0
+ 18942 0008 FFF7FEFF 		bl	ow_read_bit
+ 18943              		.loc 1 108 0
+ 18944 000c 00FA04F0 		lsl	r0, r0, r4
+ 18945 0010 45EA0005 		orr	r5, r5, r0
+ 18946              	.LVL25:
+ 18947 0014 EDB2     		uxtb	r5, r5
+ 18948              	.LVL26:
+ 18949 0016 04F10104 		add	r4, r4, #1
+ 18950              		.loc 1 105 0
+ 18951 001a 082C     		cmp	r4, #8
+ 18952 001c F4D1     		bne	.L30
+ 18953              		.loc 1 113 0
+ 18954 001e 2846     		mov	r0, r5
+ 18955 0020 38BD     		pop	{r3, r4, r5, pc}
+ 18956              		.cfi_endproc
+ 18957              	.LFE35:
+ 18959 0022 00BF     		.section	.text.read_temp,"ax",%progbits
+ 18960              		.align	2
+ 18961              		.global	read_temp
+ 18962              		.thumb
+ 18963              		.thumb_func
+ 18965              	read_temp:
+ 18966              	.LFB42:
+ 18967              		.loc 1 248 0
+ 18968              		.cfi_startproc
+ 18969              		@ args = 0, pretend = 0, frame = 16
+ 18970              		@ frame_needed = 0, uses_anonymous_args = 0
+ 18971              	.LVL27:
+ 18972 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+ 18973              	.LCFI7:
+ 18974              		.cfi_def_cfa_offset 20
+ 18975 0002 85B0     		sub	sp, sp, #20
+ 18976              	.LCFI8:
+ 18977              		.cfi_def_cfa_offset 40
+ 18978 0004 0746     		mov	r7, r0
+ 18979              		.cfi_offset 14, -4
+ 18980              		.cfi_offset 7, -8
+ 18981              		.cfi_offset 6, -12
+ 18982              		.cfi_offset 5, -16
+ 18983              		.cfi_offset 4, -20
+ 18984 0006 0E46     		mov	r6, r1
+ 18985              		.loc 1 248 0
+ 18986 0008 4FF00004 		mov	r4, #0
+ 18987              		.loc 1 254 0
+ 18988 000c 01AD     		add	r5, sp, #4
+ 18989              	.LVL28:
+ 18990              	.L34:
+ 18991 000e FFF7FEFF 		bl	ow_read_byte
+ 18992 0012 2855     		strb	r0, [r5, r4]
+ 18993 0014 04F10104 		add	r4, r4, #1
+ 18994              		.loc 1 253 0
+ 18995 0018 092C     		cmp	r4, #9
+ 18996 001a F8D1     		bne	.L34
+ 18997              		.loc 1 256 0
+ 18998 001c 01A8     		add	r0, sp, #4
+ 18999 001e 4FF00801 		mov	r1, #8
+ 19000 0022 FFF7FEFF 		bl	crc8
+ 19001 0026 9DF80C30 		ldrb	r3, [sp, #12]	@ zero_extendqisi2
+ 19002 002a 8342     		cmp	r3, r0
+ 19003 002c 18BF     		it	ne
+ 19004 002e 0120     		movne	r0, #1
+ 19005 0030 25D1     		bne	.L36
+ 19006              		.loc 1 259 0
+ 19007 0032 9DF80430 		ldrb	r3, [sp, #4]	@ zero_extendqisi2
+ 19008              	.LVL29:
+ 19009              		.loc 1 260 0
+ 19010 0036 9DF80520 		ldrb	r2, [sp, #5]	@ zero_extendqisi2
+ 19011              	.LVL30:
+ 19012              		.loc 1 262 0
+ 19013 003a 12F0800F 		tst	r2, #128
+ 19014 003e 20D0     		beq	.L37
+ 19015              		.loc 1 265 0
+ 19016 0040 C3F10003 		rsb	r3, r3, #0
+ 19017              	.LVL31:
+ 19018 0044 DBB2     		uxtb	r3, r3
+ 19019              	.LVL32:
+ 19020              		.loc 1 273 0
+ 19021 0046 6FEA0202 		mvn	r2, r2
+ 19022              	.LVL33:
+ 19023 004a 02F00702 		and	r2, r2, #7
+ 19024 004e 4FEA0212 		lsl	r2, r2, #4
+ 19025 0052 42EA1312 		orr	r2, r2, r3, lsr #4
+ 19026 0056 C2F10002 		rsb	r2, r2, #0
+ 19027 005a 3A70     		strb	r2, [r7, #0]
+ 19028              	.L38:
+ 19029              		.loc 1 275 0
+ 19030 005c 03F00F03 		and	r3, r3, #15
+ 19031              	.LVL34:
+ 19032 0060 40F27122 		movw	r2, #625
+ 19033 0064 02FB03F2 		mul	r2, r2, r3
+ 19034 0068 44F6D353 		movw	r3, #:lower16:274877907
+ 19035 006c C1F26203 		movt	r3, #:upper16:274877907
+ 19036 0070 83FB0213 		smull	r1, r3, r3, r2
+ 19037 0074 4FEAA313 		asr	r3, r3, #6
+ 19038 0078 3370     		strb	r3, [r6, #0]
+ 19039 007a 4FF00000 		mov	r0, #0
+ 19040              	.L36:
+ 19041              		.loc 1 279 0
+ 19042 007e 05B0     		add	sp, sp, #20
+ 19043 0080 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 19044              	.LVL35:
+ 19045              	.L37:
+ 19046              		.loc 1 271 0
+ 19047 0082 02F00702 		and	r2, r2, #7
+ 19048              	.LVL36:
+ 19049 0086 4FEA1311 		lsr	r1, r3, #4
+ 19050 008a 41EA0212 		orr	r2, r1, r2, lsl #4
+ 19051 008e 3A70     		strb	r2, [r7, #0]
+ 19052 0090 E4E7     		b	.L38
+ 19053              		.cfi_endproc
+ 19054              	.LFE42:
+ 19056 0092 00BF     		.section	.text.ow_reset,"ax",%progbits
+ 19057              		.align	2
+ 19058              		.global	ow_reset
+ 19059              		.thumb
+ 19060              		.thumb_func
+ 19062              	ow_reset:
+ 19063              	.LFB31:
+ 19064              		.loc 1 31 0
+ 19065              		.cfi_startproc
+ 19066              		@ args = 0, pretend = 0, frame = 0
+ 19067              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19068 0000 10B5     		push	{r4, lr}
+ 19069              	.LCFI9:
+ 19070              		.cfi_def_cfa_offset 8
+ 19071              		.loc 1 36 0
+ 19072 0002 41F20004 		movw	r4, #:lower16:1073811456
+ 19073              		.cfi_offset 14, -4
+ 19074              		.cfi_offset 4, -8
+ 19075 0006 C4F20104 		movt	r4, #:upper16:1073811456
+ 19076 000a 4FF48063 		mov	r3, #1024
+ 19077 000e 6361     		str	r3, [r4, #20]
+ 19078              		.loc 1 37 0
+ 19079 0010 FFF7FEFF 		bl	wOut
+ 19080              		.loc 1 38 0
+ 19081 0014 4FF4FA70 		mov	r0, #500
+ 19082 0018 FFF7FEFF 		bl	Delay_us
+ 19083              		.loc 1 39 0
+ 19084 001c FFF7FEFF 		bl	wIn
+ 19085              		.loc 1 40 0
+ 19086 0020 4FF03C00 		mov	r0, #60
+ 19087 0024 FFF7FEFF 		bl	Delay_us
+ 19088              		.loc 1 41 0
+ 19089 0028 A368     		ldr	r3, [r4, #8]
+ 19090              		.loc 1 42 0
+ 19091 002a 4FF4FA70 		mov	r0, #500
+ 19092 002e FFF7FEFF 		bl	Delay_us
+ 19093              		.loc 1 45 0
+ 19094 0032 4FF00000 		mov	r0, #0
+ 19095 0036 10BD     		pop	{r4, pc}
+ 19096              		.cfi_endproc
+ 19097              	.LFE31:
+ 19099              		.section	.text.ow_rom_search,"ax",%progbits
+ 19100              		.align	2
+ 19101              		.global	ow_rom_search
+ 19102              		.thumb
+ 19103              		.thumb_func
+ 19105              	ow_rom_search:
+ 19106              	.LFB39:
+ 19107              		.loc 1 148 0
+ 19108              		.cfi_startproc
+ 19109              		@ args = 0, pretend = 0, frame = 0
+ 19110              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19111              	.LVL37:
+ 19112 0000 2DE9F84F 		push	{r3, r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 19113              	.LCFI10:
+ 19114              		.cfi_def_cfa_offset 40
+ 19115 0004 8246     		mov	sl, r0
+ 19116              		.cfi_offset 14, -4
+ 19117              		.cfi_offset 11, -8
+ 19118              		.cfi_offset 10, -12
+ 19119              		.cfi_offset 9, -16
+ 19120              		.cfi_offset 8, -20
+ 19121              		.cfi_offset 7, -24
+ 19122              		.cfi_offset 6, -28
+ 19123              		.cfi_offset 5, -32
+ 19124              		.cfi_offset 4, -36
+ 19125              		.cfi_offset 3, -40
+ 19126 0006 0F46     		mov	r7, r1
+ 19127              		.loc 1 152 0
+ 19128 0008 FFF7FEFF 		bl	ow_reset
+ 19129              	.LVL38:
+ 19130 000c 0028     		cmp	r0, #0
+ 19131 000e 33D1     		bne	.L44
+ 19132              		.loc 1 154 0
+ 19133 0010 4FF0F000 		mov	r0, #240
+ 19134 0014 FFF7FEFF 		bl	ow_write_byte
+ 19135 0018 4FF00006 		mov	r6, #0
+ 19136 001c B346     		mov	fp, r6
+ 19137              	.LVL39:
+ 19138 001e 4FF04004 		mov	r4, #64
+ 19139              	.LVL40:
+ 19140              		.loc 1 177 0
+ 19141 0022 6FF07F09 		mvn	r9, #127
+ 19142              	.LVL41:
+ 19143              	.L50:
+ 19144              		.loc 1 147 0
+ 19145 0026 A4F10808 		sub	r8, r4, #8
+ 19146 002a 5FFA88F8 		uxtb	r8, r8
+ 19147              	.L49:
+ 19148              		.loc 1 162 0
+ 19149 002e FFF7FEFF 		bl	ow_read_bit
+ 19150 0032 0546     		mov	r5, r0
+ 19151              		.loc 1 163 0
+ 19152 0034 FFF7FEFF 		bl	ow_read_bit
+ 19153 0038 08B1     		cbz	r0, .L45
+ 19154              		.loc 1 164 0
+ 19155 003a 55B1     		cbz	r5, .L46
+ 19156 003c 1CE0     		b	.L44
+ 19157              	.L45:
+ 19158              		.loc 1 168 0
+ 19159 003e 15BB     		cbnz	r5, .L47
+ 19160              		.loc 1 169 0
+ 19161 0040 5445     		cmp	r4, sl
+ 19162 0042 1DD3     		bcc	.L48
+ 19163 0044 BB5D     		ldrb	r3, [r7, r6]	@ zero_extendqisi2
+ 19164 0046 A245     		cmp	sl, r4
+ 19165 0048 0CBF     		ite	eq
+ 19166 004a 0023     		moveq	r3, #0
+ 19167 004c 03F00103 		andne	r3, r3, #1
+ 19168 0050 B3B9     		cbnz	r3, .L48
+ 19169              	.L46:
+ 19170              		.loc 1 175 0
+ 19171 0052 2846     		mov	r0, r5
+ 19172 0054 FFF7FEFF 		bl	ow_write_bit
+ 19173              		.loc 1 176 0
+ 19174 0058 BB5D     		ldrb	r3, [r7, r6]	@ zero_extendqisi2
+ 19175 005a 4FEA5303 		lsr	r3, r3, #1
+ 19176 005e BB55     		strb	r3, [r7, r6]
+ 19177              	.L52:
+ 19178              		.loc 1 179 0
+ 19179 0060 04F1FF34 		add	r4, r4, #-1
+ 19180              	.LVL42:
+ 19181 0064 E4B2     		uxtb	r4, r4
+ 19182              	.LVL43:
+ 19183              		.loc 1 181 0
+ 19184 0066 4445     		cmp	r4, r8
+ 19185 0068 E1D1     		bne	.L49
+ 19186 006a 06F10106 		add	r6, r6, #1
+ 19187              		.loc 1 185 0
+ 19188 006e 002C     		cmp	r4, #0
+ 19189 0070 D9D1     		bne	.L50
+ 19190              		.loc 1 187 0
+ 19191 0072 5846     		mov	r0, fp
+ 19192 0074 BDE8F88F 		pop	{r3, r4, r5, r6, r7, r8, r9, sl, fp, pc}
+ 19193              	.L44:
+ 19194 0078 4FF00000 		mov	r0, #0
+ 19195              		.loc 1 188 0
+ 19196 007c BDE8F88F 		pop	{r3, r4, r5, r6, r7, r8, r9, sl, fp, pc}
+ 19197              	.L48:
+ 19198              		.loc 1 187 0
+ 19199 0080 A346     		mov	fp, r4
+ 19200              	.LVL44:
+ 19201 0082 4FF00105 		mov	r5, #1
+ 19202              	.LVL45:
+ 19203              	.L47:
+ 19204              		.loc 1 175 0
+ 19205 0086 2846     		mov	r0, r5
+ 19206 0088 FFF7FEFF 		bl	ow_write_bit
+ 19207              		.loc 1 177 0
+ 19208 008c BB5D     		ldrb	r3, [r7, r6]	@ zero_extendqisi2
+ 19209 008e 49EA5303 		orr	r3, r9, r3, lsr #1
+ 19210 0092 BB55     		strb	r3, [r7, r6]
+ 19211 0094 E4E7     		b	.L52
+ 19212              		.cfi_endproc
+ 19213              	.LFE39:
+ 19215 0096 00BF     		.section	.text.DS18X20_find_sensor,"ax",%progbits
+ 19216              		.align	2
+ 19217              		.global	DS18X20_find_sensor
+ 19218              		.thumb
+ 19219              		.thumb_func
+ 19221              	DS18X20_find_sensor:
+ 19222              	.LFB40:
+ 19223              		.loc 1 191 0
+ 19224              		.cfi_startproc
+ 19225              		@ args = 0, pretend = 0, frame = 0
+ 19226              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19227              	.LVL46:
+ 19228 0000 70B5     		push	{r4, r5, r6, lr}
+ 19229              	.LCFI11:
+ 19230              		.cfi_def_cfa_offset 16
+ 19231 0002 0546     		mov	r5, r0
+ 19232              		.cfi_offset 14, -4
+ 19233              		.cfi_offset 6, -8
+ 19234              		.cfi_offset 5, -12
+ 19235              		.cfi_offset 4, -16
+ 19236 0004 0E46     		mov	r6, r1
+ 19237              		.loc 1 191 0
+ 19238 0006 4FF00004 		mov	r4, #0
+ 19239              	.LVL47:
+ 19240              	.L58:
+ 19241              		.loc 1 197 0
+ 19242 000a 2878     		ldrb	r0, [r5, #0]	@ zero_extendqisi2
+ 19243 000c 3146     		mov	r1, r6
+ 19244 000e FFF7FEFF 		bl	ow_rom_search
+ 19245 0012 C0B2     		uxtb	r0, r0
+ 19246 0014 2870     		strb	r0, [r5, #0]
+ 19247              		.loc 1 198 0
+ 19248 0016 00F1FF30 		add	r0, r0, #-1
+ 19249 001a C0B2     		uxtb	r0, r0
+ 19250 001c FC28     		cmp	r0, #252
+ 19251 001e 0FD8     		bhi	.L59
+ 19252              		.loc 1 200 0
+ 19253 0020 3378     		ldrb	r3, [r6, #0]	@ zero_extendqisi2
+ 19254 0022 102B     		cmp	r3, #16
+ 19255 0024 14BF     		ite	ne
+ 19256 0026 0022     		movne	r2, #0
+ 19257 0028 0122     		moveq	r2, #1
+ 19258 002a 282B     		cmp	r3, #40
+ 19259 002c 14BF     		ite	ne
+ 19260 002e 1346     		movne	r3, r2
+ 19261 0030 42F00103 		orreq	r3, r2, #1
+ 19262 0034 23B9     		cbnz	r3, .L59
+ 19263              		.loc 1 196 0
+ 19264 0036 04F10104 		add	r4, r4, #1
+ 19265              	.LVL48:
+ 19266 003a A4B2     		uxth	r4, r4
+ 19267              	.LVL49:
+ 19268              		.loc 1 202 0
+ 19269 003c 0B2C     		cmp	r4, #11
+ 19270 003e E4D1     		bne	.L58
+ 19271              	.L59:
+ 19272 0040 70BD     		pop	{r4, r5, r6, pc}
+ 19273              		.cfi_endproc
+ 19274              	.LFE40:
+ 19276 0042 00BF     		.section	.text.search_sensors,"ax",%progbits
+ 19277              		.align	2
+ 19278              		.global	search_sensors
+ 19279              		.thumb
+ 19280              		.thumb_func
+ 19282              	search_sensors:
+ 19283              	.LFB41:
+ 19284              		.loc 1 208 0
+ 19285              		.cfi_startproc
+ 19286              		@ args = 0, pretend = 0, frame = 16
+ 19287              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19288 0000 2DE9F045 		push	{r4, r5, r6, r7, r8, sl, lr}
+ 19289              	.LCFI12:
+ 19290              		.cfi_def_cfa_offset 28
+ 19291 0004 85B0     		sub	sp, sp, #20
+ 19292              	.LCFI13:
+ 19293              		.cfi_def_cfa_offset 48
+ 19294              		.loc 1 218 0
+ 19295 0006 04AF     		add	r7, sp, #16
+ 19296              		.cfi_offset 14, -4
+ 19297              		.cfi_offset 10, -8
+ 19298              		.cfi_offset 8, -12
+ 19299              		.cfi_offset 7, -16
+ 19300              		.cfi_offset 6, -20
+ 19301              		.cfi_offset 5, -24
+ 19302              		.cfi_offset 4, -28
+ 19303 0008 4FF0FF33 		mov	r3, #-1
+ 19304 000c 07F8093D 		strb	r3, [r7, #-9]!
+ 19305              	.LVL50:
+ 19306 0010 4FF00006 		mov	r6, #0
+ 19307 0014 3546     		mov	r5, r6
+ 19308              	.LVL51:
+ 19309              		.loc 1 220 0
+ 19310 0016 02AC     		add	r4, sp, #8
+ 19311              		.loc 1 229 0
+ 19312 0018 40F20008 		movw	r8, #:lower16:gSensorIDs
+ 19313 001c C0F20008 		movt	r8, #:upper16:gSensorIDs
+ 19314 0020 B246     		mov	sl, r6
+ 19315              	.LVL52:
+ 19316              	.L64:
+ 19317              		.loc 1 220 0
+ 19318 0022 3846     		mov	r0, r7
+ 19319 0024 2146     		mov	r1, r4
+ 19320 0026 FFF7FEFF 		bl	DS18X20_find_sensor
+ 19321              		.loc 1 222 0
+ 19322 002a 9DF80700 		ldrb	r0, [sp, #7]	@ zero_extendqisi2
+ 19323 002e FF28     		cmp	r0, #255
+ 19324 0030 1CD0     		beq	.L62
+ 19325              	.LVL53:
+ 19326              		.loc 1 229 0
+ 19327 0032 FE28     		cmp	r0, #254
+ 19328 0034 1AD0     		beq	.L62
+ 19329 0036 08EB4612 		add	r2, r8, r6, lsl #5
+ 19330              	.LVL54:
+ 19331 003a 5346     		mov	r3, sl
+ 19332              	.L63:
+ 19333              		.loc 1 237 0
+ 19334 003c E15C     		ldrb	r1, [r4, r3]	@ zero_extendqisi2
+ 19335 003e 42F8041B 		str	r1, [r2], #4
+ 19336 0042 03F10103 		add	r3, r3, #1
+ 19337              		.loc 1 236 0
+ 19338 0046 082B     		cmp	r3, #8
+ 19339 0048 F8D1     		bne	.L63
+ 19340              		.loc 1 239 0
+ 19341 004a 05F10105 		add	r5, r5, #1
+ 19342              	.LVL55:
+ 19343 004e EDB2     		uxtb	r5, r5
+ 19344              	.LVL56:
+ 19345              		.loc 1 218 0
+ 19346 0050 022D     		cmp	r5, #2
+ 19347 0052 8CBF     		ite	hi
+ 19348 0054 0023     		movhi	r3, #0
+ 19349 0056 0123     		movls	r3, #1
+ 19350 0058 0028     		cmp	r0, #0
+ 19351 005a 0CBF     		ite	eq
+ 19352 005c 0020     		moveq	r0, #0
+ 19353 005e 03F00100 		andne	r0, r3, #1
+ 19354 0062 18B1     		cbz	r0, .L62
+ 19355 0064 06F10106 		add	r6, r6, #1
+ 19356 0068 642D     		cmp	r5, #100
+ 19357 006a DAD1     		bne	.L64
+ 19358              	.LVL57:
+ 19359              	.L62:
+ 19360              		.loc 1 243 0
+ 19361 006c 2846     		mov	r0, r5
+ 19362 006e 05B0     		add	sp, sp, #20
+ 19363 0070 BDE8F085 		pop	{r4, r5, r6, r7, r8, sl, pc}
+ 19364              		.cfi_endproc
+ 19365              	.LFE41:
+ 19367              		.section	.text.ow_command,"ax",%progbits
+ 19368              		.align	2
+ 19369              		.global	ow_command
+ 19370              		.thumb
+ 19371              		.thumb_func
+ 19373              	ow_command:
+ 19374              	.LFB38:
+ 19375              		.loc 1 127 0
+ 19376              		.cfi_startproc
+ 19377              		@ args = 0, pretend = 0, frame = 0
+ 19378              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19379              	.LVL58:
+ 19380 0000 70B5     		push	{r4, r5, r6, lr}
+ 19381              	.LCFI14:
+ 19382              		.cfi_def_cfa_offset 16
+ 19383 0002 0646     		mov	r6, r0
+ 19384              		.cfi_offset 14, -4
+ 19385              		.cfi_offset 6, -8
+ 19386              		.cfi_offset 5, -12
+ 19387              		.cfi_offset 4, -16
+ 19388 0004 0D46     		mov	r5, r1
+ 19389              		.loc 1 130 0
+ 19390 0006 FFF7FEFF 		bl	ow_reset
+ 19391              	.LVL59:
+ 19392              		.loc 1 132 0
+ 19393 000a 6DB1     		cbz	r5, .L69
+ 19394              		.loc 1 133 0
+ 19395 000c 4FF05500 		mov	r0, #85
+ 19396 0010 FFF7FEFF 		bl	ow_write_byte
+ 19397 0014 4FF00004 		mov	r4, #0
+ 19398              	.L70:
+ 19399              		.loc 1 136 0
+ 19400 0018 285D     		ldrb	r0, [r5, r4]	@ zero_extendqisi2
+ 19401 001a FFF7FEFF 		bl	ow_write_byte
+ 19402 001e 04F10404 		add	r4, r4, #4
+ 19403              		.loc 1 138 0
+ 19404 0022 202C     		cmp	r4, #32
+ 19405 0024 F8D1     		bne	.L70
+ 19406 0026 03E0     		b	.L71
+ 19407              	.L69:
+ 19408              		.loc 1 141 0
+ 19409 0028 4FF0CC00 		mov	r0, #204
+ 19410 002c FFF7FEFF 		bl	ow_write_byte
+ 19411              	.L71:
+ 19412              		.loc 1 144 0
+ 19413 0030 F0B2     		uxtb	r0, r6
+ 19414 0032 FFF7FEFF 		bl	ow_write_byte
+ 19415              		.loc 1 145 0
+ 19416 0036 70BD     		pop	{r4, r5, r6, pc}
+ 19417              		.cfi_endproc
+ 19418              	.LFE38:
+ 19420              		.comm	gSensorIDs,96,4
+ 19421              		.comm	GPIO_InitStructure,4,4
+ 19422              		.text
+ 19423              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 1wire.c
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18575  .text.ow_parasite_on:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18580  .text.ow_parasite_on:00000000 ow_parasite_on
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18598  .text.ow_parasite_off:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18603  .text.ow_parasite_off:00000000 ow_parasite_off
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18621  .text.crc8:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18626  .text.crc8:00000000 crc8
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18710  .text.wIn:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18715  .text.wIn:00000000 wIn
+                            *COM*:00000004 GPIO_InitStructure
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18747  .text.wOut:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18752  .text.wOut:00000000 wOut
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18784  .text.ow_write_bit:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18789  .text.ow_write_bit:00000000 ow_write_bit
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18835  .text.ow_write_byte:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18840  .text.ow_write_byte:00000000 ow_write_byte
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18875  .text.ow_read_bit:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18880  .text.ow_read_bit:00000000 ow_read_bit
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18918  .text.ow_read_byte:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18923  .text.ow_read_byte:00000000 ow_read_byte
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18960  .text.read_temp:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:18965  .text.read_temp:00000000 read_temp
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:19057  .text.ow_reset:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:19062  .text.ow_reset:00000000 ow_reset
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:19100  .text.ow_rom_search:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:19105  .text.ow_rom_search:00000000 ow_rom_search
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:19216  .text.DS18X20_find_sensor:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:19221  .text.DS18X20_find_sensor:00000000 DS18X20_find_sensor
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:19277  .text.search_sensors:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:19282  .text.search_sensors:00000000 search_sensors
+                            *COM*:00000060 gSensorIDs
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:19368  .text.ow_command:00000000 $t
+C:\Users\user\AppData\Local\Temp\cc32N6Cl.s:19373  .text.ow_command:00000000 ow_command
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+GPIO_Init
+Delay_us

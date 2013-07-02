@@ -1,0 +1,1269 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"cmd.c"
+  23              	.Ltext0:
+  24              		.file 1 "../CMD/cmd.c"
+ 21461              		.align	2
+ 21462              		.global	lockUnlockTerminal
+ 21463              		.thumb
+ 21464              		.thumb_func
+ 21466              	lockUnlockTerminal:
+ 21467              	.LFB31:
+   1:../CMD/cmd.c  **** /*
+   2:../CMD/cmd.c  **** 
+   3:../CMD/cmd.c  **** 	Jest to modul umozliwiajacy dodanie do aplikacji funkcjonalnosci prostego terminala ( CLI )
+   4:../CMD/cmd.c  **** 	Wywolanie kazdej komendy ogranicza sie do podania jej nazwy oraz parametru
+   5:../CMD/cmd.c  **** 	
+   6:../CMD/cmd.c  **** 	W obecnej (0.2) wersji mozna korzystac tylko z jednego argumentu, jednakze latwo to zmienic.
+   7:../CMD/cmd.c  **** 
+   8:../CMD/cmd.c  **** 	Do zrobienia:
+   9:../CMD/cmd.c  **** 		Obsluga tabulacji, skrotow typu CRTL+Z
+  10:../CMD/cmd.c  **** 
+  11:../CMD/cmd.c  **** 
+  12:../CMD/cmd.c  **** Autor:	Jakub Zbydniewski
+  13:../CMD/cmd.c  **** 
+  14:../CMD/cmd.c  **** Data ostatniej modyfikacji: 15.12.2012
+  15:../CMD/cmd.c  **** 
+  16:../CMD/cmd.c  **** */
+  17:../CMD/cmd.c  **** 
+  18:../CMD/cmd.c  **** #include <string.h>
+  19:../CMD/cmd.c  **** 
+  20:../CMD/cmd.c  **** #include "cmd.h"
+  21:../CMD/cmd.c  **** #include "conversion.h"
+  22:../CMD/cmd.c  **** #include "min_printf.h"
+  23:../CMD/cmd.c  **** #include "CMD_commands.h"
+  24:../CMD/cmd.c  **** #include "usart.h"
+  25:../CMD/cmd.c  **** #include <stdlib.h>
+  26:../CMD/cmd.c  **** #include <init_func.h>
+  27:../CMD/cmd.c  **** #include "ringbuffer.h"
+  28:../CMD/cmd.c  **** #include "server_config.h"
+  29:../CMD/cmd.c  **** #include <stdio.h>
+  30:../CMD/cmd.c  **** volatile uint8_t command_request = 0;
+  31:../CMD/cmd.c  **** 
+  32:../CMD/cmd.c  **** #if TERMINAL_USE_PASSWORD
+  33:../CMD/cmd.c  **** static const char password[] = "kuba";
+  34:../CMD/cmd.c  **** #endif
+  35:../CMD/cmd.c  **** 
+  36:../CMD/cmd.c  **** #if COMMAND_LOG
+  37:../CMD/cmd.c  **** 
+  38:../CMD/cmd.c  **** #include "../sd_card/fatfs/ff.h"
+  39:../CMD/cmd.c  **** #include "../RTC/rtc.h"
+  40:../CMD/cmd.c  **** 
+  41:../CMD/cmd.c  **** #endif
+  42:../CMD/cmd.c  **** 
+  43:../CMD/cmd.c  **** char * ENDLINE = "\r\n";
+  44:../CMD/cmd.c  **** static uint8_t terminal_state = 0;
+  45:../CMD/cmd.c  **** 
+  46:../CMD/cmd.c  **** const struct CMD_entry_table CMD_commands[] =
+  47:../CMD/cmd.c  **** {
+  48:../CMD/cmd.c  **** 	//nazwa komendy, opis komendy,     , nazwa funkcji, czy potrzeba argument ? 0 = nie, tak = 1
+  49:../CMD/cmd.c  ****     {"help",   "Wyswietla komendy", 	help,				0},
+  50:../CMD/cmd.c  **** 	{"time",   "Wyswietla czas RTC", 	funkcja_time,		0},
+  51:../CMD/cmd.c  **** 	{"ls", 	   "Listing folderu",		funkcja_ls, 		0},
+  52:../CMD/cmd.c  **** 	{"info",   "Running info", 			funkcja_info, 		0},
+  53:../CMD/cmd.c  **** 	{"enable", "tryb super user", 		enable, 			1},
+  54:../CMD/cmd.c  **** 	{"IpReq", "refresh IP", 			funkcja_updateIP, 	0},
+  55:../CMD/cmd.c  **** 	{"NTPReq", "refresh NTP",		funkcja_NTPrequest, 0}
+  56:../CMD/cmd.c  **** 
+  57:../CMD/cmd.c  **** };
+  58:../CMD/cmd.c  **** 
+  59:../CMD/cmd.c  **** void help(char * argument, char arg)
+  60:../CMD/cmd.c  **** {
+  61:../CMD/cmd.c  ****     uint8_t i = 0;
+  62:../CMD/cmd.c  **** 
+  63:../CMD/cmd.c  **** 
+  64:../CMD/cmd.c  ****     if ( arg == 0 )
+  65:../CMD/cmd.c  ****     {
+  66:../CMD/cmd.c  ****         min_printf("\rLista dostepnych komend:\r\n");
+  67:../CMD/cmd.c  **** 
+  68:../CMD/cmd.c  ****         // jezeli bez argumentu, to wypisz wszystkie komendy
+  69:../CMD/cmd.c  ****     	for (i =0; i< sizeof(CMD_commands)/ sizeof(CMD_commands[0]); i++)
+  70:../CMD/cmd.c  **** 			{
+  71:../CMD/cmd.c  **** 				min_printf("\rKomenda: %s\rOpis: %s\r\n", CMD_commands[i].keyword, CMD_commands[i].description)
+  72:../CMD/cmd.c  **** 				min_printf("Argument?: ");
+  73:../CMD/cmd.c  **** 				CMD_commands[i].need_argument	 ? min_printf("tak\r\n") : min_printf("nie\r\n");
+  74:../CMD/cmd.c  **** 			}
+  75:../CMD/cmd.c  ****     }
+  76:../CMD/cmd.c  ****     else
+  77:../CMD/cmd.c  ****     {
+  78:../CMD/cmd.c  **** 
+  79:../CMD/cmd.c  ****     	// jezeli jest argument, to wypisz help dla konkretnej komendy
+  80:../CMD/cmd.c  ****     	while ( strcmp(argument, CMD_commands[i].keyword)!=0 && i < sizeof(CMD_commands)/ sizeof(CMD_c
+  81:../CMD/cmd.c  ****     	        i++;
+  82:../CMD/cmd.c  **** 
+  83:../CMD/cmd.c  ****     	if ( i == sizeof(CMD_commands)/ sizeof(CMD_commands[0]))
+  84:../CMD/cmd.c  ****     	{
+  85:../CMD/cmd.c  ****     	       min_printf("Brak takiej komendy\r\n");
+  86:../CMD/cmd.c  ****     	       min_printf(ENDLINE);
+  87:../CMD/cmd.c  ****     	}
+  88:../CMD/cmd.c  ****     	else
+  89:../CMD/cmd.c  ****     	{
+  90:../CMD/cmd.c  ****     		min_printf("%s",CMD_commands[i].description);
+  91:../CMD/cmd.c  ****     		min_printf(ENDLINE);
+  92:../CMD/cmd.c  ****     	}
+  93:../CMD/cmd.c  **** 
+  94:../CMD/cmd.c  ****     }
+  95:../CMD/cmd.c  **** 
+  96:../CMD/cmd.c  **** }
+  97:../CMD/cmd.c  **** 
+  98:../CMD/cmd.c  **** #if TERMINAL_USE_PASSWORD
+  99:../CMD/cmd.c  **** // Funkcja która realizuje dostêp do trybu uprzywilejowanego
+ 100:../CMD/cmd.c  **** void enable(char * argument, char arg) {
+ 101:../CMD/cmd.c  **** 
+ 102:../CMD/cmd.c  **** 	if (terminal_state == UNLOCKED_TERMINAL) {
+ 103:../CMD/cmd.c  **** 		return;
+ 104:../CMD/cmd.c  **** 	}
+ 105:../CMD/cmd.c  **** 	if ( strcmp(argument, password)==0 ) {
+ 106:../CMD/cmd.c  **** 
+ 107:../CMD/cmd.c  **** 		min_printf("Przyznano dostep");
+ 108:../CMD/cmd.c  **** 		min_printf(ENDLINE);
+ 109:../CMD/cmd.c  **** 		terminal_state = UNLOCKED_TERMINAL;
+ 110:../CMD/cmd.c  **** 	}
+ 111:../CMD/cmd.c  **** 	else {
+ 112:../CMD/cmd.c  **** 
+ 113:../CMD/cmd.c  **** 		min_printf("Blad autoryzacji");
+ 114:../CMD/cmd.c  **** 		min_printf(ENDLINE);
+ 115:../CMD/cmd.c  **** 	}
+ 116:../CMD/cmd.c  **** 
+ 117:../CMD/cmd.c  **** }
+ 118:../CMD/cmd.c  **** 
+ 119:../CMD/cmd.c  **** 
+ 120:../CMD/cmd.c  **** //funkcja do uzycia przez zewnetrzne obiekty ( np. zegar RTC resetujacy stan zalogowania co jakis c
+ 121:../CMD/cmd.c  **** void lockUnlockTerminal(uint8_t val) {
+ 21468              		.loc 1 121 0
+ 21469              		.cfi_startproc
+ 21470              		@ args = 0, pretend = 0, frame = 0
+ 21471              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21472              		@ link register save eliminated.
+ 21473              	.LVL0:
+ 122:../CMD/cmd.c  **** 
+ 123:../CMD/cmd.c  **** 	if ( val == LOCKED_TERMINAL) {
+ 21474              		.loc 1 123 0
+ 21475 0000 38B9     		cbnz	r0, .L2
+ 124:../CMD/cmd.c  **** 		terminal_state = LOCKED_TERMINAL;
+ 21476              		.loc 1 124 0
+ 21477 0002 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 21478 0006 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 21479 000a 4FF00002 		mov	r2, #0
+ 21480 000e 1A70     		strb	r2, [r3, #0]
+ 21481 0010 7047     		bx	lr
+ 21482              	.L2:
+ 125:../CMD/cmd.c  **** 	}
+ 126:../CMD/cmd.c  **** 	else
+ 127:../CMD/cmd.c  **** 		terminal_state = UNLOCKED_TERMINAL;
+ 21483              		.loc 1 127 0
+ 21484 0012 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 21485 0016 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 21486 001a 4FF00102 		mov	r2, #1
+ 21487 001e 1A70     		strb	r2, [r3, #0]
+ 21488 0020 7047     		bx	lr
+ 21489              		.cfi_endproc
+ 21490              	.LFE31:
+ 21492 0022 00BF     		.section	.text.get_command_from_ring_buffer,"ax",%progbits
+ 21493              		.align	2
+ 21494              		.global	get_command_from_ring_buffer
+ 21495              		.thumb
+ 21496              		.thumb_func
+ 21498              	get_command_from_ring_buffer:
+ 21499              	.LFB34:
+ 128:../CMD/cmd.c  **** }
+ 129:../CMD/cmd.c  **** #endif
+ 130:../CMD/cmd.c  **** 
+ 131:../CMD/cmd.c  **** //function which performs function assigned to specific command
+ 132:../CMD/cmd.c  **** int8_t perform_command(char * command, char * arg, char is_argument)
+ 133:../CMD/cmd.c  **** {
+ 134:../CMD/cmd.c  ****     unsigned char i = 0;
+ 135:../CMD/cmd.c  **** 
+ 136:../CMD/cmd.c  **** #if TERMINAL_USE_PASSWORD
+ 137:../CMD/cmd.c  ****     if ( terminal_state == LOCKED_TERMINAL  && (strcmp(command, "enable")!=0) )
+ 138:../CMD/cmd.c  ****     {
+ 139:../CMD/cmd.c  ****     	min_printf("Musisz sie zalogowac przez enable");
+ 140:../CMD/cmd.c  ****     	min_printf(ENDLINE);
+ 141:../CMD/cmd.c  ****     	return -2;
+ 142:../CMD/cmd.c  ****     }
+ 143:../CMD/cmd.c  **** #endif
+ 144:../CMD/cmd.c  **** 
+ 145:../CMD/cmd.c  ****     //szukamy komendy w tablicy komend
+ 146:../CMD/cmd.c  ****     while ( strcmp(command, CMD_commands[i].keyword)!=0 && i < sizeof(CMD_commands)/ sizeof(CMD_com
+ 147:../CMD/cmd.c  ****         i++;
+ 148:../CMD/cmd.c  **** 
+ 149:../CMD/cmd.c  ****     if ( i == sizeof(CMD_commands)/ sizeof(CMD_commands[0]))
+ 150:../CMD/cmd.c  ****     {
+ 151:../CMD/cmd.c  ****         if (strcmp(command, ""))
+ 152:../CMD/cmd.c  ****             return -1;
+ 153:../CMD/cmd.c  **** 
+ 154:../CMD/cmd.c  ****         return -2;
+ 155:../CMD/cmd.c  ****     }
+ 156:../CMD/cmd.c  **** 
+ 157:../CMD/cmd.c  ****     //wykonanie funkcji przypisanej do komendy
+ 158:../CMD/cmd.c  ****     CMD_commands[i].wsk(arg, is_argument);
+ 159:../CMD/cmd.c  **** 
+ 160:../CMD/cmd.c  ****     return 0;
+ 161:../CMD/cmd.c  **** }
+ 162:../CMD/cmd.c  **** 
+ 163:../CMD/cmd.c  **** unsigned int convert_argument( char * arg)
+ 164:../CMD/cmd.c  **** {
+ 165:../CMD/cmd.c  ****     unsigned int number;
+ 166:../CMD/cmd.c  **** 
+ 167:../CMD/cmd.c  ****     // in hex
+ 168:../CMD/cmd.c  ****     if ( arg[0] == '0' && arg[1] == 'x' )
+ 169:../CMD/cmd.c  ****     {
+ 170:../CMD/cmd.c  ****         xtoi(arg, &number);
+ 171:../CMD/cmd.c  ****     }
+ 172:../CMD/cmd.c  ****     else
+ 173:../CMD/cmd.c  ****         number = myatoi(arg);
+ 174:../CMD/cmd.c  **** 
+ 175:../CMD/cmd.c  **** 
+ 176:../CMD/cmd.c  ****     return number;
+ 177:../CMD/cmd.c  **** 
+ 178:../CMD/cmd.c  **** }
+ 179:../CMD/cmd.c  **** 
+ 180:../CMD/cmd.c  **** // Pobiera komende z bufora kolowego uzupelnianego przez przerwanie od USART'u RXNE 
+ 181:../CMD/cmd.c  **** void get_command_from_ring_buffer(char * line, char * arg, char * is_argument)
+ 182:../CMD/cmd.c  **** {
+ 21500              		.loc 1 182 0
+ 21501              		.cfi_startproc
+ 21502              		@ args = 0, pretend = 0, frame = 0
+ 21503              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21504              	.LVL1:
+ 21505 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 21506              	.LCFI0:
+ 21507              		.cfi_def_cfa_offset 24
+ 21508 0002 0546     		mov	r5, r0
+ 21509              		.cfi_offset 14, -4
+ 21510              		.cfi_offset 7, -8
+ 21511              		.cfi_offset 6, -12
+ 21512              		.cfi_offset 5, -16
+ 21513              		.cfi_offset 4, -20
+ 21514              		.cfi_offset 3, -24
+ 21515 0004 0E46     		mov	r6, r1
+ 21516 0006 1746     		mov	r7, r2
+ 183:../CMD/cmd.c  ****     char c = 0;
+ 184:../CMD/cmd.c  ****     int i = 0;
+ 185:../CMD/cmd.c  **** 
+ 186:../CMD/cmd.c  ****         memset(line, 0, CMD_LENGTH_MAX);
+ 21517              		.loc 1 186 0
+ 21518 0008 4FF00004 		mov	r4, #0
+ 21519 000c 0346     		mov	r3, r0
+ 21520 000e 03F8014B 		strb	r4, [r3], #1
+ 21521 0012 03F8014B 		strb	r4, [r3], #1
+ 21522 0016 03F8014B 		strb	r4, [r3], #1
+ 21523 001a 03F8014B 		strb	r4, [r3], #1
+ 21524 001e 03F8014B 		strb	r4, [r3], #1
+ 21525 0022 03F8014B 		strb	r4, [r3], #1
+ 21526 0026 03F8014B 		strb	r4, [r3], #1
+ 21527 002a 03F8014B 		strb	r4, [r3], #1
+ 21528 002e 03F8014B 		strb	r4, [r3], #1
+ 21529 0032 1C70     		strb	r4, [r3, #0]
+ 187:../CMD/cmd.c  ****         memset(arg, 0, CMD_LENGTH_MAX);
+ 21530              		.loc 1 187 0
+ 21531 0034 0B46     		mov	r3, r1
+ 21532 0036 03F8014B 		strb	r4, [r3], #1
+ 21533 003a 03F8014B 		strb	r4, [r3], #1
+ 21534 003e 03F8014B 		strb	r4, [r3], #1
+ 21535 0042 03F8014B 		strb	r4, [r3], #1
+ 21536 0046 03F8014B 		strb	r4, [r3], #1
+ 21537 004a 03F8014B 		strb	r4, [r3], #1
+ 21538 004e 03F8014B 		strb	r4, [r3], #1
+ 21539 0052 03F8014B 		strb	r4, [r3], #1
+ 21540 0056 03F8014B 		strb	r4, [r3], #1
+ 21541 005a 1C70     		strb	r4, [r3, #0]
+ 188:../CMD/cmd.c  **** 	
+ 189:../CMD/cmd.c  ****         // Pobieranie polecenia
+ 190:../CMD/cmd.c  ****         while( (c = ring_buffer_pop()) != '\r' && i < CMD_LENGTH_MAX )
+ 21542              		.loc 1 190 0
+ 21543 005c 0DE0     		b	.L15
+ 21544              	.LVL2:
+ 21545              	.L9:
+ 191:../CMD/cmd.c  ****         {
+ 192:../CMD/cmd.c  **** 					
+ 193:../CMD/cmd.c  ****             // if space try again
+ 194:../CMD/cmd.c  ****             if ( c == ' ' && i == 0 )
+ 21546              		.loc 1 194 0
+ 21547 005e 2028     		cmp	r0, #32
+ 21548 0060 14BF     		ite	ne
+ 21549 0062 0023     		movne	r3, #0
+ 21550 0064 0123     		moveq	r3, #1
+ 21551 0066 002C     		cmp	r4, #0
+ 21552 0068 14BF     		ite	ne
+ 21553 006a 0022     		movne	r2, #0
+ 21554 006c 03F00102 		andeq	r2, r3, #1
+ 21555 0070 1AB9     		cbnz	r2, .L15
+ 195:../CMD/cmd.c  ****                 continue;
+ 196:../CMD/cmd.c  ****             else if ( c == ' ')
+ 21556              		.loc 1 196 0
+ 21557 0072 6BB9     		cbnz	r3, .L7
+ 197:../CMD/cmd.c  ****                 break;
+ 198:../CMD/cmd.c  **** 
+ 199:../CMD/cmd.c  ****             *(line+i) = c;
+ 21558              		.loc 1 199 0
+ 21559 0074 2855     		strb	r0, [r5, r4]
+ 200:../CMD/cmd.c  ****             i++;
+ 21560              		.loc 1 200 0
+ 21561 0076 04F10104 		add	r4, r4, #1
+ 21562              	.LVL3:
+ 21563              	.L15:
+ 21564              		.loc 1 190 0
+ 21565 007a FFF7FEFF 		bl	ring_buffer_pop
+ 21566              	.LVL4:
+ 21567 007e 0D28     		cmp	r0, #13
+ 21568              	.LVL5:
+ 21569 0080 02D0     		beq	.L8
+ 21570 0082 0A2C     		cmp	r4, #10
+ 21571 0084 EBD1     		bne	.L9
+ 21572 0086 03E0     		b	.L7
+ 21573              	.L8:
+ 201:../CMD/cmd.c  **** 
+ 202:../CMD/cmd.c  ****         }
+ 203:../CMD/cmd.c  **** 
+ 204:../CMD/cmd.c  ****         if ( c == '\r' )
+ 205:../CMD/cmd.c  ****         {
+ 206:../CMD/cmd.c  ****             *is_argument = 0;
+ 21574              		.loc 1 206 0
+ 21575 0088 4FF00003 		mov	r3, #0
+ 21576 008c 3B70     		strb	r3, [r7, #0]
+ 207:../CMD/cmd.c  ****             return;
+ 21577              		.loc 1 207 0
+ 21578 008e F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 21579              	.L7:
+ 208:../CMD/cmd.c  ****         }
+ 209:../CMD/cmd.c  ****         else
+ 210:../CMD/cmd.c  ****         {
+ 211:../CMD/cmd.c  **** 
+ 212:../CMD/cmd.c  ****             *is_argument = 1;
+ 21580              		.loc 1 212 0
+ 21581 0090 4FF00103 		mov	r3, #1
+ 21582 0094 3B70     		strb	r3, [r7, #0]
+ 21583 0096 4FF00004 		mov	r4, #0
+ 21584              	.LVL6:
+ 213:../CMD/cmd.c  ****         }
+ 214:../CMD/cmd.c  **** 
+ 215:../CMD/cmd.c  **** 
+ 216:../CMD/cmd.c  ****     i = 0;
+ 217:../CMD/cmd.c  **** 
+ 218:../CMD/cmd.c  ****     // Pobieranie argumentu
+ 219:../CMD/cmd.c  ****     while( (c = ring_buffer_pop()) != '\r')
+ 21585              		.loc 1 219 0
+ 21586 009a 06E0     		b	.L16
+ 21587              	.L13:
+ 220:../CMD/cmd.c  ****     {
+ 221:../CMD/cmd.c  ****         // if space try again
+ 222:../CMD/cmd.c  ****         if ( c == ' ')
+ 21588              		.loc 1 222 0
+ 21589 009c 2028     		cmp	r0, #32
+ 21590 009e 04D0     		beq	.L16
+ 223:../CMD/cmd.c  ****             continue;
+ 224:../CMD/cmd.c  **** 
+ 225:../CMD/cmd.c  **** 		//Musi przeleciec cala pobrana linie az do znaku '\r'
+ 226:../CMD/cmd.c  **** 		if (i < CMD_LENGTH_MAX)
+ 21591              		.loc 1 226 0
+ 21592 00a0 092C     		cmp	r4, #9
+ 227:../CMD/cmd.c  **** 			*(arg+i) = c;
+ 21593              		.loc 1 227 0
+ 21594 00a2 D8BF     		it	le
+ 21595 00a4 3055     		strble	r0, [r6, r4]
+ 228:../CMD/cmd.c  **** 				
+ 229:../CMD/cmd.c  ****         i++;
+ 21596              		.loc 1 229 0
+ 21597 00a6 04F10104 		add	r4, r4, #1
+ 21598              	.L16:
+ 21599              		.loc 1 219 0
+ 21600 00aa FFF7FEFF 		bl	ring_buffer_pop
+ 21601              	.LVL7:
+ 21602 00ae 0D28     		cmp	r0, #13
+ 21603              	.LVL8:
+ 21604 00b0 F4D1     		bne	.L13
+ 21605 00b2 F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 21606              		.cfi_endproc
+ 21607              	.LFE34:
+ 21609              		.section	.text.convert_argument,"ax",%progbits
+ 21610              		.align	2
+ 21611              		.global	convert_argument
+ 21612              		.thumb
+ 21613              		.thumb_func
+ 21615              	convert_argument:
+ 21616              	.LFB33:
+ 21617              		.loc 1 164 0
+ 21618              		.cfi_startproc
+ 21619              		@ args = 0, pretend = 0, frame = 8
+ 21620              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21621              	.LVL9:
+ 21622 0000 00B5     		push	{lr}
+ 21623              	.LCFI1:
+ 21624              		.cfi_def_cfa_offset 4
+ 21625 0002 83B0     		sub	sp, sp, #12
+ 21626              	.LCFI2:
+ 21627              		.cfi_def_cfa_offset 16
+ 21628              		.loc 1 168 0
+ 21629 0004 0378     		ldrb	r3, [r0, #0]	@ zero_extendqisi2
+ 21630 0006 302B     		cmp	r3, #48
+ 21631 0008 06D1     		bne	.L18
+ 21632              		.cfi_offset 14, -4
+ 21633 000a 4378     		ldrb	r3, [r0, #1]	@ zero_extendqisi2
+ 21634 000c 782B     		cmp	r3, #120
+ 21635 000e 03D1     		bne	.L18
+ 21636              		.loc 1 170 0
+ 21637 0010 01A9     		add	r1, sp, #4
+ 21638 0012 FFF7FEFF 		bl	xtoi
+ 21639              	.LVL10:
+ 21640              		.loc 1 168 0
+ 21641 0016 02E0     		b	.L19
+ 21642              	.LVL11:
+ 21643              	.L18:
+ 21644              		.loc 1 173 0
+ 21645 0018 FFF7FEFF 		bl	myatoi
+ 21646              	.LVL12:
+ 21647 001c 0190     		str	r0, [sp, #4]
+ 21648              	.LVL13:
+ 21649              	.L19:
+ 21650              		.loc 1 178 0
+ 21651 001e 0198     		ldr	r0, [sp, #4]
+ 21652 0020 03B0     		add	sp, sp, #12
+ 21653 0022 00BD     		pop	{pc}
+ 21654              		.cfi_endproc
+ 21655              	.LFE33:
+ 21657              		.section	.text.perform_command,"ax",%progbits
+ 21658              		.align	2
+ 21659              		.global	perform_command
+ 21660              		.thumb
+ 21661              		.thumb_func
+ 21663              	perform_command:
+ 21664              	.LFB32:
+ 21665              		.loc 1 133 0
+ 21666              		.cfi_startproc
+ 21667              		@ args = 0, pretend = 0, frame = 0
+ 21668              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21669              	.LVL14:
+ 21670 0000 2DE9F845 		push	{r3, r4, r5, r6, r7, r8, sl, lr}
+ 21671              	.LCFI3:
+ 21672              		.cfi_def_cfa_offset 32
+ 21673 0004 0746     		mov	r7, r0
+ 21674              		.cfi_offset 14, -4
+ 21675              		.cfi_offset 10, -8
+ 21676              		.cfi_offset 8, -12
+ 21677              		.cfi_offset 7, -16
+ 21678              		.cfi_offset 6, -20
+ 21679              		.cfi_offset 5, -24
+ 21680              		.cfi_offset 4, -28
+ 21681              		.cfi_offset 3, -32
+ 21682 0006 8846     		mov	r8, r1
+ 21683 0008 9246     		mov	sl, r2
+ 21684              		.loc 1 137 0
+ 21685 000a 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 21686 000e C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 21687 0012 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 21688 0014 D3B9     		cbnz	r3, .L22
+ 21689              	.LVL15:
+ 21690 0016 40F20001 		movw	r1, #:lower16:.LC0
+ 21691 001a C0F20001 		movt	r1, #:upper16:.LC0
+ 21692 001e FFF7FEFF 		bl	strcmp
+ 21693 0022 98B1     		cbz	r0, .L22
+ 21694              		.loc 1 139 0
+ 21695 0024 40F20000 		movw	r0, #:lower16:.LC1
+ 21696 0028 C0F20000 		movt	r0, #:upper16:.LC1
+ 21697 002c FFF7FEFF 		bl	min_printf
+ 21698              		.loc 1 140 0
+ 21699 0030 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 21700 0034 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 21701 0038 1868     		ldr	r0, [r3, #0]
+ 21702 003a FFF7FEFF 		bl	min_printf
+ 21703 003e 4FF0FE00 		mov	r0, #254
+ 21704              		.loc 1 141 0
+ 21705 0042 32E0     		b	.L23
+ 21706              	.LVL16:
+ 21707              	.L25:
+ 21708              		.loc 1 147 0
+ 21709 0044 04F10104 		add	r4, r4, #1
+ 21710              	.LVL17:
+ 21711 0048 E4B2     		uxtb	r4, r4
+ 21712              	.LVL18:
+ 21713 004a 05E0     		b	.L24
+ 21714              	.LVL19:
+ 21715              	.L22:
+ 21716 004c 4FF00004 		mov	r4, #0
+ 21717              	.LVL20:
+ 21718              		.loc 1 146 0
+ 21719 0050 40F20005 		movw	r5, #:lower16:.LANCHOR2
+ 21720 0054 C0F20005 		movt	r5, #:upper16:.LANCHOR2
+ 21721              	.L24:
+ 21722 0058 2646     		mov	r6, r4
+ 21723 005a 04EB8401 		add	r1, r4, r4, lsl #2
+ 21724 005e 3846     		mov	r0, r7
+ 21725 0060 05EBC101 		add	r1, r5, r1, lsl #3
+ 21726 0064 FFF7FEFF 		bl	strcmp
+ 21727 0068 062C     		cmp	r4, #6
+ 21728 006a 8CBF     		ite	hi
+ 21729 006c 0023     		movhi	r3, #0
+ 21730 006e 0123     		movls	r3, #1
+ 21731 0070 0028     		cmp	r0, #0
+ 21732 0072 0CBF     		ite	eq
+ 21733 0074 0023     		moveq	r3, #0
+ 21734 0076 03F00103 		andne	r3, r3, #1
+ 21735 007a 002B     		cmp	r3, #0
+ 21736 007c E2D1     		bne	.L25
+ 21737              		.loc 1 149 0
+ 21738 007e 072C     		cmp	r4, #7
+ 21739 0080 05D1     		bne	.L26
+ 21740              		.loc 1 151 0
+ 21741 0082 3878     		ldrb	r0, [r7, #0]	@ zero_extendqisi2
+ 21742 0084 0028     		cmp	r0, #0
+ 21743 0086 14BF     		ite	ne
+ 21744 0088 FF20     		movne	r0, #255
+ 21745 008a FE20     		moveq	r0, #254
+ 21746 008c 0DE0     		b	.L23
+ 21747              	.L26:
+ 21748              		.loc 1 158 0
+ 21749 008e 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 21750 0092 C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 21751 0096 04EB8406 		add	r6, r4, r4, lsl #2
+ 21752              	.LVL21:
+ 21753 009a 03EBC603 		add	r3, r3, r6, lsl #3
+ 21754 009e 1B6A     		ldr	r3, [r3, #32]
+ 21755 00a0 4046     		mov	r0, r8
+ 21756 00a2 5146     		mov	r1, sl
+ 21757 00a4 9847     		blx	r3
+ 21758 00a6 4FF00000 		mov	r0, #0
+ 21759              	.LVL22:
+ 21760              	.L23:
+ 21761              		.loc 1 161 0
+ 21762 00aa 40B2     		sxtb	r0, r0
+ 21763 00ac BDE8F885 		pop	{r3, r4, r5, r6, r7, r8, sl, pc}
+ 21764              		.cfi_endproc
+ 21765              	.LFE32:
+ 21767              		.section	.text.CommandLineCheck,"ax",%progbits
+ 21768              		.align	2
+ 21769              		.global	CommandLineCheck
+ 21770              		.thumb
+ 21771              		.thumb_func
+ 21773              	CommandLineCheck:
+ 21774              	.LFB35:
+ 230:../CMD/cmd.c  **** 
+ 231:../CMD/cmd.c  ****     }
+ 232:../CMD/cmd.c  **** 
+ 233:../CMD/cmd.c  **** }
+ 234:../CMD/cmd.c  **** 
+ 235:../CMD/cmd.c  **** void CommandLineCheck(void)
+ 236:../CMD/cmd.c  **** {
+ 21775              		.loc 1 236 0
+ 21776              		.cfi_startproc
+ 21777              		@ args = 0, pretend = 0, frame = 120
+ 21778              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21779 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, sl, lr}
+ 21780              	.LCFI4:
+ 21781              		.cfi_def_cfa_offset 32
+ 21782 0004 A2B0     		sub	sp, sp, #136
+ 21783              	.LCFI5:
+ 21784              		.cfi_def_cfa_offset 168
+ 237:../CMD/cmd.c  **** 			char komenda[10];
+ 238:../CMD/cmd.c  **** 			char argument[10];
+ 239:../CMD/cmd.c  **** 			char arg = 0; 
+ 21785              		.loc 1 239 0
+ 21786 0006 4FF00003 		mov	r3, #0
+ 21787 000a 8DF86F30 		strb	r3, [sp, #111]
+ 21788              	.LVL23:
+ 240:../CMD/cmd.c  **** 			FIL file;
+ 241:../CMD/cmd.c  **** 			UINT bytesWritten;
+ 242:../CMD/cmd.c  **** 			char sd_ok = 0;
+ 243:../CMD/cmd.c  **** 			RTCDate data;
+ 244:../CMD/cmd.c  **** 			RTCgetTime(&data);
+ 21789              		.loc 1 244 0
+ 21790 000e 0FA8     		add	r0, sp, #60
+ 21791              		.cfi_offset 14, -4
+ 21792              		.cfi_offset 10, -8
+ 21793              		.cfi_offset 9, -12
+ 21794              		.cfi_offset 8, -16
+ 21795              		.cfi_offset 7, -20
+ 21796              		.cfi_offset 6, -24
+ 21797              		.cfi_offset 5, -28
+ 21798              		.cfi_offset 4, -32
+ 21799 0010 FFF7FEFF 		bl	RTCgetTime
+ 245:../CMD/cmd.c  **** 			char buf[40];
+ 246:../CMD/cmd.c  **** 	
+ 247:../CMD/cmd.c  **** 			// obsluga interpretera polecen
+ 248:../CMD/cmd.c  **** 			if (command_request)
+ 21800              		.loc 1 248 0
+ 21801 0014 40F20003 		movw	r3, #:lower16:.LANCHOR3
+ 21802 0018 C0F20003 		movt	r3, #:upper16:.LANCHOR3
+ 21803 001c 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 21804 001e 002B     		cmp	r3, #0
+ 21805 0020 00F09880 		beq	.L34
+ 249:../CMD/cmd.c  **** 			{
+ 250:../CMD/cmd.c  **** 				#if COMMAND_LOG
+ 251:../CMD/cmd.c  **** 				if( f_open(&file, "/cmd.log", FA_READ | FA_WRITE | FA_OPEN_ALWAYS) == FR_OK ) {
+ 21806              		.loc 1 251 0
+ 21807 0024 12A8     		add	r0, sp, #72
+ 21808 0026 40F20001 		movw	r1, #:lower16:.LC2
+ 21809 002a C0F20001 		movt	r1, #:upper16:.LC2
+ 21810 002e 4FF01302 		mov	r2, #19
+ 21811 0032 FFF7FEFF 		bl	f_open
+ 21812 0036 0028     		cmp	r0, #0
+ 21813 0038 54D1     		bne	.L31
+ 252:../CMD/cmd.c  **** 
+ 253:../CMD/cmd.c  **** 					sd_ok = 1;
+ 254:../CMD/cmd.c  **** 					f_lseek(&file, f_size(&file));
+ 21814              		.loc 1 254 0
+ 21815 003a 12AD     		add	r5, sp, #72
+ 21816 003c 2846     		mov	r0, r5
+ 21817 003e 1599     		ldr	r1, [sp, #84]
+ 21818 0040 FFF7FEFF 		bl	f_lseek
+ 255:../CMD/cmd.c  **** 
+ 256:../CMD/cmd.c  **** 				}
+ 257:../CMD/cmd.c  **** 				else
+ 258:../CMD/cmd.c  **** 				{
+ 259:../CMD/cmd.c  **** 					min_printf("CMD: Blad karty SD");
+ 260:../CMD/cmd.c  **** 				}
+ 261:../CMD/cmd.c  **** 				#endif
+ 262:../CMD/cmd.c  **** 
+ 263:../CMD/cmd.c  **** 				//pobiera komendê z bufora ko³owego razem z argmentem i informacj¹ czy potrzeba argument
+ 264:../CMD/cmd.c  **** 				get_command_from_ring_buffer(komenda, argument, &arg);
+ 21819              		.loc 1 264 0
+ 21820 0044 0DF17C08 		add	r8, sp, #124
+ 21821 0048 0DF1700A 		add	sl, sp, #112
+ 21822 004c 4046     		mov	r0, r8
+ 21823 004e 5146     		mov	r1, sl
+ 21824 0050 0DF16F02 		add	r2, sp, #111
+ 21825 0054 FFF7FEFF 		bl	get_command_from_ring_buffer
+ 265:../CMD/cmd.c  **** 
+ 266:../CMD/cmd.c  **** 				#if COMMAND_LOG
+ 267:../CMD/cmd.c  **** 					if ( sd_ok == 1) {
+ 268:../CMD/cmd.c  **** 						GPIOC->BSRR = GPIO_Pin_8;
+ 21826              		.loc 1 268 0
+ 21827 0058 41F20006 		movw	r6, #:lower16:1073811456
+ 21828 005c C4F20106 		movt	r6, #:upper16:1073811456
+ 21829 0060 4FF48079 		mov	r9, #256
+ 21830 0064 C6F81090 		str	r9, [r6, #16]
+ 269:../CMD/cmd.c  **** 						sprintf(buf, "Data: %d.%d.%d Godzina:%d:%d ", data.day, data.month, data.year, data.hour, dat
+ 21831              		.loc 1 269 0
+ 21832 0068 05AC     		add	r4, sp, #20
+ 21833 006a 9DF83C20 		ldrb	r2, [sp, #60]	@ zero_extendqisi2
+ 21834 006e 9DF83D30 		ldrb	r3, [sp, #61]	@ zero_extendqisi2
+ 21835 0072 BDF83E10 		ldrh	r1, [sp, #62]
+ 21836 0076 0091     		str	r1, [sp, #0]
+ 21837 0078 9DF84010 		ldrb	r1, [sp, #64]	@ zero_extendqisi2
+ 21838 007c 0191     		str	r1, [sp, #4]
+ 21839 007e 9DF84110 		ldrb	r1, [sp, #65]	@ zero_extendqisi2
+ 21840 0082 0291     		str	r1, [sp, #8]
+ 21841 0084 2046     		mov	r0, r4
+ 21842 0086 40F20001 		movw	r1, #:lower16:.LC3
+ 21843 008a C0F20001 		movt	r1, #:upper16:.LC3
+ 21844 008e FFF7FEFF 		bl	sprintf
+ 270:../CMD/cmd.c  **** 						f_write(&file, buf, strlen(buf), &bytesWritten);
+ 21845              		.loc 1 270 0
+ 21846 0092 2046     		mov	r0, r4
+ 21847 0094 FFF7FEFF 		bl	strlen
+ 21848 0098 0246     		mov	r2, r0
+ 21849 009a 11AF     		add	r7, sp, #68
+ 21850 009c 2846     		mov	r0, r5
+ 21851 009e 2146     		mov	r1, r4
+ 21852 00a0 3B46     		mov	r3, r7
+ 21853 00a2 FFF7FEFF 		bl	f_write
+ 271:../CMD/cmd.c  **** 						f_write(&file, "MiniServer console#>",20, &bytesWritten);
+ 21854              		.loc 1 271 0
+ 21855 00a6 2846     		mov	r0, r5
+ 21856 00a8 40F20001 		movw	r1, #:lower16:.LC4
+ 21857 00ac C0F20001 		movt	r1, #:upper16:.LC4
+ 21858 00b0 4FF01402 		mov	r2, #20
+ 21859 00b4 3B46     		mov	r3, r7
+ 21860 00b6 FFF7FEFF 		bl	f_write
+ 272:../CMD/cmd.c  **** 
+ 273:../CMD/cmd.c  **** 						sprintf(buf, "%s %s\r\n\r\n", komenda, argument);
+ 21861              		.loc 1 273 0
+ 21862 00ba 2046     		mov	r0, r4
+ 21863 00bc 40F20001 		movw	r1, #:lower16:.LC5
+ 21864 00c0 C0F20001 		movt	r1, #:upper16:.LC5
+ 21865 00c4 4246     		mov	r2, r8
+ 21866 00c6 5346     		mov	r3, sl
+ 21867 00c8 FFF7FEFF 		bl	sprintf
+ 274:../CMD/cmd.c  **** 						f_write(&file, buf, strlen(buf), &bytesWritten);
+ 21868              		.loc 1 274 0
+ 21869 00cc 2046     		mov	r0, r4
+ 21870 00ce FFF7FEFF 		bl	strlen
+ 21871 00d2 0246     		mov	r2, r0
+ 21872 00d4 2846     		mov	r0, r5
+ 21873 00d6 2146     		mov	r1, r4
+ 21874 00d8 3B46     		mov	r3, r7
+ 21875 00da FFF7FEFF 		bl	f_write
+ 275:../CMD/cmd.c  **** 						GPIOC->BRR = GPIO_Pin_8;
+ 21876              		.loc 1 275 0
+ 21877 00de C6F81490 		str	r9, [r6, #20]
+ 21878 00e2 0BE0     		b	.L32
+ 21879              	.L31:
+ 21880              		.loc 1 259 0
+ 21881 00e4 40F20000 		movw	r0, #:lower16:.LC6
+ 21882 00e8 C0F20000 		movt	r0, #:upper16:.LC6
+ 21883 00ec FFF7FEFF 		bl	min_printf
+ 21884              		.loc 1 264 0
+ 21885 00f0 1FA8     		add	r0, sp, #124
+ 21886 00f2 1CA9     		add	r1, sp, #112
+ 21887 00f4 0DF16F02 		add	r2, sp, #111
+ 21888 00f8 FFF7FEFF 		bl	get_command_from_ring_buffer
+ 21889              	.L32:
+ 276:../CMD/cmd.c  **** 
+ 277:../CMD/cmd.c  **** 					}
+ 278:../CMD/cmd.c  **** 				#endif
+ 279:../CMD/cmd.c  **** 
+ 280:../CMD/cmd.c  **** 				//w niezmienionej formie wykonujemy komendê
+ 281:../CMD/cmd.c  **** 				if (perform_command(komenda, argument, arg) == -1) {
+ 21890              		.loc 1 281 0
+ 21891 00fc 1FA8     		add	r0, sp, #124
+ 21892 00fe 1CA9     		add	r1, sp, #112
+ 21893 0100 9DF86F20 		ldrb	r2, [sp, #111]	@ zero_extendqisi2
+ 21894 0104 FFF7FEFF 		bl	perform_command
+ 21895 0108 40B2     		sxtb	r0, r0
+ 21896 010a B0F1FF3F 		cmp	r0, #-1
+ 21897 010e 0FD1     		bne	.L33
+ 21898              	.LVL24:
+ 282:../CMD/cmd.c  **** 					min_printf("Command not found\r");
+ 21899              		.loc 1 282 0
+ 21900 0110 40F20000 		movw	r0, #:lower16:.LC7
+ 21901 0114 C0F20000 		movt	r0, #:upper16:.LC7
+ 21902 0118 FFF7FEFF 		bl	min_printf
+ 283:../CMD/cmd.c  **** 					#if COMMAND_LOG
+ 284:../CMD/cmd.c  **** 					f_write(&file, "Command not found\r\n",19, &bytesWritten);
+ 21903              		.loc 1 284 0
+ 21904 011c 12A8     		add	r0, sp, #72
+ 21905 011e 40F20001 		movw	r1, #:lower16:.LC8
+ 21906 0122 C0F20001 		movt	r1, #:upper16:.LC8
+ 21907 0126 4FF01302 		mov	r2, #19
+ 21908 012a 11AB     		add	r3, sp, #68
+ 21909 012c FFF7FEFF 		bl	f_write
+ 21910              	.L33:
+ 285:../CMD/cmd.c  **** 					#endif
+ 286:../CMD/cmd.c  **** 				}
+ 287:../CMD/cmd.c  **** 
+ 288:../CMD/cmd.c  **** 				f_close(&file);
+ 21911              		.loc 1 288 0
+ 21912 0130 12A8     		add	r0, sp, #72
+ 21913 0132 FFF7FEFF 		bl	f_close
+ 289:../CMD/cmd.c  **** 
+ 290:../CMD/cmd.c  **** 				usart_printf("MiniServer console#>");
+ 21914              		.loc 1 290 0
+ 21915 0136 40F20000 		movw	r0, #:lower16:.LC4
+ 21916 013a C0F20000 		movt	r0, #:upper16:.LC4
+ 21917 013e FFF7FEFF 		bl	usart_printf
+ 291:../CMD/cmd.c  **** 				command_request--;
+ 21918              		.loc 1 291 0
+ 21919 0142 40F20003 		movw	r3, #:lower16:.LANCHOR3
+ 21920 0146 C0F20003 		movt	r3, #:upper16:.LANCHOR3
+ 21921 014a 1A78     		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 21922 014c 02F1FF32 		add	r2, r2, #-1
+ 21923 0150 D2B2     		uxtb	r2, r2
+ 21924 0152 1A70     		strb	r2, [r3, #0]
+ 21925              	.LVL25:
+ 21926              	.L34:
+ 292:../CMD/cmd.c  **** 				
+ 293:../CMD/cmd.c  **** 			}
+ 294:../CMD/cmd.c  **** 	
+ 295:../CMD/cmd.c  **** }
+ 21927              		.loc 1 295 0
+ 21928 0154 22B0     		add	sp, sp, #136
+ 21929 0156 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+ 21930              		.cfi_endproc
+ 21931              	.LFE35:
+ 21933 015a 00BF     		.section	.text.enable,"ax",%progbits
+ 21934              		.align	2
+ 21935              		.global	enable
+ 21936              		.thumb
+ 21937              		.thumb_func
+ 21939              	enable:
+ 21940              	.LFB30:
+ 21941              		.loc 1 100 0
+ 21942              		.cfi_startproc
+ 21943              		@ args = 0, pretend = 0, frame = 0
+ 21944              		@ frame_needed = 0, uses_anonymous_args = 0
+ 21945              	.LVL26:
+ 21946 0000 08B5     		push	{r3, lr}
+ 21947              	.LCFI6:
+ 21948              		.cfi_def_cfa_offset 8
+ 21949              		.loc 1 102 0
+ 21950 0002 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 21951              		.cfi_offset 14, -4
+ 21952              		.cfi_offset 3, -8
+ 21953 0006 C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 21954 000a 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 21955 000c 012B     		cmp	r3, #1
+ 21956 000e 28D0     		beq	.L38
+ 21957              		.loc 1 105 0
+ 21958 0010 40F20001 		movw	r1, #:lower16:.LANCHOR4
+ 21959              	.LVL27:
+ 21960 0014 C0F20001 		movt	r1, #:upper16:.LANCHOR4
+ 21961 0018 FFF7FEFF 		bl	strcmp
+ 21962              	.LVL28:
+ 21963 001c A0B9     		cbnz	r0, .L37
+ 21964              		.loc 1 107 0
+ 21965 001e 40F20000 		movw	r0, #:lower16:.LC9
+ 21966 0022 C0F20000 		movt	r0, #:upper16:.LC9
+ 21967 0026 FFF7FEFF 		bl	min_printf
+ 21968              		.loc 1 108 0
+ 21969 002a 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 21970 002e C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 21971 0032 1868     		ldr	r0, [r3, #0]
+ 21972 0034 FFF7FEFF 		bl	min_printf
+ 21973              		.loc 1 109 0
+ 21974 0038 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 21975 003c C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 21976 0040 4FF00102 		mov	r2, #1
+ 21977 0044 1A70     		strb	r2, [r3, #0]
+ 21978 0046 08BD     		pop	{r3, pc}
+ 21979              	.L37:
+ 21980              		.loc 1 113 0
+ 21981 0048 40F20000 		movw	r0, #:lower16:.LC10
+ 21982 004c C0F20000 		movt	r0, #:upper16:.LC10
+ 21983 0050 FFF7FEFF 		bl	min_printf
+ 21984              		.loc 1 114 0
+ 21985 0054 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 21986 0058 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 21987 005c 1868     		ldr	r0, [r3, #0]
+ 21988 005e FFF7FEFF 		bl	min_printf
+ 21989              	.LVL29:
+ 21990              	.L38:
+ 21991 0062 08BD     		pop	{r3, pc}
+ 21992              		.cfi_endproc
+ 21993              	.LFE30:
+ 21995              		.section	.text.help,"ax",%progbits
+ 21996              		.align	2
+ 21997              		.global	help
+ 21998              		.thumb
+ 21999              		.thumb_func
+ 22001              	help:
+ 22002              	.LFB29:
+ 22003              		.loc 1 60 0
+ 22004              		.cfi_startproc
+ 22005              		@ args = 0, pretend = 0, frame = 0
+ 22006              		@ frame_needed = 0, uses_anonymous_args = 0
+ 22007              	.LVL30:
+ 22008 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, sl, lr}
+ 22009              	.LCFI7:
+ 22010              		.cfi_def_cfa_offset 32
+ 22011 0004 0746     		mov	r7, r0
+ 22012              		.cfi_offset 14, -4
+ 22013              		.cfi_offset 10, -8
+ 22014              		.cfi_offset 9, -12
+ 22015              		.cfi_offset 8, -16
+ 22016              		.cfi_offset 7, -20
+ 22017              		.cfi_offset 6, -24
+ 22018              		.cfi_offset 5, -28
+ 22019              		.cfi_offset 4, -32
+ 22020              		.loc 1 64 0
+ 22021 0006 31B1     		cbz	r1, .L40
+ 22022              	.LVL31:
+ 22023 0008 4FF00004 		mov	r4, #0
+ 22024              	.LVL32:
+ 22025              		.loc 1 80 0
+ 22026 000c 40F20005 		movw	r5, #:lower16:.LANCHOR2
+ 22027 0010 C0F20005 		movt	r5, #:upper16:.LANCHOR2
+ 22028 0014 3EE0     		b	.L41
+ 22029              	.LVL33:
+ 22030              	.L40:
+ 22031              		.loc 1 66 0
+ 22032 0016 40F20000 		movw	r0, #:lower16:.LC11
+ 22033 001a C0F20000 		movt	r0, #:upper16:.LC11
+ 22034 001e FFF7FEFF 		bl	min_printf
+ 22035              	.LVL34:
+ 22036 0022 40F20005 		movw	r5, #:lower16:.LANCHOR2
+ 22037 0026 C0F20005 		movt	r5, #:upper16:.LANCHOR2
+ 22038 002a 4FF00004 		mov	r4, #0
+ 22039              		.loc 1 71 0
+ 22040 002e 40F20007 		movw	r7, #:lower16:.LC12
+ 22041              	.LVL35:
+ 22042 0032 C0F20007 		movt	r7, #:upper16:.LC12
+ 22043 0036 2E46     		mov	r6, r5
+ 22044              		.loc 1 72 0
+ 22045 0038 40F20008 		movw	r8, #:lower16:.LC13
+ 22046 003c C0F20008 		movt	r8, #:upper16:.LC13
+ 22047              		.loc 1 73 0
+ 22048 0040 40F2000A 		movw	sl, #:lower16:.LC15
+ 22049 0044 C0F2000A 		movt	sl, #:upper16:.LC15
+ 22050 0048 40F20009 		movw	r9, #:lower16:.LC14
+ 22051 004c C0F20009 		movt	r9, #:upper16:.LC14
+ 22052              	.L44:
+ 22053              		.loc 1 71 0
+ 22054 0050 04EB8401 		add	r1, r4, r4, lsl #2
+ 22055 0054 06EBC102 		add	r2, r6, r1, lsl #3
+ 22056 0058 3846     		mov	r0, r7
+ 22057 005a 1146     		mov	r1, r2
+ 22058 005c 02F10A02 		add	r2, r2, #10
+ 22059 0060 FFF7FEFF 		bl	min_printf
+ 22060              		.loc 1 72 0
+ 22061 0064 4046     		mov	r0, r8
+ 22062 0066 FFF7FEFF 		bl	min_printf
+ 22063              		.loc 1 73 0
+ 22064 006a 95F82430 		ldrb	r3, [r5, #36]	@ zero_extendqisi2
+ 22065 006e 1BB1     		cbz	r3, .L42
+ 22066 0070 4846     		mov	r0, r9
+ 22067 0072 FFF7FEFF 		bl	min_printf
+ 22068 0076 02E0     		b	.L43
+ 22069              	.L42:
+ 22070 0078 5046     		mov	r0, sl
+ 22071 007a FFF7FEFF 		bl	min_printf
+ 22072              	.L43:
+ 22073 007e 04F10104 		add	r4, r4, #1
+ 22074 0082 05F12805 		add	r5, r5, #40
+ 22075              		.loc 1 69 0
+ 22076 0086 072C     		cmp	r4, #7
+ 22077 0088 E2D1     		bne	.L44
+ 22078 008a BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+ 22079              	.LVL36:
+ 22080              	.L46:
+ 22081              		.loc 1 81 0
+ 22082 008e 04F10104 		add	r4, r4, #1
+ 22083              	.LVL37:
+ 22084 0092 E4B2     		uxtb	r4, r4
+ 22085              	.LVL38:
+ 22086              	.L41:
+ 22087              		.loc 1 80 0
+ 22088 0094 2646     		mov	r6, r4
+ 22089 0096 04EB8401 		add	r1, r4, r4, lsl #2
+ 22090              	.LVL39:
+ 22091 009a 3846     		mov	r0, r7
+ 22092 009c 05EBC101 		add	r1, r5, r1, lsl #3
+ 22093 00a0 FFF7FEFF 		bl	strcmp
+ 22094 00a4 062C     		cmp	r4, #6
+ 22095 00a6 8CBF     		ite	hi
+ 22096 00a8 0023     		movhi	r3, #0
+ 22097 00aa 0123     		movls	r3, #1
+ 22098 00ac 0028     		cmp	r0, #0
+ 22099 00ae 0CBF     		ite	eq
+ 22100 00b0 0023     		moveq	r3, #0
+ 22101 00b2 03F00103 		andne	r3, r3, #1
+ 22102 00b6 002B     		cmp	r3, #0
+ 22103 00b8 E9D1     		bne	.L46
+ 22104              		.loc 1 83 0
+ 22105 00ba 072C     		cmp	r4, #7
+ 22106 00bc 0ED1     		bne	.L47
+ 22107              		.loc 1 85 0
+ 22108 00be 40F20000 		movw	r0, #:lower16:.LC16
+ 22109 00c2 C0F20000 		movt	r0, #:upper16:.LC16
+ 22110 00c6 FFF7FEFF 		bl	min_printf
+ 22111              		.loc 1 86 0
+ 22112 00ca 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 22113 00ce C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 22114 00d2 1868     		ldr	r0, [r3, #0]
+ 22115 00d4 FFF7FEFF 		bl	min_printf
+ 22116 00d8 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+ 22117              	.L47:
+ 22118              		.loc 1 90 0
+ 22119 00dc 40F20003 		movw	r3, #:lower16:.LANCHOR2
+ 22120 00e0 C0F20003 		movt	r3, #:upper16:.LANCHOR2
+ 22121 00e4 04EB8406 		add	r6, r4, r4, lsl #2
+ 22122              	.LVL40:
+ 22123 00e8 03EBC601 		add	r1, r3, r6, lsl #3
+ 22124 00ec 40F20000 		movw	r0, #:lower16:.LC17
+ 22125 00f0 C0F20000 		movt	r0, #:upper16:.LC17
+ 22126 00f4 01F10A01 		add	r1, r1, #10
+ 22127 00f8 FFF7FEFF 		bl	min_printf
+ 22128              		.loc 1 91 0
+ 22129 00fc 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 22130 0100 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 22131 0104 1868     		ldr	r0, [r3, #0]
+ 22132 0106 FFF7FEFF 		bl	min_printf
+ 22133 010a BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+ 22134              		.cfi_endproc
+ 22135              	.LFE29:
+ 22137              		.global	command_request
+ 22138              		.global	ENDLINE
+ 22139              		.global	CMD_commands
+ 22140 010e 00BF     		.section	.rodata.CMD_commands,"a",%progbits
+ 22141              		.align	2
+ 22142              		.set	.LANCHOR2,. + 0
+ 22145              	CMD_commands:
+ 22146 0000 68656C70 		.ascii	"help\000"
+ 22146      00
+ 22147 0005 00000000 		.space	5
+ 22147      00
+ 22148 000a 57797377 		.ascii	"Wyswietla komendy\000"
+ 22148      6965746C 
+ 22148      61206B6F 
+ 22148      6D656E64 
+ 22148      7900
+ 22149 001c 0000     		.space	2
+ 22150 001e 0000     		.space	2
+ 22151 0020 00000000 		.word	help
+ 22152 0024 00       		.byte	0
+ 22153 0025 000000   		.space	3
+ 22154 0028 74696D65 		.ascii	"time\000"
+ 22154      00
+ 22155 002d 00000000 		.space	5
+ 22155      00
+ 22156 0032 57797377 		.ascii	"Wyswietla czas RTC\000"
+ 22156      6965746C 
+ 22156      6120637A 
+ 22156      61732052 
+ 22156      544300
+ 22157 0045 00       		.space	1
+ 22158 0046 0000     		.space	2
+ 22159 0048 00000000 		.word	funkcja_time
+ 22160 004c 00       		.byte	0
+ 22161 004d 000000   		.space	3
+ 22162 0050 6C7300   		.ascii	"ls\000"
+ 22163 0053 00000000 		.space	7
+ 22163      000000
+ 22164 005a 4C697374 		.ascii	"Listing folderu\000"
+ 22164      696E6720 
+ 22164      666F6C64 
+ 22164      65727500 
+ 22165 006a 00000000 		.space	4
+ 22166 006e 0000     		.space	2
+ 22167 0070 00000000 		.word	funkcja_ls
+ 22168 0074 00       		.byte	0
+ 22169 0075 000000   		.space	3
+ 22170 0078 696E666F 		.ascii	"info\000"
+ 22170      00
+ 22171 007d 00000000 		.space	5
+ 22171      00
+ 22172 0082 52756E6E 		.ascii	"Running info\000"
+ 22172      696E6720 
+ 22172      696E666F 
+ 22172      00
+ 22173 008f 00000000 		.space	7
+ 22173      000000
+ 22174 0096 0000     		.space	2
+ 22175 0098 00000000 		.word	funkcja_info
+ 22176 009c 00       		.byte	0
+ 22177 009d 000000   		.space	3
+ 22178 00a0 656E6162 		.ascii	"enable\000"
+ 22178      6C6500
+ 22179 00a7 000000   		.space	3
+ 22180 00aa 74727962 		.ascii	"tryb super user\000"
+ 22180      20737570 
+ 22180      65722075 
+ 22180      73657200 
+ 22181 00ba 00000000 		.space	4
+ 22182 00be 0000     		.space	2
+ 22183 00c0 00000000 		.word	enable
+ 22184 00c4 01       		.byte	1
+ 22185 00c5 000000   		.space	3
+ 22186 00c8 49705265 		.ascii	"IpReq\000"
+ 22186      7100
+ 22187 00ce 00000000 		.space	4
+ 22188 00d2 72656672 		.ascii	"refresh IP\000"
+ 22188      65736820 
+ 22188      495000
+ 22189 00dd 00000000 		.space	9
+ 22189      00000000 
+ 22189      00
+ 22190 00e6 0000     		.space	2
+ 22191 00e8 00000000 		.word	funkcja_updateIP
+ 22192 00ec 00       		.byte	0
+ 22193 00ed 000000   		.space	3
+ 22194 00f0 4E545052 		.ascii	"NTPReq\000"
+ 22194      657100
+ 22195 00f7 000000   		.space	3
+ 22196 00fa 72656672 		.ascii	"refresh NTP\000"
+ 22196      65736820 
+ 22196      4E545000 
+ 22197 0106 00000000 		.space	8
+ 22197      00000000 
+ 22198 010e 0000     		.space	2
+ 22199 0110 00000000 		.word	funkcja_NTPrequest
+ 22200 0114 00       		.byte	0
+ 22201 0115 000000   		.space	3
+ 22202              		.section	.rodata.password,"a",%progbits
+ 22203              		.align	2
+ 22204              		.set	.LANCHOR4,. + 0
+ 22207              	password:
+ 22208 0000 6B756261 		.ascii	"kuba\000"
+ 22208      00
+ 22209 0005 000000   		.section	.bss.terminal_state,"aw",%nobits
+ 22210              		.set	.LANCHOR0,. + 0
+ 22213              	terminal_state:
+ 22214 0000 00       		.space	1
+ 22215              		.section	.rodata.str1.4,"aMS",%progbits,1
+ 22216              		.align	2
+ 22217              	.LC0:
+ 22218 0000 656E6162 		.ascii	"enable\000"
+ 22218      6C6500
+ 22219 0007 00       		.space	1
+ 22220              	.LC1:
+ 22221 0008 4D757369 		.ascii	"Musisz sie zalogowac przez enable\000"
+ 22221      737A2073 
+ 22221      6965207A 
+ 22221      616C6F67 
+ 22221      6F776163 
+ 22222 002a 0000     		.space	2
+ 22223              	.LC2:
+ 22224 002c 2F636D64 		.ascii	"/cmd.log\000"
+ 22224      2E6C6F67 
+ 22224      00
+ 22225 0035 000000   		.space	3
+ 22226              	.LC3:
+ 22227 0038 44617461 		.ascii	"Data: %d.%d.%d Godzina:%d:%d \000"
+ 22227      3A202564 
+ 22227      2E25642E 
+ 22227      25642047 
+ 22227      6F647A69 
+ 22228 0056 0000     		.space	2
+ 22229              	.LC4:
+ 22230 0058 4D696E69 		.ascii	"MiniServer console#>\000"
+ 22230      53657276 
+ 22230      65722063 
+ 22230      6F6E736F 
+ 22230      6C65233E 
+ 22231 006d 000000   		.space	3
+ 22232              	.LC5:
+ 22233 0070 25732025 		.ascii	"%s %s\015\012\015\012\000"
+ 22233      730D0A0D 
+ 22233      0A00
+ 22234 007a 0000     		.space	2
+ 22235              	.LC6:
+ 22236 007c 434D443A 		.ascii	"CMD: Blad karty SD\000"
+ 22236      20426C61 
+ 22236      64206B61 
+ 22236      72747920 
+ 22236      534400
+ 22237 008f 00       		.space	1
+ 22238              	.LC7:
+ 22239 0090 436F6D6D 		.ascii	"Command not found\015\000"
+ 22239      616E6420 
+ 22239      6E6F7420 
+ 22239      666F756E 
+ 22239      640D00
+ 22240 00a3 00       		.space	1
+ 22241              	.LC8:
+ 22242 00a4 436F6D6D 		.ascii	"Command not found\015\012\000"
+ 22242      616E6420 
+ 22242      6E6F7420 
+ 22242      666F756E 
+ 22242      640D0A00 
+ 22243              	.LC9:
+ 22244 00b8 50727A79 		.ascii	"Przyznano dostep\000"
+ 22244      7A6E616E 
+ 22244      6F20646F 
+ 22244      73746570 
+ 22244      00
+ 22245 00c9 000000   		.space	3
+ 22246              	.LC10:
+ 22247 00cc 426C6164 		.ascii	"Blad autoryzacji\000"
+ 22247      20617574 
+ 22247      6F72797A 
+ 22247      61636A69 
+ 22247      00
+ 22248 00dd 000000   		.space	3
+ 22249              	.LC11:
+ 22250 00e0 0D4C6973 		.ascii	"\015Lista dostepnych komend:\015\012\000"
+ 22250      74612064 
+ 22250      6F737465 
+ 22250      706E7963 
+ 22250      68206B6F 
+ 22251              	.LC12:
+ 22252 00fc 0D4B6F6D 		.ascii	"\015Komenda: %s\015Opis: %s\015\012\000"
+ 22252      656E6461 
+ 22252      3A202573 
+ 22252      0D4F7069 
+ 22252      733A2025 
+ 22253              	.LC13:
+ 22254 0114 41726775 		.ascii	"Argument?: \000"
+ 22254      6D656E74 
+ 22254      3F3A2000 
+ 22255              	.LC14:
+ 22256 0120 74616B0D 		.ascii	"tak\015\012\000"
+ 22256      0A00
+ 22257 0126 0000     		.space	2
+ 22258              	.LC15:
+ 22259 0128 6E69650D 		.ascii	"nie\015\012\000"
+ 22259      0A00
+ 22260 012e 0000     		.space	2
+ 22261              	.LC16:
+ 22262 0130 4272616B 		.ascii	"Brak takiej komendy\015\012\000"
+ 22262      2074616B 
+ 22262      69656A20 
+ 22262      6B6F6D65 
+ 22262      6E64790D 
+ 22263 0146 0000     		.space	2
+ 22264              	.LC17:
+ 22265 0148 257300   		.ascii	"%s\000"
+ 22266 014b 00       		.space	1
+ 22267              	.LC18:
+ 22268 014c 0D0A00   		.ascii	"\015\012\000"
+ 22269 014f 00       		.section	.bss.command_request,"aw",%nobits
+ 22270              		.set	.LANCHOR3,. + 0
+ 22273              	command_request:
+ 22274 0000 00       		.space	1
+ 22275              		.section	.data.ENDLINE,"aw",%progbits
+ 22276              		.align	2
+ 22277              		.set	.LANCHOR1,. + 0
+ 22280              	ENDLINE:
+ 22281 0000 4C010000 		.word	.LC18
+ 22282              		.text
+ 22283              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 cmd.c
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21461  .text.lockUnlockTerminal:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21466  .text.lockUnlockTerminal:00000000 lockUnlockTerminal
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22210  .bss.terminal_state:00000000 .LANCHOR0
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21493  .text.get_command_from_ring_buffer:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21498  .text.get_command_from_ring_buffer:00000000 get_command_from_ring_buffer
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21610  .text.convert_argument:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21615  .text.convert_argument:00000000 convert_argument
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21658  .text.perform_command:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21663  .text.perform_command:00000000 perform_command
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22217  .rodata.str1.4:00000000 .LC0
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22220  .rodata.str1.4:00000008 .LC1
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22277  .data.ENDLINE:00000000 .LANCHOR1
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22142  .rodata.CMD_commands:00000000 .LANCHOR2
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21768  .text.CommandLineCheck:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21773  .text.CommandLineCheck:00000000 CommandLineCheck
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22270  .bss.command_request:00000000 .LANCHOR3
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22223  .rodata.str1.4:0000002c .LC2
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22226  .rodata.str1.4:00000038 .LC3
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22229  .rodata.str1.4:00000058 .LC4
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22232  .rodata.str1.4:00000070 .LC5
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22235  .rodata.str1.4:0000007c .LC6
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22238  .rodata.str1.4:00000090 .LC7
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22241  .rodata.str1.4:000000a4 .LC8
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21934  .text.enable:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21939  .text.enable:00000000 enable
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22204  .rodata.password:00000000 .LANCHOR4
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22243  .rodata.str1.4:000000b8 .LC9
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22246  .rodata.str1.4:000000cc .LC10
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:21996  .text.help:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22001  .text.help:00000000 help
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22249  .rodata.str1.4:000000e0 .LC11
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22251  .rodata.str1.4:000000fc .LC12
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22253  .rodata.str1.4:00000114 .LC13
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22258  .rodata.str1.4:00000128 .LC15
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22255  .rodata.str1.4:00000120 .LC14
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22261  .rodata.str1.4:00000130 .LC16
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22264  .rodata.str1.4:00000148 .LC17
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22273  .bss.command_request:00000000 command_request
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22280  .data.ENDLINE:00000000 ENDLINE
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22145  .rodata.CMD_commands:00000000 CMD_commands
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22141  .rodata.CMD_commands:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22203  .rodata.password:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22207  .rodata.password:00000000 password
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22213  .bss.terminal_state:00000000 terminal_state
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22214  .bss.terminal_state:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22216  .rodata.str1.4:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22274  .bss.command_request:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccK7TNBz.s:22276  .data.ENDLINE:00000000 $d
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+ring_buffer_pop
+xtoi
+myatoi
+strcmp
+min_printf
+RTCgetTime
+f_open
+f_lseek
+sprintf
+strlen
+f_write
+f_close
+usart_printf
+funkcja_time
+funkcja_ls
+funkcja_info
+funkcja_updateIP
+funkcja_NTPrequest

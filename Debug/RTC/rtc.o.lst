@@ -1,0 +1,219 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"rtc.c"
+  23              	.Ltext0:
+  24              		.file 1 "../RTC/rtc.c"
+ 19126              		.align	2
+ 19127              		.global	RTC_Config
+ 19128              		.thumb
+ 19129              		.thumb_func
+ 19131              	RTC_Config:
+ 19132              	.LFB30:
+   1:../RTC/rtc.c  **** /*
+   2:../RTC/rtc.c  ****  * rtc.c
+   3:../RTC/rtc.c  ****  *
+   4:../RTC/rtc.c  ****  *  Created on: 14-11-2012
+   5:../RTC/rtc.c  ****  *      Author: kuba
+   6:../RTC/rtc.c  ****  */
+   7:../RTC/rtc.c  **** #include "rtc.h"
+   8:../RTC/rtc.c  **** 
+   9:../RTC/rtc.c  **** 
+  10:../RTC/rtc.c  **** void RTCgetTime(RTCDate * time) {
+  11:../RTC/rtc.c  **** 
+  12:../RTC/rtc.c  **** 	time->day = MON;
+  13:../RTC/rtc.c  **** 	time->month = JUN;
+  14:../RTC/rtc.c  **** 	time->year = 2012;
+  15:../RTC/rtc.c  **** 
+  16:../RTC/rtc.c  **** 	//godzina
+  17:../RTC/rtc.c  **** 	time->hour = RTC_GetCounter() / 3600;
+  18:../RTC/rtc.c  **** 
+  19:../RTC/rtc.c  **** 	//minuta
+  20:../RTC/rtc.c  **** 	time->minute = (RTC_GetCounter() % 3600) / 60;
+  21:../RTC/rtc.c  **** 
+  22:../RTC/rtc.c  **** 	time->second = 0;
+  23:../RTC/rtc.c  **** 
+  24:../RTC/rtc.c  **** 
+  25:../RTC/rtc.c  **** }
+  26:../RTC/rtc.c  **** 
+  27:../RTC/rtc.c  **** // Konfiguracja zegara RTC
+  28:../RTC/rtc.c  **** void RTC_Config(void)
+  29:../RTC/rtc.c  **** {
+ 19133              		.loc 1 29 0
+ 19134              		.cfi_startproc
+ 19135              		@ args = 0, pretend = 0, frame = 0
+ 19136              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19137 0000 10B5     		push	{r4, lr}
+ 19138              	.LCFI0:
+ 19139              		.cfi_def_cfa_offset 8
+  30:../RTC/rtc.c  **** 			/* Enable PWR and BKP clocks */
+  31:../RTC/rtc.c  **** 		  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+ 19140              		.loc 1 31 0
+ 19141 0002 4FF0C050 		mov	r0, #402653184
+ 19142 0006 4FF00101 		mov	r1, #1
+ 19143              		.cfi_offset 14, -4
+ 19144              		.cfi_offset 4, -8
+ 19145 000a FFF7FEFF 		bl	RCC_APB1PeriphClockCmd
+  32:../RTC/rtc.c  **** 
+  33:../RTC/rtc.c  **** 		  /* Allow access to BKP Domain */
+  34:../RTC/rtc.c  **** 		  PWR_BackupAccessCmd(ENABLE);
+ 19146              		.loc 1 34 0
+ 19147 000e 4FF00100 		mov	r0, #1
+ 19148 0012 FFF7FEFF 		bl	PWR_BackupAccessCmd
+  35:../RTC/rtc.c  **** 
+  36:../RTC/rtc.c  **** 		  /* Reset Backup Domain */
+  37:../RTC/rtc.c  **** 		  BKP_DeInit();
+ 19149              		.loc 1 37 0
+ 19150 0016 FFF7FEFF 		bl	BKP_DeInit
+  38:../RTC/rtc.c  **** 
+  39:../RTC/rtc.c  **** 		  /* Enable LSE */
+  40:../RTC/rtc.c  **** 		  RCC_LSEConfig(RCC_LSE_ON);
+ 19151              		.loc 1 40 0
+ 19152 001a 4FF00100 		mov	r0, #1
+ 19153 001e FFF7FEFF 		bl	RCC_LSEConfig
+  41:../RTC/rtc.c  **** 		  /* Wait till LSE is ready */
+  42:../RTC/rtc.c  **** 		  while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET)
+ 19154              		.loc 1 42 0
+ 19155 0022 4FF04104 		mov	r4, #65
+ 19156              	.L2:
+ 19157 0026 2046     		mov	r0, r4
+ 19158 0028 FFF7FEFF 		bl	RCC_GetFlagStatus
+ 19159 002c 0028     		cmp	r0, #0
+ 19160 002e FAD0     		beq	.L2
+  43:../RTC/rtc.c  **** 		  {}
+  44:../RTC/rtc.c  **** 
+  45:../RTC/rtc.c  **** 		  /* Select LSE as RTC Clock Source */
+  46:../RTC/rtc.c  **** 		  RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
+ 19161              		.loc 1 46 0
+ 19162 0030 4FF48070 		mov	r0, #256
+ 19163 0034 FFF7FEFF 		bl	RCC_RTCCLKConfig
+  47:../RTC/rtc.c  **** 
+  48:../RTC/rtc.c  **** 		  /* Enable RTC Clock */
+  49:../RTC/rtc.c  **** 		  RCC_RTCCLKCmd(ENABLE);
+ 19164              		.loc 1 49 0
+ 19165 0038 4FF00100 		mov	r0, #1
+ 19166 003c FFF7FEFF 		bl	RCC_RTCCLKCmd
+  50:../RTC/rtc.c  **** 
+  51:../RTC/rtc.c  **** 		  /* Wait for RTC registers synchronization */
+  52:../RTC/rtc.c  **** 		  RTC_WaitForSynchro();
+ 19167              		.loc 1 52 0
+ 19168 0040 FFF7FEFF 		bl	RTC_WaitForSynchro
+  53:../RTC/rtc.c  **** 
+  54:../RTC/rtc.c  **** 		  /* Wait until last write operation on RTC registers has finished */
+  55:../RTC/rtc.c  **** 		  RTC_WaitForLastTask();
+ 19169              		.loc 1 55 0
+ 19170 0044 FFF7FEFF 		bl	RTC_WaitForLastTask
+  56:../RTC/rtc.c  **** 
+  57:../RTC/rtc.c  **** 		  /* Enable the RTC Second */
+  58:../RTC/rtc.c  **** 		  RTC_ITConfig(RTC_IT_SEC, ENABLE);
+ 19171              		.loc 1 58 0
+ 19172 0048 4FF00100 		mov	r0, #1
+ 19173 004c 0146     		mov	r1, r0
+ 19174 004e FFF7FEFF 		bl	RTC_ITConfig
+  59:../RTC/rtc.c  **** 
+  60:../RTC/rtc.c  **** 		  /* Wait until last write operation on RTC registers has finished */
+  61:../RTC/rtc.c  **** 		  RTC_WaitForLastTask();
+ 19175              		.loc 1 61 0
+ 19176 0052 FFF7FEFF 		bl	RTC_WaitForLastTask
+  62:../RTC/rtc.c  **** 
+  63:../RTC/rtc.c  **** 		  /* Set RTC prescaler: set RTC period to 1sec */
+  64:../RTC/rtc.c  **** 		  RTC_SetPrescaler(32767); /* RTC period = RTCCLK/RTC_PR = (32.768 KHz)/(32767+1) */
+ 19177              		.loc 1 64 0
+ 19178 0056 47F6FF70 		movw	r0, #32767
+ 19179 005a FFF7FEFF 		bl	RTC_SetPrescaler
+  65:../RTC/rtc.c  **** 
+  66:../RTC/rtc.c  **** 		  /* Wait until last write operation on RTC registers has finished */
+  67:../RTC/rtc.c  **** 		  RTC_WaitForLastTask();
+ 19180              		.loc 1 67 0
+ 19181 005e FFF7FEFF 		bl	RTC_WaitForLastTask
+  68:../RTC/rtc.c  **** }
+ 19182              		.loc 1 68 0
+ 19183 0062 10BD     		pop	{r4, pc}
+ 19184              		.cfi_endproc
+ 19185              	.LFE30:
+ 19187              		.section	.text.RTCgetTime,"ax",%progbits
+ 19188              		.align	2
+ 19189              		.global	RTCgetTime
+ 19190              		.thumb
+ 19191              		.thumb_func
+ 19193              	RTCgetTime:
+ 19194              	.LFB29:
+ 19195              		.loc 1 10 0
+ 19196              		.cfi_startproc
+ 19197              		@ args = 0, pretend = 0, frame = 0
+ 19198              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19199              	.LVL0:
+ 19200 0000 70B5     		push	{r4, r5, r6, lr}
+ 19201              	.LCFI1:
+ 19202              		.cfi_def_cfa_offset 16
+ 19203 0002 0446     		mov	r4, r0
+ 19204              		.cfi_offset 14, -4
+ 19205              		.cfi_offset 6, -8
+ 19206              		.cfi_offset 5, -12
+ 19207              		.cfi_offset 4, -16
+ 19208              		.loc 1 12 0
+ 19209 0004 4FF00006 		mov	r6, #0
+ 19210 0008 0670     		strb	r6, [r0, #0]
+ 19211              		.loc 1 13 0
+ 19212 000a 4FF00503 		mov	r3, #5
+ 19213 000e 4370     		strb	r3, [r0, #1]
+ 19214              		.loc 1 14 0
+ 19215 0010 40F2DC72 		movw	r2, 2012	@ movhi
+ 19216 0014 4280     		strh	r2, [r0, #2]	@ movhi
+ 19217              		.loc 1 17 0
+ 19218 0016 FFF7FEFF 		bl	RTC_GetCounter
+ 19219              	.LVL1:
+ 19220 001a 4BF2C535 		movw	r5, #:lower16:-1851608123
+ 19221 001e C9F2A215 		movt	r5, #:upper16:-1851608123
+ 19222 0022 A5FB0030 		umull	r3, r0, r5, r0
+ 19223 0026 4FEAD020 		lsr	r0, r0, #11
+ 19224 002a 2071     		strb	r0, [r4, #4]
+ 19225              		.loc 1 20 0
+ 19226 002c FFF7FEFF 		bl	RTC_GetCounter
+ 19227 0030 A5FB0025 		umull	r2, r5, r5, r0
+ 19228 0034 4FEAD525 		lsr	r5, r5, #11
+ 19229 0038 4FF46163 		mov	r3, #3600
+ 19230 003c 03FB1500 		mls	r0, r3, r5, r0
+ 19231 0040 48F68903 		movw	r3, #:lower16:-2004318071
+ 19232 0044 C8F68803 		movt	r3, #:upper16:-2004318071
+ 19233 0048 A3FB0023 		umull	r2, r3, r3, r0
+ 19234 004c 4FEA5313 		lsr	r3, r3, #5
+ 19235 0050 6371     		strb	r3, [r4, #5]
+ 19236              		.loc 1 22 0
+ 19237 0052 A671     		strb	r6, [r4, #6]
+ 19238              		.loc 1 25 0
+ 19239 0054 70BD     		pop	{r4, r5, r6, pc}
+ 19240              		.cfi_endproc
+ 19241              	.LFE29:
+ 19243 0056 00BF     		.text
+ 19244              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 rtc.c
+C:\Users\user\AppData\Local\Temp\ccTvjGrQ.s:19126  .text.RTC_Config:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccTvjGrQ.s:19131  .text.RTC_Config:00000000 RTC_Config
+C:\Users\user\AppData\Local\Temp\ccTvjGrQ.s:19188  .text.RTCgetTime:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccTvjGrQ.s:19193  .text.RTCgetTime:00000000 RTCgetTime
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+RCC_APB1PeriphClockCmd
+PWR_BackupAccessCmd
+BKP_DeInit
+RCC_LSEConfig
+RCC_GetFlagStatus
+RCC_RTCCLKConfig
+RCC_RTCCLKCmd
+RTC_WaitForSynchro
+RTC_WaitForLastTask
+RTC_ITConfig
+RTC_SetPrescaler
+RTC_GetCounter

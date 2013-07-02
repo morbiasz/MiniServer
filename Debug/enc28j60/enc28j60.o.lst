@@ -1,0 +1,1413 @@
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 18, 4
+  12              		.thumb
+  13              		.file	"enc28j60.c"
+  23              	.Ltext0:
+  24              		.file 1 "../enc28j60/enc28j60.c"
+ 19198              		.align	2
+ 19199              		.global	enc28j60WriteBuffer
+ 19200              		.thumb
+ 19201              		.thumb_func
+ 19203              	enc28j60WriteBuffer:
+ 19204              	.LFB32:
+   1:../enc28j60/enc28j60.c **** 
+   2:../enc28j60/enc28j60.c **** #include "min_printf.h"
+   3:../enc28j60/enc28j60.c **** #include "enc28j60.h"
+   4:../enc28j60/enc28j60.c **** #include "spi.h"
+   5:../enc28j60/enc28j60.c **** #include "delay.h"
+   6:../enc28j60/enc28j60.c **** #include <server_config.h>
+   7:../enc28j60/enc28j60.c **** 
+   8:../enc28j60/enc28j60.c **** static unsigned char Enc28j60Bank;
+   9:../enc28j60/enc28j60.c **** static unsigned int NextPacketPtr;
+  10:../enc28j60/enc28j60.c **** 
+  11:../enc28j60/enc28j60.c **** 
+  12:../enc28j60/enc28j60.c **** unsigned char enc28j60ReadOp(unsigned char op, unsigned char address)
+  13:../enc28j60/enc28j60.c **** 	{
+  14:../enc28j60/enc28j60.c **** 	unsigned char dat = 0;
+  15:../enc28j60/enc28j60.c **** 	
+  16:../enc28j60/enc28j60.c **** 	ENC28J60_CSL();
+  17:../enc28j60/enc28j60.c **** 	Delay_us(1);
+  18:../enc28j60/enc28j60.c **** 	dat = op | (address & ADDR_MASK);
+  19:../enc28j60/enc28j60.c **** 	SPI1_ReadWrite(dat);
+  20:../enc28j60/enc28j60.c **** 	Delay_us(1);
+  21:../enc28j60/enc28j60.c **** 	dat = SPI1_ReadWrite(0xFF);
+  22:../enc28j60/enc28j60.c **** 	// do dummy read if needed (for mac and mii, see datasheet page 29)
+  23:../enc28j60/enc28j60.c **** 	if(address & 0x80)
+  24:../enc28j60/enc28j60.c **** 	    {
+  25:../enc28j60/enc28j60.c **** 				dat = SPI1_ReadWrite(0xFF);
+  26:../enc28j60/enc28j60.c **** 	    }
+  27:../enc28j60/enc28j60.c **** 	// release CS
+  28:../enc28j60/enc28j60.c **** 	Delay_us(1);
+  29:../enc28j60/enc28j60.c **** 	ENC28J60_CSH();
+  30:../enc28j60/enc28j60.c **** 	return dat;
+  31:../enc28j60/enc28j60.c **** 	}
+  32:../enc28j60/enc28j60.c **** 
+  33:../enc28j60/enc28j60.c **** void enc28j60WriteOp(unsigned char op, unsigned char address, unsigned char data)
+  34:../enc28j60/enc28j60.c **** 	{
+  35:../enc28j60/enc28j60.c **** 	unsigned char dat = 0;
+  36:../enc28j60/enc28j60.c **** 	  
+  37:../enc28j60/enc28j60.c **** 	ENC28J60_CSL();
+  38:../enc28j60/enc28j60.c **** 	Delay_us(1);
+  39:../enc28j60/enc28j60.c **** 	// issue write command
+  40:../enc28j60/enc28j60.c **** 	dat = op | (address & ADDR_MASK);
+  41:../enc28j60/enc28j60.c **** 	SPI1_ReadWrite(dat);
+  42:../enc28j60/enc28j60.c **** 	// write data
+  43:../enc28j60/enc28j60.c **** 	dat = data;
+  44:../enc28j60/enc28j60.c **** 	SPI1_ReadWrite(dat);
+  45:../enc28j60/enc28j60.c **** 	ENC28J60_CSH();
+  46:../enc28j60/enc28j60.c **** 	}
+  47:../enc28j60/enc28j60.c **** 
+  48:../enc28j60/enc28j60.c **** void enc28j60ReadBuffer(unsigned int len, unsigned char* data)
+  49:../enc28j60/enc28j60.c **** 	{
+  50:../enc28j60/enc28j60.c **** 	ENC28J60_CSL();
+  51:../enc28j60/enc28j60.c **** 	// issue read command
+  52:../enc28j60/enc28j60.c **** 	SPI1_ReadWrite(ENC28J60_READ_BUF_MEM);
+  53:../enc28j60/enc28j60.c **** 	while(len)
+  54:../enc28j60/enc28j60.c **** 		{
+  55:../enc28j60/enc28j60.c ****         len--;
+  56:../enc28j60/enc28j60.c ****         // read data
+  57:../enc28j60/enc28j60.c ****         *data = (unsigned char)SPI1_ReadWrite(0);
+  58:../enc28j60/enc28j60.c ****         data++;
+  59:../enc28j60/enc28j60.c **** 		}
+  60:../enc28j60/enc28j60.c **** 	*data='\0';
+  61:../enc28j60/enc28j60.c **** 	ENC28J60_CSH();
+  62:../enc28j60/enc28j60.c **** 	}
+  63:../enc28j60/enc28j60.c **** 
+  64:../enc28j60/enc28j60.c **** void enc28j60WriteBuffer(unsigned int len, unsigned char* data)
+  65:../enc28j60/enc28j60.c **** 	{
+ 19205              		.loc 1 65 0
+ 19206              		.cfi_startproc
+ 19207              		@ args = 0, pretend = 0, frame = 0
+ 19208              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19209              	.LVL0:
+ 19210 0000 70B5     		push	{r4, r5, r6, lr}
+ 19211              	.LCFI0:
+ 19212              		.cfi_def_cfa_offset 16
+ 19213 0002 0546     		mov	r5, r0
+ 19214              		.cfi_offset 14, -4
+ 19215              		.cfi_offset 6, -8
+ 19216              		.cfi_offset 5, -12
+ 19217              		.cfi_offset 4, -16
+ 19218 0004 0E46     		mov	r6, r1
+  66:../enc28j60/enc28j60.c **** 	ENC28J60_CSL();
+ 19219              		.loc 1 66 0
+ 19220 0006 40F60003 		movw	r3, #:lower16:1073809408
+ 19221 000a C4F20103 		movt	r3, #:upper16:1073809408
+ 19222 000e 4FF01002 		mov	r2, #16
+ 19223 0012 5A61     		str	r2, [r3, #20]
+  67:../enc28j60/enc28j60.c **** 	// issue write command
+  68:../enc28j60/enc28j60.c **** 	SPI1_ReadWrite(ENC28J60_WRITE_BUF_MEM);
+ 19224              		.loc 1 68 0
+ 19225 0014 4FF07A00 		mov	r0, #122
+ 19226              	.LVL1:
+ 19227 0018 FFF7FEFF 		bl	SPI1_ReadWrite
+ 19228              	.LVL2:
+  69:../enc28j60/enc28j60.c **** 	
+  70:../enc28j60/enc28j60.c **** 	while(len)
+ 19229              		.loc 1 70 0
+ 19230 001c 45B1     		cbz	r5, .L2
+ 19231 001e 4FF00004 		mov	r4, #0
+ 19232              	.L3:
+  71:../enc28j60/enc28j60.c **** 		{
+  72:../enc28j60/enc28j60.c **** 		len--;
+  73:../enc28j60/enc28j60.c **** 		SPI1_ReadWrite(*data);
+ 19233              		.loc 1 73 0
+ 19234 0022 305D     		ldrb	r0, [r6, r4]	@ zero_extendqisi2
+ 19235 0024 FFF7FEFF 		bl	SPI1_ReadWrite
+ 19236 0028 04F10104 		add	r4, r4, #1
+ 19237              		.loc 1 70 0
+ 19238 002c AC42     		cmp	r4, r5
+ 19239 002e F8D1     		bne	.L3
+ 19240              	.L2:
+  74:../enc28j60/enc28j60.c **** 		data++;
+  75:../enc28j60/enc28j60.c **** 		}
+  76:../enc28j60/enc28j60.c **** 	ENC28J60_CSH();
+ 19241              		.loc 1 76 0
+ 19242 0030 40F60003 		movw	r3, #:lower16:1073809408
+ 19243 0034 C4F20103 		movt	r3, #:upper16:1073809408
+ 19244 0038 4FF01002 		mov	r2, #16
+ 19245 003c 1A61     		str	r2, [r3, #16]
+  77:../enc28j60/enc28j60.c **** 	}
+ 19246              		.loc 1 77 0
+ 19247 003e 70BD     		pop	{r4, r5, r6, pc}
+ 19248              		.cfi_endproc
+ 19249              	.LFE32:
+ 19251              		.section	.text.enc28j60ReadBuffer,"ax",%progbits
+ 19252              		.align	2
+ 19253              		.global	enc28j60ReadBuffer
+ 19254              		.thumb
+ 19255              		.thumb_func
+ 19257              	enc28j60ReadBuffer:
+ 19258              	.LFB31:
+ 19259              		.loc 1 49 0
+ 19260              		.cfi_startproc
+ 19261              		@ args = 0, pretend = 0, frame = 0
+ 19262              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19263              	.LVL3:
+ 19264 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 19265              	.LCFI1:
+ 19266              		.cfi_def_cfa_offset 24
+ 19267 0002 0646     		mov	r6, r0
+ 19268              		.cfi_offset 14, -4
+ 19269              		.cfi_offset 7, -8
+ 19270              		.cfi_offset 6, -12
+ 19271              		.cfi_offset 5, -16
+ 19272              		.cfi_offset 4, -20
+ 19273              		.cfi_offset 3, -24
+ 19274 0004 0D46     		mov	r5, r1
+ 19275              		.loc 1 50 0
+ 19276 0006 40F60003 		movw	r3, #:lower16:1073809408
+ 19277 000a C4F20103 		movt	r3, #:upper16:1073809408
+ 19278 000e 4FF01002 		mov	r2, #16
+ 19279 0012 5A61     		str	r2, [r3, #20]
+ 19280              		.loc 1 52 0
+ 19281 0014 4FF03A00 		mov	r0, #58
+ 19282              	.LVL4:
+ 19283 0018 FFF7FEFF 		bl	SPI1_ReadWrite
+ 19284              	.LVL5:
+ 19285              		.loc 1 53 0
+ 19286 001c 5EB1     		cbz	r6, .L7
+ 19287 001e 4FF00004 		mov	r4, #0
+ 19288              		.loc 1 57 0
+ 19289 0022 2746     		mov	r7, r4
+ 19290              	.L8:
+ 19291 0024 3846     		mov	r0, r7
+ 19292 0026 FFF7FEFF 		bl	SPI1_ReadWrite
+ 19293 002a 2855     		strb	r0, [r5, r4]
+ 19294 002c 04F10104 		add	r4, r4, #1
+ 19295              		.loc 1 53 0
+ 19296 0030 B442     		cmp	r4, r6
+ 19297 0032 F7D1     		bne	.L8
+ 19298 0034 3544     		add	r5, r5, r6
+ 19299              	.L7:
+ 19300              		.loc 1 60 0
+ 19301 0036 4FF00003 		mov	r3, #0
+ 19302 003a 2B70     		strb	r3, [r5, #0]
+ 19303              		.loc 1 61 0
+ 19304 003c 40F60003 		movw	r3, #:lower16:1073809408
+ 19305 0040 C4F20103 		movt	r3, #:upper16:1073809408
+ 19306 0044 4FF01002 		mov	r2, #16
+ 19307 0048 1A61     		str	r2, [r3, #16]
+ 19308              		.loc 1 62 0
+ 19309 004a F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 19310              		.cfi_endproc
+ 19311              	.LFE31:
+ 19313              		.section	.text.enc28j60WriteOp,"ax",%progbits
+ 19314              		.align	2
+ 19315              		.global	enc28j60WriteOp
+ 19316              		.thumb
+ 19317              		.thumb_func
+ 19319              	enc28j60WriteOp:
+ 19320              	.LFB30:
+ 19321              		.loc 1 34 0
+ 19322              		.cfi_startproc
+ 19323              		@ args = 0, pretend = 0, frame = 0
+ 19324              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19325              	.LVL6:
+ 19326 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 19327              	.LCFI2:
+ 19328              		.cfi_def_cfa_offset 24
+ 19329 0004 0746     		mov	r7, r0
+ 19330              		.cfi_offset 14, -4
+ 19331              		.cfi_offset 8, -8
+ 19332              		.cfi_offset 7, -12
+ 19333              		.cfi_offset 6, -16
+ 19334              		.cfi_offset 5, -20
+ 19335              		.cfi_offset 4, -24
+ 19336 0006 0E46     		mov	r6, r1
+ 19337 0008 9046     		mov	r8, r2
+ 19338              		.loc 1 37 0
+ 19339 000a 40F60004 		movw	r4, #:lower16:1073809408
+ 19340 000e C4F20104 		movt	r4, #:upper16:1073809408
+ 19341 0012 4FF01005 		mov	r5, #16
+ 19342 0016 6561     		str	r5, [r4, #20]
+ 19343              		.loc 1 38 0
+ 19344 0018 4FF00100 		mov	r0, #1
+ 19345              	.LVL7:
+ 19346 001c FFF7FEFF 		bl	Delay_us
+ 19347              	.LVL8:
+ 19348              		.loc 1 41 0
+ 19349 0020 06F01F00 		and	r0, r6, #31
+ 19350 0024 40EA0700 		orr	r0, r0, r7
+ 19351 0028 FFF7FEFF 		bl	SPI1_ReadWrite
+ 19352              		.loc 1 44 0
+ 19353 002c 4046     		mov	r0, r8
+ 19354 002e FFF7FEFF 		bl	SPI1_ReadWrite
+ 19355              		.loc 1 45 0
+ 19356 0032 2561     		str	r5, [r4, #16]
+ 19357              		.loc 1 46 0
+ 19358 0034 BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 19359              		.cfi_endproc
+ 19360              	.LFE30:
+ 19362              		.section	.text.enc28j60SetBank,"ax",%progbits
+ 19363              		.align	2
+ 19364              		.global	enc28j60SetBank
+ 19365              		.thumb
+ 19366              		.thumb_func
+ 19368              	enc28j60SetBank:
+ 19369              	.LFB33:
+  78:../enc28j60/enc28j60.c **** 
+  79:../enc28j60/enc28j60.c **** void enc28j60SetBank(unsigned char address)
+  80:../enc28j60/enc28j60.c **** 	{
+ 19370              		.loc 1 80 0
+ 19371              		.cfi_startproc
+ 19372              		@ args = 0, pretend = 0, frame = 0
+ 19373              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19374              	.LVL9:
+ 19375 0000 38B5     		push	{r3, r4, r5, lr}
+ 19376              	.LCFI3:
+ 19377              		.cfi_def_cfa_offset 16
+ 19378 0002 0446     		mov	r4, r0
+ 19379              		.cfi_offset 14, -4
+ 19380              		.cfi_offset 5, -8
+ 19381              		.cfi_offset 4, -12
+ 19382              		.cfi_offset 3, -16
+  81:../enc28j60/enc28j60.c **** 	// set the bank (if needed)
+  82:../enc28j60/enc28j60.c **** 	if((address & BANK_MASK) != Enc28j60Bank)
+ 19383              		.loc 1 82 0
+ 19384 0004 00F06005 		and	r5, r0, #96
+ 19385 0008 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 19386 000c C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 19387 0010 1B78     		ldrb	r3, [r3, #0]	@ zero_extendqisi2
+ 19388 0012 9D42     		cmp	r5, r3
+ 19389 0014 15D0     		beq	.L15
+  83:../enc28j60/enc28j60.c **** 		{
+  84:../enc28j60/enc28j60.c ****         // set the bank
+  85:../enc28j60/enc28j60.c ****         enc28j60WriteOp(ENC28J60_BIT_FIELD_CLR, ECON1, (ECON1_BSEL1|ECON1_BSEL0));
+ 19390              		.loc 1 85 0
+ 19391 0016 4FF0A000 		mov	r0, #160
+ 19392              	.LVL10:
+ 19393 001a 4FF01F01 		mov	r1, #31
+ 19394 001e 4FF00302 		mov	r2, #3
+ 19395 0022 FFF7FEFF 		bl	enc28j60WriteOp
+  86:../enc28j60/enc28j60.c ****         enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, ECON1, (address & BANK_MASK)>>5);
+ 19396              		.loc 1 86 0
+ 19397 0026 4FF08000 		mov	r0, #128
+ 19398 002a 4FF01F01 		mov	r1, #31
+ 19399 002e 4FEA5512 		lsr	r2, r5, #5
+ 19400 0032 FFF7FEFF 		bl	enc28j60WriteOp
+  87:../enc28j60/enc28j60.c ****         Enc28j60Bank = (address & BANK_MASK);
+ 19401              		.loc 1 87 0
+ 19402 0036 40F20003 		movw	r3, #:lower16:.LANCHOR0
+ 19403 003a C0F20003 		movt	r3, #:upper16:.LANCHOR0
+ 19404 003e 2C46     		mov	r4, r5
+ 19405              	.LVL11:
+ 19406 0040 1D70     		strb	r5, [r3, #0]
+ 19407              	.LVL12:
+ 19408              	.L15:
+ 19409 0042 38BD     		pop	{r3, r4, r5, pc}
+ 19410              		.cfi_endproc
+ 19411              	.LFE33:
+ 19413              		.section	.text.enc28j60Write,"ax",%progbits
+ 19414              		.align	2
+ 19415              		.global	enc28j60Write
+ 19416              		.thumb
+ 19417              		.thumb_func
+ 19419              	enc28j60Write:
+ 19420              	.LFB35:
+  88:../enc28j60/enc28j60.c **** 		}
+  89:../enc28j60/enc28j60.c **** 	}
+  90:../enc28j60/enc28j60.c **** 
+  91:../enc28j60/enc28j60.c **** unsigned char enc28j60Read(unsigned char address)
+  92:../enc28j60/enc28j60.c **** 	{
+  93:../enc28j60/enc28j60.c **** 	// set the bank
+  94:../enc28j60/enc28j60.c **** 	enc28j60SetBank(address);
+  95:../enc28j60/enc28j60.c **** 	// do the read
+  96:../enc28j60/enc28j60.c **** 	return enc28j60ReadOp(ENC28J60_READ_CTRL_REG, address);
+  97:../enc28j60/enc28j60.c **** 	}
+  98:../enc28j60/enc28j60.c **** 
+  99:../enc28j60/enc28j60.c **** void enc28j60Write(unsigned char address, unsigned char data)
+ 100:../enc28j60/enc28j60.c **** 	{
+ 19421              		.loc 1 100 0
+ 19422              		.cfi_startproc
+ 19423              		@ args = 0, pretend = 0, frame = 0
+ 19424              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19425              	.LVL13:
+ 19426 0000 38B5     		push	{r3, r4, r5, lr}
+ 19427              	.LCFI4:
+ 19428              		.cfi_def_cfa_offset 16
+ 19429 0002 0546     		mov	r5, r0
+ 19430              		.cfi_offset 14, -4
+ 19431              		.cfi_offset 5, -8
+ 19432              		.cfi_offset 4, -12
+ 19433              		.cfi_offset 3, -16
+ 19434 0004 0C46     		mov	r4, r1
+ 101:../enc28j60/enc28j60.c **** 	// set the bank
+ 102:../enc28j60/enc28j60.c **** 	enc28j60SetBank(address);
+ 19435              		.loc 1 102 0
+ 19436 0006 FFF7FEFF 		bl	enc28j60SetBank
+ 19437              	.LVL14:
+ 103:../enc28j60/enc28j60.c **** 	// do the write
+ 104:../enc28j60/enc28j60.c **** 	enc28j60WriteOp(ENC28J60_WRITE_CTRL_REG, address, data);
+ 19438              		.loc 1 104 0
+ 19439 000a 4FF04000 		mov	r0, #64
+ 19440 000e 2946     		mov	r1, r5
+ 19441 0010 2246     		mov	r2, r4
+ 19442 0012 FFF7FEFF 		bl	enc28j60WriteOp
+ 105:../enc28j60/enc28j60.c **** 	}
+ 19443              		.loc 1 105 0
+ 19444 0016 38BD     		pop	{r3, r4, r5, pc}
+ 19445              		.cfi_endproc
+ 19446              	.LFE35:
+ 19448              		.section	.text.enc28j60clkout,"ax",%progbits
+ 19449              		.align	2
+ 19450              		.global	enc28j60clkout
+ 19451              		.thumb
+ 19452              		.thumb_func
+ 19454              	enc28j60clkout:
+ 19455              	.LFB37:
+ 106:../enc28j60/enc28j60.c **** 
+ 107:../enc28j60/enc28j60.c **** void enc28j60PhyWrite(unsigned char address, unsigned int data)
+ 108:../enc28j60/enc28j60.c **** 	{
+ 109:../enc28j60/enc28j60.c **** 	// set the PHY register address
+ 110:../enc28j60/enc28j60.c **** 	enc28j60Write(MIREGADR, address);
+ 111:../enc28j60/enc28j60.c **** 	// write the PHY data
+ 112:../enc28j60/enc28j60.c **** 	enc28j60Write(MIWRL, data);
+ 113:../enc28j60/enc28j60.c **** 	enc28j60Write(MIWRH, data>>8);
+ 114:../enc28j60/enc28j60.c **** 	// wait until the PHY write completes
+ 115:../enc28j60/enc28j60.c **** 	while(enc28j60Read(MISTAT) & MISTAT_BUSY)
+ 116:../enc28j60/enc28j60.c **** 		{
+ 117:../enc28j60/enc28j60.c **** 	    	//Del_10us(1);
+ 118:../enc28j60/enc28j60.c **** 			//_nop_();
+ 119:../enc28j60/enc28j60.c **** 		}
+ 120:../enc28j60/enc28j60.c **** 	}
+ 121:../enc28j60/enc28j60.c **** 
+ 122:../enc28j60/enc28j60.c **** void enc28j60clkout(unsigned char clk)
+ 123:../enc28j60/enc28j60.c **** 	{
+ 19456              		.loc 1 123 0
+ 19457              		.cfi_startproc
+ 19458              		@ args = 0, pretend = 0, frame = 0
+ 19459              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19460              	.LVL15:
+ 19461 0000 08B5     		push	{r3, lr}
+ 19462              	.LCFI5:
+ 19463              		.cfi_def_cfa_offset 8
+ 124:../enc28j60/enc28j60.c ****     //setup clkout: 2 is 12.5MHz:
+ 125:../enc28j60/enc28j60.c **** 	enc28j60Write(ECOCON, clk & 0x7);
+ 19464              		.loc 1 125 0
+ 19465 0002 00F00701 		and	r1, r0, #7
+ 19466 0006 4FF07500 		mov	r0, #117
+ 19467              	.LVL16:
+ 19468              		.cfi_offset 14, -4
+ 19469              		.cfi_offset 3, -8
+ 19470 000a FFF7FEFF 		bl	enc28j60Write
+ 126:../enc28j60/enc28j60.c **** 	}
+ 19471              		.loc 1 126 0
+ 19472 000e 08BD     		pop	{r3, pc}
+ 19473              		.cfi_endproc
+ 19474              	.LFE37:
+ 19476              		.section	.text.enc28j60ReadOp,"ax",%progbits
+ 19477              		.align	2
+ 19478              		.global	enc28j60ReadOp
+ 19479              		.thumb
+ 19480              		.thumb_func
+ 19482              	enc28j60ReadOp:
+ 19483              	.LFB29:
+ 19484              		.loc 1 13 0
+ 19485              		.cfi_startproc
+ 19486              		@ args = 0, pretend = 0, frame = 0
+ 19487              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19488              	.LVL17:
+ 19489 0000 38B5     		push	{r3, r4, r5, lr}
+ 19490              	.LCFI6:
+ 19491              		.cfi_def_cfa_offset 16
+ 19492 0002 0546     		mov	r5, r0
+ 19493              		.cfi_offset 14, -4
+ 19494              		.cfi_offset 5, -8
+ 19495              		.cfi_offset 4, -12
+ 19496              		.cfi_offset 3, -16
+ 19497 0004 0C46     		mov	r4, r1
+ 19498              		.loc 1 16 0
+ 19499 0006 40F60003 		movw	r3, #:lower16:1073809408
+ 19500 000a C4F20103 		movt	r3, #:upper16:1073809408
+ 19501 000e 4FF01002 		mov	r2, #16
+ 19502 0012 5A61     		str	r2, [r3, #20]
+ 19503              		.loc 1 17 0
+ 19504 0014 4FF00100 		mov	r0, #1
+ 19505              	.LVL18:
+ 19506 0018 FFF7FEFF 		bl	Delay_us
+ 19507              	.LVL19:
+ 19508              		.loc 1 19 0
+ 19509 001c 04F01F00 		and	r0, r4, #31
+ 19510 0020 40EA0500 		orr	r0, r0, r5
+ 19511 0024 FFF7FEFF 		bl	SPI1_ReadWrite
+ 19512              		.loc 1 20 0
+ 19513 0028 4FF00100 		mov	r0, #1
+ 19514 002c FFF7FEFF 		bl	Delay_us
+ 19515              		.loc 1 21 0
+ 19516 0030 4FF0FF00 		mov	r0, #255
+ 19517 0034 FFF7FEFF 		bl	SPI1_ReadWrite
+ 19518 0038 0546     		mov	r5, r0
+ 19519              	.LVL20:
+ 19520              		.loc 1 23 0
+ 19521 003a 14F0800F 		tst	r4, #128
+ 19522 003e 04D0     		beq	.L21
+ 19523              		.loc 1 25 0
+ 19524 0040 4FF0FF00 		mov	r0, #255
+ 19525 0044 FFF7FEFF 		bl	SPI1_ReadWrite
+ 19526 0048 0546     		mov	r5, r0
+ 19527              	.LVL21:
+ 19528              	.L21:
+ 19529              		.loc 1 28 0
+ 19530 004a 4FF00100 		mov	r0, #1
+ 19531 004e FFF7FEFF 		bl	Delay_us
+ 19532              		.loc 1 29 0
+ 19533 0052 40F60003 		movw	r3, #:lower16:1073809408
+ 19534 0056 C4F20103 		movt	r3, #:upper16:1073809408
+ 19535 005a 4FF01002 		mov	r2, #16
+ 19536 005e 1A61     		str	r2, [r3, #16]
+ 19537              		.loc 1 31 0
+ 19538 0060 2846     		mov	r0, r5
+ 19539 0062 38BD     		pop	{r3, r4, r5, pc}
+ 19540              		.cfi_endproc
+ 19541              	.LFE29:
+ 19543              		.section	.text.enc28j60Read,"ax",%progbits
+ 19544              		.align	2
+ 19545              		.global	enc28j60Read
+ 19546              		.thumb
+ 19547              		.thumb_func
+ 19549              	enc28j60Read:
+ 19550              	.LFB34:
+ 19551              		.loc 1 92 0
+ 19552              		.cfi_startproc
+ 19553              		@ args = 0, pretend = 0, frame = 0
+ 19554              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19555              	.LVL22:
+ 19556 0000 10B5     		push	{r4, lr}
+ 19557              	.LCFI7:
+ 19558              		.cfi_def_cfa_offset 8
+ 19559 0002 0446     		mov	r4, r0
+ 19560              		.cfi_offset 14, -4
+ 19561              		.cfi_offset 4, -8
+ 19562              		.loc 1 94 0
+ 19563 0004 FFF7FEFF 		bl	enc28j60SetBank
+ 19564              	.LVL23:
+ 19565              		.loc 1 96 0
+ 19566 0008 4FF00000 		mov	r0, #0
+ 19567 000c 2146     		mov	r1, r4
+ 19568 000e FFF7FEFF 		bl	enc28j60ReadOp
+ 19569              		.loc 1 97 0
+ 19570 0012 10BD     		pop	{r4, pc}
+ 19571              		.cfi_endproc
+ 19572              	.LFE34:
+ 19574              		.section	.text.enc28j60getrev,"ax",%progbits
+ 19575              		.align	2
+ 19576              		.global	enc28j60getrev
+ 19577              		.thumb
+ 19578              		.thumb_func
+ 19580              	enc28j60getrev:
+ 19581              	.LFB43:
+ 127:../enc28j60/enc28j60.c **** 	
+ 128:../enc28j60/enc28j60.c **** 	// A number of utility functions to enable/disable broadcast 
+ 129:../enc28j60/enc28j60.c **** void enc28j60EnableBroadcast( void ) {
+ 130:../enc28j60/enc28j60.c ****         uint8_t erxfcon;
+ 131:../enc28j60/enc28j60.c ****         erxfcon=enc28j60Read(ERXFCON);
+ 132:../enc28j60/enc28j60.c ****         erxfcon |= ERXFCON_BCEN;
+ 133:../enc28j60/enc28j60.c ****         enc28j60Write(ERXFCON, erxfcon);
+ 134:../enc28j60/enc28j60.c **** }
+ 135:../enc28j60/enc28j60.c **** 
+ 136:../enc28j60/enc28j60.c **** void enc28j60DisableBroadcast( void ) {
+ 137:../enc28j60/enc28j60.c ****         uint8_t erxfcon;
+ 138:../enc28j60/enc28j60.c ****         erxfcon=enc28j60Read(ERXFCON);
+ 139:../enc28j60/enc28j60.c ****         erxfcon &= (0xff ^ ERXFCON_BCEN);
+ 140:../enc28j60/enc28j60.c ****         enc28j60Write(ERXFCON, erxfcon);
+ 141:../enc28j60/enc28j60.c **** }
+ 142:../enc28j60/enc28j60.c **** 
+ 143:../enc28j60/enc28j60.c **** // read upper 8 bits
+ 144:../enc28j60/enc28j60.c **** uint16_t enc28j60PhyReadH(uint8_t address)
+ 145:../enc28j60/enc28j60.c **** {
+ 146:../enc28j60/enc28j60.c **** 
+ 147:../enc28j60/enc28j60.c **** 	// Set the right address and start the register read operation
+ 148:../enc28j60/enc28j60.c **** 	enc28j60Write(MIREGADR, address);
+ 149:../enc28j60/enc28j60.c **** 	enc28j60Write(MICMD, MICMD_MIIRD);
+ 150:../enc28j60/enc28j60.c **** 
+ 151:../enc28j60/enc28j60.c **** 	// wait until the PHY read completes
+ 152:../enc28j60/enc28j60.c **** 	while(enc28j60Read(MISTAT) & MISTAT_BUSY);
+ 153:../enc28j60/enc28j60.c **** 
+ 154:../enc28j60/enc28j60.c **** 	// reset reading bit
+ 155:../enc28j60/enc28j60.c **** 	enc28j60Write(MICMD, 0x00);
+ 156:../enc28j60/enc28j60.c **** 	
+ 157:../enc28j60/enc28j60.c **** 	return (enc28j60Read(MIRDH));
+ 158:../enc28j60/enc28j60.c **** }
+ 159:../enc28j60/enc28j60.c **** 
+ 160:../enc28j60/enc28j60.c **** // link status
+ 161:../enc28j60/enc28j60.c **** uint8_t enc28j60linkup(void)
+ 162:../enc28j60/enc28j60.c **** {
+ 163:../enc28j60/enc28j60.c ****         // bit 10 (= bit 3 in upper reg)
+ 164:../enc28j60/enc28j60.c ****         if (enc28j60PhyReadH(PHSTAT2) && 4){
+ 165:../enc28j60/enc28j60.c ****                 return(1);
+ 166:../enc28j60/enc28j60.c ****         }
+ 167:../enc28j60/enc28j60.c ****         return(0);
+ 168:../enc28j60/enc28j60.c **** }
+ 169:../enc28j60/enc28j60.c **** 	
+ 170:../enc28j60/enc28j60.c **** 
+ 171:../enc28j60/enc28j60.c **** void enc28j60Init(unsigned char* macaddr)
+ 172:../enc28j60/enc28j60.c **** 	{
+ 173:../enc28j60/enc28j60.c **** 
+ 174:../enc28j60/enc28j60.c **** 	// initialize I/O
+ 175:../enc28j60/enc28j60.c **** 	ENC28J60_CSH();
+ 176:../enc28j60/enc28j60.c **** 	Delay(1);
+ 177:../enc28j60/enc28j60.c **** 
+ 178:../enc28j60/enc28j60.c **** 	// perform system reset
+ 179:../enc28j60/enc28j60.c **** 	enc28j60WriteOp(ENC28J60_SOFT_RESET, 0, ENC28J60_SOFT_RESET);
+ 180:../enc28j60/enc28j60.c **** 	Delay(100);
+ 181:../enc28j60/enc28j60.c **** 
+ 182:../enc28j60/enc28j60.c **** 	NextPacketPtr = RXSTART_INIT;
+ 183:../enc28j60/enc28j60.c **** 
+ 184:../enc28j60/enc28j60.c ****    // Rx start
+ 185:../enc28j60/enc28j60.c **** 	enc28j60Write(ERXSTL, RXSTART_INIT&0xFF);
+ 186:../enc28j60/enc28j60.c **** 	enc28j60Write(ERXSTH, RXSTART_INIT>>8);
+ 187:../enc28j60/enc28j60.c **** 	// set receive pointer address
+ 188:../enc28j60/enc28j60.c **** 	enc28j60Write(ERXRDPTL, RXSTART_INIT&0xFF);
+ 189:../enc28j60/enc28j60.c **** 	enc28j60Write(ERXRDPTH, RXSTART_INIT>>8);
+ 190:../enc28j60/enc28j60.c **** 	// RX end
+ 191:../enc28j60/enc28j60.c **** 	enc28j60Write(ERXNDL, RXSTOP_INIT&0xFF);
+ 192:../enc28j60/enc28j60.c **** 	enc28j60Write(ERXNDH, RXSTOP_INIT>>8);
+ 193:../enc28j60/enc28j60.c **** 	// TX start
+ 194:../enc28j60/enc28j60.c **** 	enc28j60Write(ETXSTL, TXSTART_INIT&0xFF);
+ 195:../enc28j60/enc28j60.c **** 	enc28j60Write(ETXSTH, TXSTART_INIT>>8);
+ 196:../enc28j60/enc28j60.c **** 	// TX end
+ 197:../enc28j60/enc28j60.c **** 	enc28j60Write(ETXNDL, TXSTOP_INIT&0xFF);
+ 198:../enc28j60/enc28j60.c **** 	enc28j60Write(ETXNDH, TXSTOP_INIT>>8);
+ 199:../enc28j60/enc28j60.c **** 
+ 200:../enc28j60/enc28j60.c **** 	enc28j60Write(ERXFCON, ERXFCON_UCEN|ERXFCON_CRCEN|ERXFCON_PMEN);
+ 201:../enc28j60/enc28j60.c **** 	enc28j60Write(EPMM0, 0x3f);
+ 202:../enc28j60/enc28j60.c **** 	enc28j60Write(EPMM1, 0x30);
+ 203:../enc28j60/enc28j60.c **** 	enc28j60Write(EPMCSL, 0xf9);
+ 204:../enc28j60/enc28j60.c **** 	enc28j60Write(EPMCSH, 0xf7);
+ 205:../enc28j60/enc28j60.c **** 
+ 206:../enc28j60/enc28j60.c **** 	// enable MAC receive
+ 207:../enc28j60/enc28j60.c **** 	enc28j60Write(MACON1, MACON1_MARXEN|MACON1_TXPAUS|MACON1_RXPAUS);
+ 208:../enc28j60/enc28j60.c **** 	// bring MAC out of reset
+ 209:../enc28j60/enc28j60.c **** 	enc28j60Write(MACON2, 0x00);
+ 210:../enc28j60/enc28j60.c **** 	// enable automatic padding to 60bytes and CRC operations
+ 211:../enc28j60/enc28j60.c **** 	enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, MACON3, MACON3_PADCFG0|MACON3_TXCRCEN|MACON3_FRMLNEN);
+ 212:../enc28j60/enc28j60.c **** 	// set inter-frame gap (non-back-to-back)
+ 213:../enc28j60/enc28j60.c **** 	enc28j60Write(MAIPGL, 0x12);
+ 214:../enc28j60/enc28j60.c **** 	enc28j60Write(MAIPGH, 0x0C);
+ 215:../enc28j60/enc28j60.c **** 	// set inter-frame gap (back-to-back)
+ 216:../enc28j60/enc28j60.c **** 	enc28j60Write(MABBIPG, 0x12);
+ 217:../enc28j60/enc28j60.c **** 	// Set the maximum packet size which the controller will accept
+ 218:../enc28j60/enc28j60.c ****         // Do not send packets longer than MAX_FRAMELEN:
+ 219:../enc28j60/enc28j60.c **** 	enc28j60Write(MAMXFLL, MAX_FRAMELEN&0xFF);
+ 220:../enc28j60/enc28j60.c **** 	enc28j60Write(MAMXFLH, MAX_FRAMELEN>>8);
+ 221:../enc28j60/enc28j60.c **** 	// do bank 3 stuff
+ 222:../enc28j60/enc28j60.c ****         // write MAC address
+ 223:../enc28j60/enc28j60.c ****         // NOTE: MAC address in ENC28J60 is byte-backward
+ 224:../enc28j60/enc28j60.c ****         enc28j60Write(MAADR5, macaddr[0]);
+ 225:../enc28j60/enc28j60.c ****         enc28j60Write(MAADR4, macaddr[1]);
+ 226:../enc28j60/enc28j60.c ****         enc28j60Write(MAADR3, macaddr[2]);
+ 227:../enc28j60/enc28j60.c ****         enc28j60Write(MAADR2, macaddr[3]);
+ 228:../enc28j60/enc28j60.c ****         enc28j60Write(MAADR1, macaddr[4]);
+ 229:../enc28j60/enc28j60.c ****         enc28j60Write(MAADR0, macaddr[5]);
+ 230:../enc28j60/enc28j60.c **** 				
+ 231:../enc28j60/enc28j60.c **** 	// no loopback of transmitted frames
+ 232:../enc28j60/enc28j60.c **** 	enc28j60PhyWrite(PHCON2, PHCON2_HDLDIS);
+ 233:../enc28j60/enc28j60.c **** 	// switch to bank 0
+ 234:../enc28j60/enc28j60.c **** 	enc28j60SetBank(ECON1);
+ 235:../enc28j60/enc28j60.c **** 	// enable interrutps
+ 236:../enc28j60/enc28j60.c **** 	enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, EIE, EIE_INTIE|EIE_PKTIE);
+ 237:../enc28j60/enc28j60.c **** 	// enable packet reception
+ 238:../enc28j60/enc28j60.c **** 	enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_RXEN);
+ 239:../enc28j60/enc28j60.c **** #if UART_DEBUG
+ 240:../enc28j60/enc28j60.c **** 	min_printf("MAC: = %x:%x:%x:%x:%x:%x\r\n", enc28j60Read(MAADR5), enc28j60Read(MAADR4),
+ 241:../enc28j60/enc28j60.c **** 			enc28j60Read(MAADR3), enc28j60Read(MAADR2), enc28j60Read(MAADR1), enc28j60Read(MAADR0));
+ 242:../enc28j60/enc28j60.c **** #endif
+ 243:../enc28j60/enc28j60.c **** 	}
+ 244:../enc28j60/enc28j60.c **** 
+ 245:../enc28j60/enc28j60.c **** // read the revision of the chip:
+ 246:../enc28j60/enc28j60.c **** unsigned char enc28j60getrev(void)
+ 247:../enc28j60/enc28j60.c **** 	{
+ 19582              		.loc 1 247 0
+ 19583              		.cfi_startproc
+ 19584              		@ args = 0, pretend = 0, frame = 0
+ 19585              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19586 0000 08B5     		push	{r3, lr}
+ 19587              	.LCFI8:
+ 19588              		.cfi_def_cfa_offset 8
+ 248:../enc28j60/enc28j60.c **** 	return(enc28j60Read(EREVID));
+ 19589              		.loc 1 248 0
+ 19590 0002 4FF07200 		mov	r0, #114
+ 19591              		.cfi_offset 14, -4
+ 19592              		.cfi_offset 3, -8
+ 19593 0006 FFF7FEFF 		bl	enc28j60Read
+ 249:../enc28j60/enc28j60.c **** 	}
+ 19594              		.loc 1 249 0
+ 19595 000a 08BD     		pop	{r3, pc}
+ 19596              		.cfi_endproc
+ 19597              	.LFE43:
+ 19599              		.section	.text.enc28j60PhyReadH,"ax",%progbits
+ 19600              		.align	2
+ 19601              		.global	enc28j60PhyReadH
+ 19602              		.thumb
+ 19603              		.thumb_func
+ 19605              	enc28j60PhyReadH:
+ 19606              	.LFB40:
+ 19607              		.loc 1 145 0
+ 19608              		.cfi_startproc
+ 19609              		@ args = 0, pretend = 0, frame = 0
+ 19610              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19611              	.LVL24:
+ 19612 0000 10B5     		push	{r4, lr}
+ 19613              	.LCFI9:
+ 19614              		.cfi_def_cfa_offset 8
+ 19615 0002 0146     		mov	r1, r0
+ 19616              		.loc 1 148 0
+ 19617 0004 4FF0D400 		mov	r0, #212
+ 19618              	.LVL25:
+ 19619              		.cfi_offset 14, -4
+ 19620              		.cfi_offset 4, -8
+ 19621 0008 FFF7FEFF 		bl	enc28j60Write
+ 19622              	.LVL26:
+ 19623              		.loc 1 149 0
+ 19624 000c 4FF0D200 		mov	r0, #210
+ 19625 0010 4FF00101 		mov	r1, #1
+ 19626 0014 FFF7FEFF 		bl	enc28j60Write
+ 19627              		.loc 1 152 0
+ 19628 0018 4FF0EA04 		mov	r4, #234
+ 19629              	.L28:
+ 19630 001c 2046     		mov	r0, r4
+ 19631 001e FFF7FEFF 		bl	enc28j60Read
+ 19632 0022 10F0010F 		tst	r0, #1
+ 19633 0026 F9D1     		bne	.L28
+ 19634              		.loc 1 155 0
+ 19635 0028 4FF0D200 		mov	r0, #210
+ 19636 002c 4FF00001 		mov	r1, #0
+ 19637 0030 FFF7FEFF 		bl	enc28j60Write
+ 19638              		.loc 1 157 0
+ 19639 0034 4FF0D900 		mov	r0, #217
+ 19640 0038 FFF7FEFF 		bl	enc28j60Read
+ 19641              		.loc 1 158 0
+ 19642 003c 80B2     		uxth	r0, r0
+ 19643 003e 10BD     		pop	{r4, pc}
+ 19644              		.cfi_endproc
+ 19645              	.LFE40:
+ 19647              		.section	.text.enc28j60linkup,"ax",%progbits
+ 19648              		.align	2
+ 19649              		.global	enc28j60linkup
+ 19650              		.thumb
+ 19651              		.thumb_func
+ 19653              	enc28j60linkup:
+ 19654              	.LFB41:
+ 19655              		.loc 1 162 0
+ 19656              		.cfi_startproc
+ 19657              		@ args = 0, pretend = 0, frame = 0
+ 19658              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19659 0000 08B5     		push	{r3, lr}
+ 19660              	.LCFI10:
+ 19661              		.cfi_def_cfa_offset 8
+ 19662              		.loc 1 164 0
+ 19663 0002 4FF01100 		mov	r0, #17
+ 19664              		.cfi_offset 14, -4
+ 19665              		.cfi_offset 3, -8
+ 19666 0006 FFF7FEFF 		bl	enc28j60PhyReadH
+ 19667              		.loc 1 168 0
+ 19668 000a 0038     		subs	r0, r0, #0
+ 19669 000c 18BF     		it	ne
+ 19670 000e 0120     		movne	r0, #1
+ 19671 0010 08BD     		pop	{r3, pc}
+ 19672              		.cfi_endproc
+ 19673              	.LFE41:
+ 19675 0012 00BF     		.section	.text.enc28j60DisableBroadcast,"ax",%progbits
+ 19676              		.align	2
+ 19677              		.global	enc28j60DisableBroadcast
+ 19678              		.thumb
+ 19679              		.thumb_func
+ 19681              	enc28j60DisableBroadcast:
+ 19682              	.LFB39:
+ 19683              		.loc 1 136 0
+ 19684              		.cfi_startproc
+ 19685              		@ args = 0, pretend = 0, frame = 0
+ 19686              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19687 0000 08B5     		push	{r3, lr}
+ 19688              	.LCFI11:
+ 19689              		.cfi_def_cfa_offset 8
+ 19690              		.loc 1 138 0
+ 19691 0002 4FF03800 		mov	r0, #56
+ 19692              		.cfi_offset 14, -4
+ 19693              		.cfi_offset 3, -8
+ 19694 0006 FFF7FEFF 		bl	enc28j60Read
+ 19695              		.loc 1 140 0
+ 19696 000a 00F0FE01 		and	r1, r0, #254
+ 19697 000e 4FF03800 		mov	r0, #56
+ 19698 0012 FFF7FEFF 		bl	enc28j60Write
+ 19699              		.loc 1 141 0
+ 19700 0016 08BD     		pop	{r3, pc}
+ 19701              		.cfi_endproc
+ 19702              	.LFE39:
+ 19704              		.section	.text.enc28j60EnableBroadcast,"ax",%progbits
+ 19705              		.align	2
+ 19706              		.global	enc28j60EnableBroadcast
+ 19707              		.thumb
+ 19708              		.thumb_func
+ 19710              	enc28j60EnableBroadcast:
+ 19711              	.LFB38:
+ 19712              		.loc 1 129 0
+ 19713              		.cfi_startproc
+ 19714              		@ args = 0, pretend = 0, frame = 0
+ 19715              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19716 0000 08B5     		push	{r3, lr}
+ 19717              	.LCFI12:
+ 19718              		.cfi_def_cfa_offset 8
+ 19719              		.loc 1 131 0
+ 19720 0002 4FF03800 		mov	r0, #56
+ 19721              		.cfi_offset 14, -4
+ 19722              		.cfi_offset 3, -8
+ 19723 0006 FFF7FEFF 		bl	enc28j60Read
+ 19724              		.loc 1 133 0
+ 19725 000a 40F00101 		orr	r1, r0, #1
+ 19726 000e 4FF03800 		mov	r0, #56
+ 19727 0012 C9B2     		uxtb	r1, r1
+ 19728 0014 FFF7FEFF 		bl	enc28j60Write
+ 19729              		.loc 1 134 0
+ 19730 0018 08BD     		pop	{r3, pc}
+ 19731              		.cfi_endproc
+ 19732              	.LFE38:
+ 19734 001a 00BF     		.section	.text.enc28j60PhyWrite,"ax",%progbits
+ 19735              		.align	2
+ 19736              		.global	enc28j60PhyWrite
+ 19737              		.thumb
+ 19738              		.thumb_func
+ 19740              	enc28j60PhyWrite:
+ 19741              	.LFB36:
+ 19742              		.loc 1 108 0
+ 19743              		.cfi_startproc
+ 19744              		@ args = 0, pretend = 0, frame = 0
+ 19745              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19746              	.LVL27:
+ 19747 0000 10B5     		push	{r4, lr}
+ 19748              	.LCFI13:
+ 19749              		.cfi_def_cfa_offset 8
+ 19750 0002 0346     		mov	r3, r0
+ 19751 0004 0C46     		mov	r4, r1
+ 19752              		.cfi_offset 14, -4
+ 19753              		.cfi_offset 4, -8
+ 19754              		.loc 1 110 0
+ 19755 0006 4FF0D400 		mov	r0, #212
+ 19756              	.LVL28:
+ 19757 000a 1946     		mov	r1, r3
+ 19758              	.LVL29:
+ 19759 000c FFF7FEFF 		bl	enc28j60Write
+ 19760              	.LVL30:
+ 19761              		.loc 1 112 0
+ 19762 0010 4FF0D600 		mov	r0, #214
+ 19763 0014 E1B2     		uxtb	r1, r4
+ 19764 0016 FFF7FEFF 		bl	enc28j60Write
+ 19765              		.loc 1 113 0
+ 19766 001a 4FF0D700 		mov	r0, #215
+ 19767 001e C4F30721 		ubfx	r1, r4, #8, #8
+ 19768 0022 FFF7FEFF 		bl	enc28j60Write
+ 19769              		.loc 1 115 0
+ 19770 0026 4FF0EA04 		mov	r4, #234
+ 19771              	.LVL31:
+ 19772              	.L38:
+ 19773 002a 2046     		mov	r0, r4
+ 19774 002c FFF7FEFF 		bl	enc28j60Read
+ 19775 0030 10F0010F 		tst	r0, #1
+ 19776 0034 F9D1     		bne	.L38
+ 19777              		.loc 1 120 0
+ 19778 0036 10BD     		pop	{r4, pc}
+ 19779              		.cfi_endproc
+ 19780              	.LFE36:
+ 19782              		.section	.text.enc28j60Init,"ax",%progbits
+ 19783              		.align	2
+ 19784              		.global	enc28j60Init
+ 19785              		.thumb
+ 19786              		.thumb_func
+ 19788              	enc28j60Init:
+ 19789              	.LFB42:
+ 19790              		.loc 1 172 0
+ 19791              		.cfi_startproc
+ 19792              		@ args = 0, pretend = 0, frame = 0
+ 19793              		@ frame_needed = 0, uses_anonymous_args = 0
+ 19794              	.LVL32:
+ 19795 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 19796              	.LCFI14:
+ 19797              		.cfi_def_cfa_offset 24
+ 19798 0004 84B0     		sub	sp, sp, #16
+ 19799              	.LCFI15:
+ 19800              		.cfi_def_cfa_offset 40
+ 19801 0006 0446     		mov	r4, r0
+ 19802              		.cfi_offset 14, -4
+ 19803              		.cfi_offset 8, -8
+ 19804              		.cfi_offset 7, -12
+ 19805              		.cfi_offset 6, -16
+ 19806              		.cfi_offset 5, -20
+ 19807              		.cfi_offset 4, -24
+ 19808              		.loc 1 175 0
+ 19809 0008 40F60003 		movw	r3, #:lower16:1073809408
+ 19810 000c C4F20103 		movt	r3, #:upper16:1073809408
+ 19811 0010 4FF01006 		mov	r6, #16
+ 19812 0014 1E61     		str	r6, [r3, #16]
+ 19813              		.loc 1 176 0
+ 19814 0016 4FF00100 		mov	r0, #1
+ 19815              	.LVL33:
+ 19816 001a FFF7FEFF 		bl	Delay
+ 19817              		.loc 1 179 0
+ 19818 001e 4FF0FF00 		mov	r0, #255
+ 19819 0022 4FF00001 		mov	r1, #0
+ 19820 0026 0246     		mov	r2, r0
+ 19821 0028 FFF7FEFF 		bl	enc28j60WriteOp
+ 19822              		.loc 1 180 0
+ 19823 002c 4FF06400 		mov	r0, #100
+ 19824 0030 FFF7FEFF 		bl	Delay
+ 19825              		.loc 1 182 0
+ 19826 0034 40F20003 		movw	r3, #:lower16:.LANCHOR1
+ 19827 0038 C0F20003 		movt	r3, #:upper16:.LANCHOR1
+ 19828 003c 4FF00005 		mov	r5, #0
+ 19829 0040 1D60     		str	r5, [r3, #0]
+ 19830              		.loc 1 185 0
+ 19831 0042 4FF00800 		mov	r0, #8
+ 19832 0046 2946     		mov	r1, r5
+ 19833 0048 FFF7FEFF 		bl	enc28j60Write
+ 19834              		.loc 1 186 0
+ 19835 004c 4FF00900 		mov	r0, #9
+ 19836 0050 2946     		mov	r1, r5
+ 19837 0052 FFF7FEFF 		bl	enc28j60Write
+ 19838              		.loc 1 188 0
+ 19839 0056 4FF00C00 		mov	r0, #12
+ 19840 005a 2946     		mov	r1, r5
+ 19841 005c FFF7FEFF 		bl	enc28j60Write
+ 19842              		.loc 1 189 0
+ 19843 0060 4FF00D00 		mov	r0, #13
+ 19844 0064 2946     		mov	r1, r5
+ 19845 0066 FFF7FEFF 		bl	enc28j60Write
+ 19846              		.loc 1 191 0
+ 19847 006a 4FF00A00 		mov	r0, #10
+ 19848 006e 4FF0FE01 		mov	r1, #254
+ 19849 0072 FFF7FEFF 		bl	enc28j60Write
+ 19850              		.loc 1 192 0
+ 19851 0076 4FF00B00 		mov	r0, #11
+ 19852 007a 4FF01901 		mov	r1, #25
+ 19853 007e FFF7FEFF 		bl	enc28j60Write
+ 19854              		.loc 1 194 0
+ 19855 0082 4FF00400 		mov	r0, #4
+ 19856 0086 4FF0FF01 		mov	r1, #255
+ 19857 008a FFF7FEFF 		bl	enc28j60Write
+ 19858              		.loc 1 195 0
+ 19859 008e 4FF00500 		mov	r0, #5
+ 19860 0092 4FF01901 		mov	r1, #25
+ 19861 0096 FFF7FEFF 		bl	enc28j60Write
+ 19862              		.loc 1 197 0
+ 19863 009a 4FF00600 		mov	r0, #6
+ 19864 009e 4FF0FF01 		mov	r1, #255
+ 19865 00a2 FFF7FEFF 		bl	enc28j60Write
+ 19866              		.loc 1 198 0
+ 19867 00a6 4FF00700 		mov	r0, #7
+ 19868 00aa 4FF01F01 		mov	r1, #31
+ 19869 00ae FFF7FEFF 		bl	enc28j60Write
+ 19870              		.loc 1 200 0
+ 19871 00b2 4FF03800 		mov	r0, #56
+ 19872 00b6 4FF0B001 		mov	r1, #176
+ 19873 00ba FFF7FEFF 		bl	enc28j60Write
+ 19874              		.loc 1 201 0
+ 19875 00be 4FF02800 		mov	r0, #40
+ 19876 00c2 4FF03F01 		mov	r1, #63
+ 19877 00c6 FFF7FEFF 		bl	enc28j60Write
+ 19878              		.loc 1 202 0
+ 19879 00ca 4FF02900 		mov	r0, #41
+ 19880 00ce 4FF03001 		mov	r1, #48
+ 19881 00d2 FFF7FEFF 		bl	enc28j60Write
+ 19882              		.loc 1 203 0
+ 19883 00d6 4FF03000 		mov	r0, #48
+ 19884 00da 4FF0F901 		mov	r1, #249
+ 19885 00de FFF7FEFF 		bl	enc28j60Write
+ 19886              		.loc 1 204 0
+ 19887 00e2 4FF03100 		mov	r0, #49
+ 19888 00e6 4FF0F701 		mov	r1, #247
+ 19889 00ea FFF7FEFF 		bl	enc28j60Write
+ 19890              		.loc 1 207 0
+ 19891 00ee 4FF0C000 		mov	r0, #192
+ 19892 00f2 4FF00D01 		mov	r1, #13
+ 19893 00f6 FFF7FEFF 		bl	enc28j60Write
+ 19894              		.loc 1 209 0
+ 19895 00fa 4FF0C100 		mov	r0, #193
+ 19896 00fe 2946     		mov	r1, r5
+ 19897 0100 FFF7FEFF 		bl	enc28j60Write
+ 19898              		.loc 1 211 0
+ 19899 0104 4FF08000 		mov	r0, #128
+ 19900 0108 4FF0C201 		mov	r1, #194
+ 19901 010c 4FF03202 		mov	r2, #50
+ 19902 0110 FFF7FEFF 		bl	enc28j60WriteOp
+ 19903              		.loc 1 213 0
+ 19904 0114 4FF0C600 		mov	r0, #198
+ 19905 0118 4FF01201 		mov	r1, #18
+ 19906 011c FFF7FEFF 		bl	enc28j60Write
+ 19907              		.loc 1 214 0
+ 19908 0120 4FF0C700 		mov	r0, #199
+ 19909 0124 4FF00C01 		mov	r1, #12
+ 19910 0128 FFF7FEFF 		bl	enc28j60Write
+ 19911              		.loc 1 216 0
+ 19912 012c 4FF0C400 		mov	r0, #196
+ 19913 0130 4FF01201 		mov	r1, #18
+ 19914 0134 FFF7FEFF 		bl	enc28j60Write
+ 19915              		.loc 1 219 0
+ 19916 0138 4FF0CA00 		mov	r0, #202
+ 19917 013c 4FF0DC01 		mov	r1, #220
+ 19918 0140 FFF7FEFF 		bl	enc28j60Write
+ 19919              		.loc 1 220 0
+ 19920 0144 4FF0CB00 		mov	r0, #203
+ 19921 0148 4FF00501 		mov	r1, #5
+ 19922 014c FFF7FEFF 		bl	enc28j60Write
+ 19923              		.loc 1 224 0
+ 19924 0150 4FF0E400 		mov	r0, #228
+ 19925 0154 2178     		ldrb	r1, [r4, #0]	@ zero_extendqisi2
+ 19926 0156 FFF7FEFF 		bl	enc28j60Write
+ 19927              		.loc 1 225 0
+ 19928 015a 4FF0E500 		mov	r0, #229
+ 19929 015e 6178     		ldrb	r1, [r4, #1]	@ zero_extendqisi2
+ 19930 0160 FFF7FEFF 		bl	enc28j60Write
+ 19931              		.loc 1 226 0
+ 19932 0164 4FF0E200 		mov	r0, #226
+ 19933 0168 A178     		ldrb	r1, [r4, #2]	@ zero_extendqisi2
+ 19934 016a FFF7FEFF 		bl	enc28j60Write
+ 19935              		.loc 1 227 0
+ 19936 016e 4FF0E300 		mov	r0, #227
+ 19937 0172 E178     		ldrb	r1, [r4, #3]	@ zero_extendqisi2
+ 19938 0174 FFF7FEFF 		bl	enc28j60Write
+ 19939              		.loc 1 228 0
+ 19940 0178 4FF0E000 		mov	r0, #224
+ 19941 017c 2179     		ldrb	r1, [r4, #4]	@ zero_extendqisi2
+ 19942 017e FFF7FEFF 		bl	enc28j60Write
+ 19943              		.loc 1 229 0
+ 19944 0182 4FF0E100 		mov	r0, #225
+ 19945 0186 6179     		ldrb	r1, [r4, #5]	@ zero_extendqisi2
+ 19946 0188 FFF7FEFF 		bl	enc28j60Write
+ 19947              		.loc 1 232 0
+ 19948 018c 3046     		mov	r0, r6
+ 19949 018e 4FF48071 		mov	r1, #256
+ 19950 0192 FFF7FEFF 		bl	enc28j60PhyWrite
+ 19951              		.loc 1 234 0
+ 19952 0196 4FF01F00 		mov	r0, #31
+ 19953 019a FFF7FEFF 		bl	enc28j60SetBank
+ 19954              		.loc 1 236 0
+ 19955 019e 4FF08000 		mov	r0, #128
+ 19956 01a2 4FF01B01 		mov	r1, #27
+ 19957 01a6 4FF0C002 		mov	r2, #192
+ 19958 01aa FFF7FEFF 		bl	enc28j60WriteOp
+ 19959              		.loc 1 238 0
+ 19960 01ae 4FF08000 		mov	r0, #128
+ 19961 01b2 4FF01F01 		mov	r1, #31
+ 19962 01b6 4FF00402 		mov	r2, #4
+ 19963 01ba FFF7FEFF 		bl	enc28j60WriteOp
+ 19964              		.loc 1 240 0
+ 19965 01be 4FF0E400 		mov	r0, #228
+ 19966 01c2 FFF7FEFF 		bl	enc28j60Read
+ 19967 01c6 0646     		mov	r6, r0
+ 19968 01c8 4FF0E500 		mov	r0, #229
+ 19969 01cc FFF7FEFF 		bl	enc28j60Read
+ 19970 01d0 0746     		mov	r7, r0
+ 19971              		.loc 1 241 0
+ 19972 01d2 4FF0E200 		mov	r0, #226
+ 19973 01d6 FFF7FEFF 		bl	enc28j60Read
+ 19974 01da 8046     		mov	r8, r0
+ 19975 01dc 4FF0E300 		mov	r0, #227
+ 19976 01e0 FFF7FEFF 		bl	enc28j60Read
+ 19977 01e4 0546     		mov	r5, r0
+ 19978 01e6 4FF0E000 		mov	r0, #224
+ 19979 01ea FFF7FEFF 		bl	enc28j60Read
+ 19980 01ee 0446     		mov	r4, r0
+ 19981              	.LVL34:
+ 19982 01f0 4FF0E100 		mov	r0, #225
+ 19983 01f4 FFF7FEFF 		bl	enc28j60Read
+ 19984              		.loc 1 240 0
+ 19985 01f8 0095     		str	r5, [sp, #0]
+ 19986 01fa 0194     		str	r4, [sp, #4]
+ 19987 01fc 0290     		str	r0, [sp, #8]
+ 19988 01fe 40F20000 		movw	r0, #:lower16:.LC0
+ 19989 0202 C0F20000 		movt	r0, #:upper16:.LC0
+ 19990 0206 3146     		mov	r1, r6
+ 19991 0208 3A46     		mov	r2, r7
+ 19992 020a 4346     		mov	r3, r8
+ 19993 020c FFF7FEFF 		bl	min_printf
+ 19994              		.loc 1 243 0
+ 19995 0210 04B0     		add	sp, sp, #16
+ 19996 0212 BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 19997              		.cfi_endproc
+ 19998              	.LFE42:
+ 20000 0216 00BF     		.section	.text.enc28j60PacketReceive,"ax",%progbits
+ 20001              		.align	2
+ 20002              		.global	enc28j60PacketReceive
+ 20003              		.thumb
+ 20004              		.thumb_func
+ 20006              	enc28j60PacketReceive:
+ 20007              	.LFB45:
+ 250:../enc28j60/enc28j60.c **** 
+ 251:../enc28j60/enc28j60.c **** void enc28j60PacketSend(uint16_t len, unsigned char* packet)
+ 252:../enc28j60/enc28j60.c **** 	{
+ 253:../enc28j60/enc28j60.c ****        // Check no transmit in progress
+ 254:../enc28j60/enc28j60.c ****         while (enc28j60ReadOp(ENC28J60_READ_CTRL_REG, ECON1) & ECON1_TXRTS)
+ 255:../enc28j60/enc28j60.c ****         {
+ 256:../enc28j60/enc28j60.c ****                 // Reset the transmit logic problem. See Rev. B4 Silicon Errata point 12.
+ 257:../enc28j60/enc28j60.c ****                 if( (enc28j60Read(EIR) & EIR_TXERIF) ) {
+ 258:../enc28j60/enc28j60.c ****                         enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_TXRST);
+ 259:../enc28j60/enc28j60.c ****                         enc28j60WriteOp(ENC28J60_BIT_FIELD_CLR, ECON1, ECON1_TXRST);
+ 260:../enc28j60/enc28j60.c ****                 }
+ 261:../enc28j60/enc28j60.c ****         }
+ 262:../enc28j60/enc28j60.c **** 				
+ 263:../enc28j60/enc28j60.c **** 	// Set the write pointer to start of transmit buffer area
+ 264:../enc28j60/enc28j60.c **** 	enc28j60Write(EWRPTL, TXSTART_INIT&0xFF);
+ 265:../enc28j60/enc28j60.c **** 	enc28j60Write(EWRPTH, TXSTART_INIT>>8);
+ 266:../enc28j60/enc28j60.c **** 	// Set the TXND pointer to correspond to the packet size given
+ 267:../enc28j60/enc28j60.c **** 	enc28j60Write(ETXNDL, (TXSTART_INIT+len)&0xFF);
+ 268:../enc28j60/enc28j60.c **** 	enc28j60Write(ETXNDH, (TXSTART_INIT+len)>>8);
+ 269:../enc28j60/enc28j60.c **** 	// write per-packet control byte (0x00 means use macon3 settings)
+ 270:../enc28j60/enc28j60.c **** 	enc28j60WriteOp(ENC28J60_WRITE_BUF_MEM, 0, 0x00);
+ 271:../enc28j60/enc28j60.c **** 	// copy the packet into the transmit buffer
+ 272:../enc28j60/enc28j60.c **** 	enc28j60WriteBuffer(len, packet);
+ 273:../enc28j60/enc28j60.c **** 	// send the contents of the transmit buffer onto the network
+ 274:../enc28j60/enc28j60.c **** 	enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_TXRTS);
+ 275:../enc28j60/enc28j60.c **** 				
+ 276:../enc28j60/enc28j60.c **** 	}
+ 277:../enc28j60/enc28j60.c **** 
+ 278:../enc28j60/enc28j60.c **** // Gets a packet from the network receive buffer, if one is available.
+ 279:../enc28j60/enc28j60.c **** // The packet will by headed by an ethernet header.
+ 280:../enc28j60/enc28j60.c **** //      maxlen  The maximum acceptable length of a retrieved packet.
+ 281:../enc28j60/enc28j60.c **** //      packet  Pointer where packet data should be stored.
+ 282:../enc28j60/enc28j60.c **** // Returns: Packet length in bytes if a packet was retrieved, zero otherwise.
+ 283:../enc28j60/enc28j60.c **** unsigned int enc28j60PacketReceive(unsigned int maxlen, unsigned char* packet)
+ 284:../enc28j60/enc28j60.c **** 	{
+ 20008              		.loc 1 284 0
+ 20009              		.cfi_startproc
+ 20010              		@ args = 0, pretend = 0, frame = 0
+ 20011              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20012              	.LVL35:
+ 20013 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+ 20014              	.LCFI16:
+ 20015              		.cfi_def_cfa_offset 24
+ 20016 0004 0546     		mov	r5, r0
+ 20017              		.cfi_offset 14, -4
+ 20018              		.cfi_offset 8, -8
+ 20019              		.cfi_offset 7, -12
+ 20020              		.cfi_offset 6, -16
+ 20021              		.cfi_offset 5, -20
+ 20022              		.cfi_offset 4, -24
+ 20023 0006 0E46     		mov	r6, r1
+ 285:../enc28j60/enc28j60.c **** 	unsigned int rxstat;
+ 286:../enc28j60/enc28j60.c **** 	unsigned int len;
+ 287:../enc28j60/enc28j60.c **** 
+ 288:../enc28j60/enc28j60.c **** 	// check if a packet has been received and buffered
+ 289:../enc28j60/enc28j60.c **** 	//if( !(enc28j60Read(EIR) & EIR_PKTIF) ){
+ 290:../enc28j60/enc28j60.c ****         // The above does not work. See Rev. B4 Silicon Errata point 6.
+ 291:../enc28j60/enc28j60.c **** 	if( enc28j60Read(EPKTCNT) ==0 )
+ 20024              		.loc 1 291 0
+ 20025 0008 4FF03900 		mov	r0, #57
+ 20026              	.LVL36:
+ 20027 000c FFF7FEFF 		bl	enc28j60Read
+ 20028              	.LVL37:
+ 20029 0010 10B9     		cbnz	r0, .L44
+ 20030 0012 4FF00005 		mov	r5, #0
+ 20031              	.LVL38:
+ 20032 0016 61E0     		b	.L45
+ 20033              	.LVL39:
+ 20034              	.L44:
+ 292:../enc28j60/enc28j60.c **** 		{
+ 293:../enc28j60/enc28j60.c **** 		return(0);
+ 294:../enc28j60/enc28j60.c ****         }
+ 295:../enc28j60/enc28j60.c **** 
+ 296:../enc28j60/enc28j60.c **** 	// Set the read pointer to the start of the received packet
+ 297:../enc28j60/enc28j60.c **** 	enc28j60Write(ERDPTL, (NextPacketPtr));
+ 20035              		.loc 1 297 0
+ 20036 0018 40F20004 		movw	r4, #:lower16:.LANCHOR1
+ 20037 001c C0F20004 		movt	r4, #:upper16:.LANCHOR1
+ 20038 0020 4FF00000 		mov	r0, #0
+ 20039 0024 2178     		ldrb	r1, [r4, #0]	@ zero_extendqisi2
+ 20040 0026 FFF7FEFF 		bl	enc28j60Write
+ 298:../enc28j60/enc28j60.c **** 	enc28j60Write(ERDPTH, (NextPacketPtr)>>8);
+ 20041              		.loc 1 298 0
+ 20042 002a 4FF00100 		mov	r0, #1
+ 20043 002e 6178     		ldrb	r1, [r4, #1]	@ zero_extendqisi2
+ 20044 0030 FFF7FEFF 		bl	enc28j60Write
+ 299:../enc28j60/enc28j60.c **** 
+ 300:../enc28j60/enc28j60.c **** 	// read the next packet pointer
+ 301:../enc28j60/enc28j60.c **** 	NextPacketPtr  = enc28j60ReadOp(ENC28J60_READ_BUF_MEM, 0);
+ 20045              		.loc 1 301 0
+ 20046 0034 4FF03A00 		mov	r0, #58
+ 20047 0038 4FF00001 		mov	r1, #0
+ 20048 003c FFF7FEFF 		bl	enc28j60ReadOp
+ 20049 0040 2060     		str	r0, [r4, #0]
+ 302:../enc28j60/enc28j60.c **** 	NextPacketPtr |= enc28j60ReadOp(ENC28J60_READ_BUF_MEM, 0)<<8;
+ 20050              		.loc 1 302 0
+ 20051 0042 4FF03A00 		mov	r0, #58
+ 20052 0046 4FF00001 		mov	r1, #0
+ 20053 004a FFF7FEFF 		bl	enc28j60ReadOp
+ 20054 004e 2368     		ldr	r3, [r4, #0]
+ 20055 0050 43EA0023 		orr	r3, r3, r0, lsl #8
+ 20056 0054 2360     		str	r3, [r4, #0]
+ 303:../enc28j60/enc28j60.c **** 
+ 304:../enc28j60/enc28j60.c **** 	// read the packet length (see datasheet page 43)
+ 305:../enc28j60/enc28j60.c **** 	len  = enc28j60ReadOp(ENC28J60_READ_BUF_MEM, 0);
+ 20057              		.loc 1 305 0
+ 20058 0056 4FF03A00 		mov	r0, #58
+ 20059 005a 4FF00001 		mov	r1, #0
+ 20060 005e FFF7FEFF 		bl	enc28j60ReadOp
+ 20061 0062 8046     		mov	r8, r0
+ 306:../enc28j60/enc28j60.c **** 	len |= enc28j60ReadOp(ENC28J60_READ_BUF_MEM, 0)<<8;
+ 20062              		.loc 1 306 0
+ 20063 0064 4FF03A00 		mov	r0, #58
+ 20064 0068 4FF00001 		mov	r1, #0
+ 20065 006c FFF7FEFF 		bl	enc28j60ReadOp
+ 20066 0070 0746     		mov	r7, r0
+ 307:../enc28j60/enc28j60.c **** 
+ 308:../enc28j60/enc28j60.c ****     len-=4; //remove the CRC count
+ 309:../enc28j60/enc28j60.c **** 	// read the receive status (see datasheet page 43)
+ 310:../enc28j60/enc28j60.c **** 	rxstat  = enc28j60ReadOp(ENC28J60_READ_BUF_MEM, 0);
+ 20067              		.loc 1 310 0
+ 20068 0072 4FF03A00 		mov	r0, #58
+ 20069 0076 4FF00001 		mov	r1, #0
+ 20070 007a FFF7FEFF 		bl	enc28j60ReadOp
+ 20071 007e 0446     		mov	r4, r0
+ 311:../enc28j60/enc28j60.c **** 	rxstat |= enc28j60ReadOp(ENC28J60_READ_BUF_MEM, 0)<<8;
+ 20072              		.loc 1 311 0
+ 20073 0080 4FF03A00 		mov	r0, #58
+ 20074 0084 4FF00001 		mov	r1, #0
+ 20075 0088 FFF7FEFF 		bl	enc28j60ReadOp
+ 312:../enc28j60/enc28j60.c **** 	// limit retrieve length
+ 313:../enc28j60/enc28j60.c ****     if (len>maxlen-1)
+ 314:../enc28j60/enc28j60.c **** 		{
+ 315:../enc28j60/enc28j60.c ****         len=maxlen-1;
+ 316:../enc28j60/enc28j60.c ****     	}
+ 317:../enc28j60/enc28j60.c **** 
+ 318:../enc28j60/enc28j60.c ****         // check CRC and symbol errors (see datasheet page 44, table 7-3):
+ 319:../enc28j60/enc28j60.c ****         // The ERXFCON.CRCEN is set by default. Normally we should not
+ 320:../enc28j60/enc28j60.c ****         // need to check this.
+ 321:../enc28j60/enc28j60.c ****     if ((rxstat & 0x80)==0)
+ 20076              		.loc 1 321 0
+ 20077 008c 14F0800F 		tst	r4, #128
+ 20078 0090 08BF     		it	eq
+ 20079 0092 0025     		moveq	r5, #0
+ 20080              	.LVL40:
+ 20081 0094 0CD0     		beq	.L47
+ 20082              		.loc 1 306 0
+ 20083 0096 48EA0727 		orr	r7, r8, r7, lsl #8
+ 20084              	.LVL41:
+ 20085              		.loc 1 308 0
+ 20086 009a A7F10407 		sub	r7, r7, #4
+ 20087              	.LVL42:
+ 20088 009e 05F1FF35 		add	r5, r5, #-1
+ 20089              	.LVL43:
+ 20090 00a2 AF42     		cmp	r7, r5
+ 20091 00a4 38BF     		it	cc
+ 20092 00a6 3D46     		movcc	r5, r7
+ 20093              	.LVL44:
+ 322:../enc28j60/enc28j60.c **** 			{
+ 323:../enc28j60/enc28j60.c **** 		    // invalid
+ 324:../enc28j60/enc28j60.c **** 		    len=0;
+ 325:../enc28j60/enc28j60.c **** 		    }
+ 326:../enc28j60/enc28j60.c **** 		else
+ 327:../enc28j60/enc28j60.c **** 			{
+ 328:../enc28j60/enc28j60.c ****             // copy the packet from the receive buffer
+ 329:../enc28j60/enc28j60.c ****             enc28j60ReadBuffer(len, packet);
+ 20094              		.loc 1 329 0
+ 20095 00a8 2846     		mov	r0, r5
+ 20096 00aa 3146     		mov	r1, r6
+ 20097 00ac FFF7FEFF 		bl	enc28j60ReadBuffer
+ 20098              	.L47:
+ 330:../enc28j60/enc28j60.c ****         	}
+ 331:../enc28j60/enc28j60.c **** 	// Move the RX read pointer to the start of the next received packet
+ 332:../enc28j60/enc28j60.c **** 	// This frees the memory we just read out
+ 333:../enc28j60/enc28j60.c **** 	enc28j60Write(ERXRDPTL, (NextPacketPtr));
+ 20099              		.loc 1 333 0
+ 20100 00b0 40F20004 		movw	r4, #:lower16:.LANCHOR1
+ 20101 00b4 C0F20004 		movt	r4, #:upper16:.LANCHOR1
+ 20102 00b8 4FF00C00 		mov	r0, #12
+ 20103 00bc 2178     		ldrb	r1, [r4, #0]	@ zero_extendqisi2
+ 20104 00be FFF7FEFF 		bl	enc28j60Write
+ 334:../enc28j60/enc28j60.c **** 	enc28j60Write(ERXRDPTH, (NextPacketPtr)>>8);
+ 20105              		.loc 1 334 0
+ 20106 00c2 4FF00D00 		mov	r0, #13
+ 20107 00c6 6178     		ldrb	r1, [r4, #1]	@ zero_extendqisi2
+ 20108 00c8 FFF7FEFF 		bl	enc28j60Write
+ 335:../enc28j60/enc28j60.c **** 
+ 336:../enc28j60/enc28j60.c **** 	// decrement the packet counter indicate we are done with this packet
+ 337:../enc28j60/enc28j60.c **** 	enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, ECON2, ECON2_PKTDEC);
+ 20109              		.loc 1 337 0
+ 20110 00cc 4FF08000 		mov	r0, #128
+ 20111 00d0 4FF01E01 		mov	r1, #30
+ 20112 00d4 4FF04002 		mov	r2, #64
+ 20113 00d8 FFF7FEFF 		bl	enc28j60WriteOp
+ 20114              	.L45:
+ 338:../enc28j60/enc28j60.c **** 	return(len);
+ 339:../enc28j60/enc28j60.c **** 	}
+ 20115              		.loc 1 339 0
+ 20116 00dc 2846     		mov	r0, r5
+ 20117 00de BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 20118              		.cfi_endproc
+ 20119              	.LFE45:
+ 20121 00e2 00BF     		.section	.text.enc28j60PacketSend,"ax",%progbits
+ 20122              		.align	2
+ 20123              		.global	enc28j60PacketSend
+ 20124              		.thumb
+ 20125              		.thumb_func
+ 20127              	enc28j60PacketSend:
+ 20128              	.LFB44:
+ 20129              		.loc 1 252 0
+ 20130              		.cfi_startproc
+ 20131              		@ args = 0, pretend = 0, frame = 0
+ 20132              		@ frame_needed = 0, uses_anonymous_args = 0
+ 20133              	.LVL45:
+ 20134 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, sl, lr}
+ 20135              	.LCFI17:
+ 20136              		.cfi_def_cfa_offset 32
+ 20137 0004 8046     		mov	r8, r0
+ 20138              		.cfi_offset 14, -4
+ 20139              		.cfi_offset 10, -8
+ 20140              		.cfi_offset 9, -12
+ 20141              		.cfi_offset 8, -16
+ 20142              		.cfi_offset 7, -20
+ 20143              		.cfi_offset 6, -24
+ 20144              		.cfi_offset 5, -28
+ 20145              		.cfi_offset 4, -32
+ 20146 0006 8946     		mov	r9, r1
+ 20147              		.loc 1 254 0
+ 20148 0008 4FF00005 		mov	r5, #0
+ 20149 000c 4FF01F04 		mov	r4, #31
+ 20150              		.loc 1 257 0
+ 20151 0010 4FF01C06 		mov	r6, #28
+ 20152              		.loc 1 258 0
+ 20153 0014 4FF08007 		mov	r7, #128
+ 20154              		.loc 1 259 0
+ 20155 0018 4FF0A00A 		mov	sl, #160
+ 20156              		.loc 1 254 0
+ 20157 001c 0FE0     		b	.L53
+ 20158              	.LVL46:
+ 20159              	.L51:
+ 20160              		.loc 1 257 0
+ 20161 001e 3046     		mov	r0, r6
+ 20162 0020 FFF7FEFF 		bl	enc28j60Read
+ 20163 0024 10F0020F 		tst	r0, #2
+ 20164 0028 09D0     		beq	.L53
+ 20165              		.loc 1 258 0
+ 20166 002a 3846     		mov	r0, r7
+ 20167 002c 2146     		mov	r1, r4
+ 20168 002e 3A46     		mov	r2, r7
+ 20169 0030 FFF7FEFF 		bl	enc28j60WriteOp
+ 20170              		.loc 1 259 0
+ 20171 0034 5046     		mov	r0, sl
+ 20172 0036 2146     		mov	r1, r4
+ 20173 0038 3A46     		mov	r2, r7
+ 20174 003a FFF7FEFF 		bl	enc28j60WriteOp
+ 20175              	.LVL47:
+ 20176              	.L53:
+ 20177              		.loc 1 254 0
+ 20178 003e 2846     		mov	r0, r5
+ 20179 0040 2146     		mov	r1, r4
+ 20180 0042 FFF7FEFF 		bl	enc28j60ReadOp
+ 20181 0046 10F0080F 		tst	r0, #8
+ 20182 004a E8D1     		bne	.L51
+ 20183              		.loc 1 264 0
+ 20184 004c 4FF00200 		mov	r0, #2
+ 20185 0050 4FF0FF01 		mov	r1, #255
+ 20186 0054 FFF7FEFF 		bl	enc28j60Write
+ 20187              		.loc 1 265 0
+ 20188 0058 4FF00300 		mov	r0, #3
+ 20189 005c 4FF01901 		mov	r1, #25
+ 20190 0060 FFF7FEFF 		bl	enc28j60Write
+ 20191              		.loc 1 267 0
+ 20192 0064 08F1FF31 		add	r1, r8, #-1
+ 20193 0068 4FF00600 		mov	r0, #6
+ 20194 006c C9B2     		uxtb	r1, r1
+ 20195 006e FFF7FEFF 		bl	enc28j60Write
+ 20196              		.loc 1 268 0
+ 20197 0072 08F5CE51 		add	r1, r8, #6592
+ 20198 0076 01F13F01 		add	r1, r1, #63
+ 20199 007a 4FF00700 		mov	r0, #7
+ 20200 007e C1F30721 		ubfx	r1, r1, #8, #8
+ 20201 0082 FFF7FEFF 		bl	enc28j60Write
+ 20202              		.loc 1 270 0
+ 20203 0086 4FF07A00 		mov	r0, #122
+ 20204 008a 4FF00001 		mov	r1, #0
+ 20205 008e 0A46     		mov	r2, r1
+ 20206 0090 FFF7FEFF 		bl	enc28j60WriteOp
+ 20207              		.loc 1 272 0
+ 20208 0094 4046     		mov	r0, r8
+ 20209 0096 4946     		mov	r1, r9
+ 20210 0098 FFF7FEFF 		bl	enc28j60WriteBuffer
+ 20211              		.loc 1 274 0
+ 20212 009c 4FF08000 		mov	r0, #128
+ 20213 00a0 4FF01F01 		mov	r1, #31
+ 20214 00a4 4FF00802 		mov	r2, #8
+ 20215 00a8 FFF7FEFF 		bl	enc28j60WriteOp
+ 20216              		.loc 1 276 0
+ 20217 00ac BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, sl, pc}
+ 20218              		.cfi_endproc
+ 20219              	.LFE44:
+ 20221              		.section	.bss.Enc28j60Bank,"aw",%nobits
+ 20222              		.set	.LANCHOR0,. + 0
+ 20225              	Enc28j60Bank:
+ 20226 0000 00       		.space	1
+ 20227              		.section	.bss.NextPacketPtr,"aw",%nobits
+ 20228              		.align	2
+ 20229              		.set	.LANCHOR1,. + 0
+ 20232              	NextPacketPtr:
+ 20233 0000 00000000 		.space	4
+ 20234              		.section	.rodata.str1.4,"aMS",%progbits,1
+ 20235              		.align	2
+ 20236              	.LC0:
+ 20237 0000 4D41433A 		.ascii	"MAC: = %x:%x:%x:%x:%x:%x\015\012\000"
+ 20237      203D2025 
+ 20237      783A2578 
+ 20237      3A25783A 
+ 20237      25783A25 
+ 20238 001b 00       		.text
+ 20239              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 enc28j60.c
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19198  .text.enc28j60WriteBuffer:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19203  .text.enc28j60WriteBuffer:00000000 enc28j60WriteBuffer
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19252  .text.enc28j60ReadBuffer:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19257  .text.enc28j60ReadBuffer:00000000 enc28j60ReadBuffer
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19314  .text.enc28j60WriteOp:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19319  .text.enc28j60WriteOp:00000000 enc28j60WriteOp
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19363  .text.enc28j60SetBank:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19368  .text.enc28j60SetBank:00000000 enc28j60SetBank
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20222  .bss.Enc28j60Bank:00000000 .LANCHOR0
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19414  .text.enc28j60Write:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19419  .text.enc28j60Write:00000000 enc28j60Write
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19449  .text.enc28j60clkout:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19454  .text.enc28j60clkout:00000000 enc28j60clkout
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19477  .text.enc28j60ReadOp:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19482  .text.enc28j60ReadOp:00000000 enc28j60ReadOp
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19544  .text.enc28j60Read:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19549  .text.enc28j60Read:00000000 enc28j60Read
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19575  .text.enc28j60getrev:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19580  .text.enc28j60getrev:00000000 enc28j60getrev
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19600  .text.enc28j60PhyReadH:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19605  .text.enc28j60PhyReadH:00000000 enc28j60PhyReadH
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19648  .text.enc28j60linkup:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19653  .text.enc28j60linkup:00000000 enc28j60linkup
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19676  .text.enc28j60DisableBroadcast:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19681  .text.enc28j60DisableBroadcast:00000000 enc28j60DisableBroadcast
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19705  .text.enc28j60EnableBroadcast:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19710  .text.enc28j60EnableBroadcast:00000000 enc28j60EnableBroadcast
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19735  .text.enc28j60PhyWrite:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19740  .text.enc28j60PhyWrite:00000000 enc28j60PhyWrite
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19783  .text.enc28j60Init:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:19788  .text.enc28j60Init:00000000 enc28j60Init
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20229  .bss.NextPacketPtr:00000000 .LANCHOR1
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20236  .rodata.str1.4:00000000 .LC0
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20001  .text.enc28j60PacketReceive:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20006  .text.enc28j60PacketReceive:00000000 enc28j60PacketReceive
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20122  .text.enc28j60PacketSend:00000000 $t
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20127  .text.enc28j60PacketSend:00000000 enc28j60PacketSend
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20225  .bss.Enc28j60Bank:00000000 Enc28j60Bank
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20226  .bss.Enc28j60Bank:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20228  .bss.NextPacketPtr:00000000 $d
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20232  .bss.NextPacketPtr:00000000 NextPacketPtr
+C:\Users\user\AppData\Local\Temp\ccIR2fKz.s:20235  .rodata.str1.4:00000000 $d
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+SPI1_ReadWrite
+Delay_us
+Delay
+min_printf
